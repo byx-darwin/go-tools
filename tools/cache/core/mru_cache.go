@@ -1,7 +1,7 @@
 package core
 
 import (
-	"gitcode.com/sznc/go-tools/tools/cache"
+	"gitee.com/byx_darwin/go-tools/tools/cache"
 	genericsCache "github.com/Code-Hex/go-generics-cache"
 	"github.com/Code-Hex/go-generics-cache/policy/mru"
 	"time"

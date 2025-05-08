@@ -1,7 +1,7 @@
 package core
 
 import (
-	"gitcode.com/sznc/go-tools/tools/cache"
+	"gitee.com/byx_darwin/go-tools/tools/cache"
 	genericsCache "github.com/Code-Hex/go-generics-cache"
 	"github.com/Code-Hex/go-generics-cache/policy/fifo"
 	"time"
@@ -60,7 +60,7 @@ func (c FifoCache[K, V]) Len() int {
 func NewFifoCache[K comparable, V any](capacity int) cache.Cache[K, V] {
 	opts := genericsCache.AsFIFO[K, V](fifo.WithCapacity(capacity)) // 创建带有容量限制的 FIFO 缓存选项
 	c := genericsCache.New[K, V](opts)                              // 根据选项创建缓存实例
-	return &FifoCache[K, V]{                                        // 返回 FifoCache 包装后的缓存实例
+	return &FifoCache[K, V]{ // 返回 FifoCache 包装后的缓存实例
 		c,
 	}
 }

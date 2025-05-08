@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/md5"
 	"crypto/sha1"
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
@@ -30,4 +31,8 @@ func Hmac(key, content []byte, hFunc func() hash.Hash) string {
 	h := hmac.New(hFunc, key)
 	h.Write(content)
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func EncodePwd(password, ak string) string {
+	return Hmac([]byte(ak), []byte(password), sha256.New)
 }

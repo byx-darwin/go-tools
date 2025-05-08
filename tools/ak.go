@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"gitcode.com/sznc/go-tools/tools/crypto"
+	"gitee.com/byx_darwin/go-tools/tools/crypto"
 	"math/rand"
 	"time"
 )
@@ -18,8 +18,8 @@ func GetRandAk(length int) string {
 	return ak
 }
 
-// RefrshSecrect 刷新SK
-func RefrshSK(ak string) string {
+// RefreshSK 刷新SK
+func RefreshSK(ak string) string {
 	signer := ak + "/" + time.Now().String()
 	return crypto.MD5([]byte(signer))
 }

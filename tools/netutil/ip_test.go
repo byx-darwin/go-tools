@@ -20,6 +20,7 @@ func TestGetInternalIP(t *testing.T) {
 	if net.ParseIP(ip) == nil {
 		t.Errorf("GetInternalIP() returned invalid IP: %v", ip)
 	}
+	t.Logf("Internal IP: %v", ip)
 }
 
 func TestIsInternalIP(t *testing.T) {

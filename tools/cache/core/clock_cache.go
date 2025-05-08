@@ -1,7 +1,7 @@
 package core
 
 import (
-	"gitcode.com/sznc/go-tools/tools/cache"
+	"gitee.com/byx_darwin/go-tools/tools/cache"
 	genericsCache "github.com/Code-Hex/go-generics-cache"
 	"github.com/Code-Hex/go-generics-cache/policy/clock"
 	"time"
@@ -60,7 +60,7 @@ func (c ClockCache[K, V]) Len() int {
 func NewClockCache[K comparable, V any](capacity int) cache.Cache[K, V] {
 	opts := genericsCache.AsClock[K, V](clock.WithCapacity(capacity)) // 创建带有容量限制的缓存选项
 	c := genericsCache.New[K, V](opts)                                // 根据选项创建缓存实例
-	return &ClockCache[K, V]{                                         // 返回 ClockCache 包装后的缓存实例
+	return &ClockCache[K, V]{ // 返回 ClockCache 包装后的缓存实例
 		c,
 	}
 }
