@@ -42,14 +42,14 @@ func NewEntDriver(driver dialect.Driver,
 	QueryTextKey = attribute.Key("otel." + EventKey + ".query")
 	ArgsTextKey = attribute.Key("otel." + EventKey + ".args")
 	DurationKey = attribute.Key("otel." + EventKey + ".duration")
-	entDriver := DefaultMysqlDriver(driver)
+	entDriver := DefaultEntDriver(driver)
 	for _, option := range options {
 		option.apply(entDriver)
 	}
 	return entDriver
 }
 
-func DefaultMysqlDriver(driver dialect.Driver) *EntDriver {
+func DefaultEntDriver(driver dialect.Driver) *EntDriver {
 	return &EntDriver{
 		Driver: driver,
 		log: func(ctx context.Context, info ...any) {
