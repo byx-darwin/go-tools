@@ -3,15 +3,10 @@ module gitee.com/byx_darwin/go-tools/middleware
 go 1.24.1
 
 require (
-	entgo.io/ent v0.14.4
 	gitee.com/byx_darwin/go-tools/config v0.0.0-00010101000000-000000000000
 	github.com/IBM/sarama v1.45.1
-	github.com/cloudwego/hertz v0.9.7
 	github.com/redis/go-redis/extra/redisotel/v9 v9.8.0
 	github.com/redis/go-redis/v9 v9.8.0
-	github.com/uptrace/opentelemetry-go-extra/otelsql v0.3.2
-	go.opentelemetry.io/otel v1.35.0
-	go.opentelemetry.io/otel/trace v1.35.0
 )
 
 replace gitee.com/byx_darwin/go-tools/config => ../config
