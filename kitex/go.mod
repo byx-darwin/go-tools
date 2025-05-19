@@ -3,7 +3,7 @@ module gitee.com/byx_darwin/go-tools/kitex
 go 1.24.1
 
 require (
-	gitee.com/byx_darwin/go-tools/config v0.0.0-00010101000000-000000000000
+	gitee.com/byx_darwin/go-tools/config v0.0.0-20250519022534-c7776865e304
 	gitee.com/byx_darwin/go-tools/tools v0.0.0-00010101000000-000000000000
 	gitee.com/byx_darwin/uptrace-opentelemetry/otelkitex v0.0.0-20250508061827-042de0bd06d0
 	gitee.com/byx_darwin/uptrace-opentelemetry/otelplay v0.0.0-20250508061827-042de0bd06d0
