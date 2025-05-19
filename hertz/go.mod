@@ -5,8 +5,8 @@ go 1.24.1
 require (
 	gitee.com/byx_darwin/go-tools/config v0.0.0-00010101000000-000000000000
 	gitee.com/byx_darwin/go-tools/tools v0.0.0-00010101000000-000000000000
-	gitee.com/byx_darwin/uptrace-opentelemetry/otelhertz v0.0.0-20250508061827-042de0bd06d0
-	github.com/cloudwego/hertz v0.9.7
+	gitee.com/byx_darwin/uptrace-opentelemetry/otelhertz v0.0.0-20250519022152-d3c7516ba765
+	github.com/cloudwego/hertz v0.10.0
 	github.com/hertz-contrib/registry/polaris v0.0.0-20250319055937-8a220332e808
 	github.com/pkg/errors v0.9.1
 	go.opentelemetry.io/otel/trace v1.35.0
@@ -25,7 +25,8 @@ require (
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
-	github.com/cloudwego/netpoll v0.6.4 // indirect
+	github.com/cloudwego/gopkg v0.1.4 // indirect
+	github.com/cloudwego/netpoll v0.7.0 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
@@ -34,7 +35,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -43,7 +43,7 @@ require (
 	github.com/nyaruka/phonenumbers v1.0.55 // indirect
 	github.com/polarismesh/polaris-go v1.6.1 // indirect
 	github.com/polarismesh/specification v1.5.5-alpha.1 // indirect
-	github.com/prometheus/client_golang v1.21.1 // indirect
+	github.com/prometheus/client_golang v1.22.0 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
@@ -65,7 +65,7 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2 // indirect
-	google.golang.org/grpc v1.72.0 // indirect
+	google.golang.org/grpc v1.72.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
