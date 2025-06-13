@@ -9,6 +9,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"gitee.com/byx_darwin/go-tools/kitex/rpc_error"
 	"strconv"
 )
 
@@ -72,16 +73,16 @@ func ReplyWithErr(ctx context.Context, c *app.RequestContext,
 	Result(ctx, c, consts.StatusOK, SUCCESS, nil, "ok")
 }
 
-func ReplyWithOk(ctx context.Context, c *app.RequestContext,
-	format, msg string, ok bool, log hlog.CtxLogger, err error) {
+func ReplyWithOk(ctx context.Context, c *app.RequestContext, publicMsg string, log hlog.CtxLogger, err error) {
 	if err != nil {
-		path := string(c.Path())
-		log.CtxErrorf(ctx, fmt.Sprintf("(%s)%s", path, format), err.Error())
-		Result(ctx, c, consts.StatusInternalServerError, ERROR, nil, "内部错误")
-		return
-	}
-	if ok {
-		Result(ctx, c, consts.StatusOK, ERROR, nil, msg)
+		errType, privateErrMsg := rpc_error.ParseBizStatusError(err)
+		if errType == rpc_error.ErrorTypeDBDataRepeat {
+			Result(ctx, c, consts.StatusOK, ERROR, nil, publicMsg)
+		} else {
+			path := string(c.Path())
+			log.CtxErrorf(ctx, fmt.Sprintf("(%s)%s", path, privateErrMsg), err.Error())
+			Result(ctx, c, consts.StatusInternalServerError, ERROR, nil, "内部错误")
+		}
 		return
 	}
 	Result(ctx, c, consts.StatusOK, SUCCESS, nil, "ok")
