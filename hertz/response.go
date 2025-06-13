@@ -3,7 +3,9 @@ package hertz
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -11,10 +13,9 @@ import (
 )
 
 type Response struct {
-	Code    int         `json:"code"`
-	Msg     string      `json:"msg"`
-	Data    interface{} `json:"data"`
-	TraceID string      `json:"trace_id"`
+	Code int         `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data"`
 }
 
 const (
@@ -25,63 +26,72 @@ const (
 
 func Result(c context.Context,
 	ctx *app.RequestContext,
+	httpCode int,
 	code int,
 	data interface{}, msg string) {
 	traceID := oteltrace.SpanContextFromContext(c).TraceID().String()
+	ctx.Header("X-Trace-ID", traceID)
 	if data == nil {
-		ctx.JSON(consts.StatusOK, utils.H{
-			"code":     code,
-			"msg":      msg,
-			"trace_id": traceID,
+		ctx.JSON(httpCode, utils.H{
+			"code": code,
+			"msg":  msg,
 		})
 	} else {
-		ctx.JSON(consts.StatusOK, Response{
+		ctx.JSON(httpCode, Response{
 			code,
 			msg,
 			data,
-			traceID,
 		})
 	}
 	ctx.Abort()
 }
 
-func Ok(c context.Context,
-	ctx *app.RequestContext) {
-	Result(c, ctx, SUCCESS, nil, "操作成功")
+func ReplyWithBindErr(ctx context.Context, c *app.RequestContext, err error) {
+	Result(ctx, c, consts.StatusForbidden, ERROR, nil, err.Error())
 }
 
-func OkWithMessage(c context.Context,
-	ctx *app.RequestContext, msg string) {
-	Result(c, ctx, SUCCESS, nil, msg)
-}
-func OkWithData(c context.Context,
-	ctx *app.RequestContext, data interface{}) {
-	Result(c, ctx, SUCCESS, data, "操作成功")
+func ReplyWithReLogin(ctx context.Context, c *app.RequestContext) {
+	Result(ctx, c, consts.StatusOK, RELOGIN, nil, "重新登录")
 }
 
-func OkWithDetailed(c context.Context,
-	ctx *app.RequestContext, data interface{}, message string) {
-	Result(c, ctx, SUCCESS, data, message)
+func ReplyWithServerError(ctx context.Context, c *app.RequestContext,
+	format string, log hlog.CtxLogger, err error) {
+	path := string(c.Path())
+	log.CtxErrorf(ctx, fmt.Sprintf("(%s)%s", path, format), err.Error())
+	Result(ctx, c, consts.StatusInternalServerError, ERROR, nil, "内部错误")
 }
 
-func Fail(c context.Context,
-	ctx *app.RequestContext) {
-	Result(c, ctx, ERROR, nil, "操作失败")
+func ReplyWithErr(ctx context.Context, c *app.RequestContext,
+	format string, log hlog.CtxLogger, err error) {
+	if err != nil {
+		path := string(c.Path())
+		log.CtxErrorf(ctx, fmt.Sprintf("(%s)%s", path, format), err.Error())
+		Result(ctx, c, consts.StatusInternalServerError, ERROR, nil, "内部错误")
+		return
+	}
+	Result(ctx, c, consts.StatusOK, SUCCESS, nil, "ok")
 }
 
-func FailWithMessage(c context.Context,
-	ctx *app.RequestContext, message string) {
-	Result(c, ctx, ERROR, nil, message)
+func ReplyWithOk(ctx context.Context, c *app.RequestContext,
+	format, msg string, ok bool, log hlog.CtxLogger, err error) {
+	if err != nil {
+		path := string(c.Path())
+		log.CtxErrorf(ctx, fmt.Sprintf("(%s)%s", path, format), err.Error())
+		Result(ctx, c, consts.StatusInternalServerError, ERROR, nil, "内部错误")
+		return
+	}
+	if ok {
+		Result(ctx, c, consts.StatusOK, ERROR, nil, msg)
+		return
+	}
+	Result(ctx, c, consts.StatusOK, SUCCESS, nil, "ok")
 }
-
-func ReLoginWithMessage(c context.Context,
-	ctx *app.RequestContext, message string) {
-	Result(c, ctx, RELOGIN, nil, message)
-}
-
-func OkWithBody(data []byte, ctx *app.RequestContext, bodyLength int) {
+func ReplyWithTeaBody(ctx context.Context, c *app.RequestContext, data []byte, bodyLength int) {
 	dst := make([]byte, hex.EncodedLen(len(data)))
 	hex.Encode(dst, data)
-	ctx.Header("X-Body-Length", strconv.Itoa(bodyLength))
-	ctx.Data(consts.StatusOK, "application/json; charset=UTF-8", dst)
+	c.Header("X-Body-Length", strconv.Itoa(bodyLength))
+	traceID := oteltrace.SpanContextFromContext(ctx).TraceID().String()
+	c.Header("X-Trace-ID", traceID)
+	c.Data(consts.StatusOK, "text/plain", dst)
+
 }
