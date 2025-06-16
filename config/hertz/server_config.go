@@ -3,10 +3,10 @@ package hertz
 import "gitee.com/byx_darwin/go-tools/config"
 
 type ServerConfig struct {
-	Registry *config.RegistryOption `json:"registry" yaml:"registry"`
-	Jaeger   *config.JaegerOption   `json:"jaeger" yaml:"jaeger"`
-	HTTP     *HTTPOption            `json:"http" yaml:"http"`
-	Auth     *HTTPAuth              `json:"auth" yaml:"auth"`
+	Registry config.RegistryOption `json:"registry" yaml:"registry"`
+	Jaeger   *config.JaegerOption  `json:"jaeger" yaml:"jaeger"`
+	HTTP     *HTTPOption           `json:"http" yaml:"http"`
+	Auth     *HTTPAuth             `json:"auth" yaml:"auth"`
 }
 type HTTPOption struct {
 	Network      string `json:"network"  yaml:"network"`              //连接方式 (tcp udp unix)

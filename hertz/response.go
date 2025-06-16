@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"gitee.com/byx_darwin/go-tools/kitex/rpc_error"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	oteltrace "go.opentelemetry.io/otel/trace"
-	"gitee.com/byx_darwin/go-tools/kitex/rpc_error"
 	"strconv"
 )
 
