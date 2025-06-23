@@ -5,8 +5,8 @@ go 1.24.1
 require (
 	gitee.com/byx_darwin/go-tools/config v0.0.0-20250519065826-1b5a9f1f11fa
 	gitee.com/byx_darwin/go-tools/tools v0.0.0-20250519065826-1b5a9f1f11fa
-	gitee.com/byx_darwin/uptrace-opentelemetry/otelkitex v0.0.0-20250616082707-e84c1d654001
-	gitee.com/byx_darwin/uptrace-opentelemetry/otelplay v0.0.0-20250616082707-e84c1d654001
+	gitee.com/byx_darwin/uptrace-opentelemetry/otelkitex  v0.0.0-20250623092229-2a18cb2af19a
+	gitee.com/byx_darwin/uptrace-opentelemetry/otelplay  v0.0.0-20250623092229-2a18cb2af19a
 	github.com/cloudwego/hertz v0.10.0
 	github.com/cloudwego/kitex v0.14.0
 	github.com/kitex-contrib/polaris v0.0.0-20220811095956-d405002eaeaf
