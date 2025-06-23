@@ -3,12 +3,12 @@ module gitee.com/byx_darwin/go-tools/kitex
 go 1.24.1
 
 require (
-	gitee.com/byx_darwin/go-tools/config v0.0.0-20250519022534-c7776865e304
-	gitee.com/byx_darwin/go-tools/tools v0.0.0-00010101000000-000000000000
-	gitee.com/byx_darwin/uptrace-opentelemetry/otelkitex v0.0.0-20250508061827-042de0bd06d0
-	gitee.com/byx_darwin/uptrace-opentelemetry/otelplay v0.0.0-20250508061827-042de0bd06d0
-	github.com/cloudwego/hertz v0.9.7
-	github.com/cloudwego/kitex v0.13.1
+	gitee.com/byx_darwin/go-tools/config v0.0.0-20250519065826-1b5a9f1f11fa
+	gitee.com/byx_darwin/go-tools/tools v0.0.0-20250519065826-1b5a9f1f11fa
+	gitee.com/byx_darwin/uptrace-opentelemetry/otelkitex v0.0.0-20250616082707-e84c1d654001
+	gitee.com/byx_darwin/uptrace-opentelemetry/otelplay v0.0.0-20250616082707-e84c1d654001
+	github.com/cloudwego/hertz v0.10.0
+	github.com/cloudwego/kitex v0.14.0
 	github.com/kitex-contrib/polaris v0.0.0-20220811095956-d405002eaeaf
 )
 
@@ -22,21 +22,21 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/bytedance/gopkg v0.1.2 // indirect
-	github.com/bytedance/sonic v1.13.2 // indirect
+	github.com/bytedance/sonic v1.13.3 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
 	github.com/cloudwego/configmanager v0.2.3 // indirect
-	github.com/cloudwego/dynamicgo v0.6.3 // indirect
+	github.com/cloudwego/dynamicgo v0.6.4 // indirect
 	github.com/cloudwego/fastpb v0.0.5 // indirect
 	github.com/cloudwego/frugal v0.2.5 // indirect
-	github.com/cloudwego/gopkg v0.1.4 // indirect
+	github.com/cloudwego/gopkg v0.1.5 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/cloudwego/localsession v0.1.2 // indirect
-	github.com/cloudwego/netpoll v0.7.0 // indirect
+	github.com/cloudwego/netpoll v0.7.1 // indirect
 	github.com/cloudwego/runtimex v0.1.1 // indirect
-	github.com/cloudwego/thriftgo v0.4.1 // indirect
+	github.com/cloudwego/thriftgo v0.4.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
