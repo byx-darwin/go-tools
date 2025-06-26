@@ -45,7 +45,7 @@ func Auth(authFace AuthFace, hFunc func() hash.Hash) app.HandlerFunc {
 }
 
 func parseAuthorization(request *protocol.Request) (string, string, int64, error) {
-	authorization := request.Header.Get("Authorization")
+	authorization := request.Header.Get("X-Signature")
 	if authorization == "" {
 		return "", "", 0, errors.New("authorization not null")
 	}
