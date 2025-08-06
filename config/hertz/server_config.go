@@ -10,7 +10,8 @@ type ServerConfig struct {
 }
 type HTTPOption struct {
 	Network      string `json:"network"  yaml:"network"`              //连接方式 (tcp udp unix)
-	Address      string `json:"address"  yaml:"address"`              //地址
+	Port         string `json:"port"  yaml:"port"`                    //端口
+	Mode         int    `json:"mode"  yaml:"mode"`                    //运行模式 0:内网模式 1:外网模式
 	ExitWaitTime int    `json:"exit_wait_time" yaml:"exit_wait_time"` // 优雅退出时间  单位ms
 	IdleTimeout  int    `json:"idle_timeout" yaml:"idle_timeout"`     // 长连接请求链接空闲超时时间 单位ms
 	IsTransport  bool   `json:"is_transport" yaml:"is_transport"`

@@ -45,13 +45,12 @@ func NewHTTPServer(ctx context.Context,
 	options = append(options,
 		httpServer.WithExitWaitTime(time.Duration(serverConfig.HTTP.ExitWaitTime)*time.Millisecond))
 	options = append(options, httpServer.WithNetwork(serverConfig.HTTP.Network))
-	address := serverConfig.HTTP.Address
-	if address == "" {
-		address = internalIP + ":8090"
-	} else if address[0] == ':' {
-		address = internalIP + address
-	} else if address[0] != ':' {
-		address = internalIP + ":" + address
+
+	address := ""
+	if serverConfig.HTTP.Mode == 0 {
+		address = internalIP + ":" + serverConfig.HTTP.Port
+	} else {
+		address = ":" + serverConfig.HTTP.Port
 	}
 	if serverConfig.HTTP.IsTransport {
 		options = append(options, httpServer.WithTransport(standard.NewTransporter))
