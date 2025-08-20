@@ -4,20 +4,21 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"hash"
+	"strconv"
+	"strings"
+
 	"gitee.com/byx_darwin/go-tools/tools/crypto"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/protocol"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/pkg/errors"
-	"hash"
-	"strconv"
-	"strings"
 )
 
 type AuthFace interface {
 	GetSk(context context.Context, ctx *app.RequestContext,
-		ak string, timestamp int64) (context.Context, string, error)
+		ak string, timestamp int64) (context.Context, string, bool, error)
 }
 
 func Auth(authFace AuthFace, hFunc func() hash.Hash) app.HandlerFunc {
@@ -28,16 +29,24 @@ func Auth(authFace AuthFace, hFunc func() hash.Hash) app.HandlerFunc {
 			ctx.AbortWithStatus(consts.StatusBadRequest)
 			return
 		}
-		ctx2, sk, err := authFace.GetSk(context, ctx, ak, t)
+		ctx2, sk, isDebug, err := authFace.GetSk(context, ctx, ak, t)
 		if err != nil {
 			hlog.CtxErrorf(context, "getSk failure,ak:%s,err:%s", ak, err.Error())
-			ctx.AbortWithStatus(403)
+			if isDebug {
+				ctx.AbortWithMsg(err.Error(), consts.StatusForbidden)
+			} else {
+				ctx.AbortWithStatus(consts.StatusUnauthorized)
+			}
 			return
 		}
 		signed := GetSigned(ak, sk, string(ctx.Request.Path()), t, hFunc)
 		if signed != sign {
 			hlog.CtxErrorf(context, "sign invalid,client sign:%s,server client:%s", sign, signed)
-			ctx.AbortWithStatus(403)
+			if isDebug {
+				ctx.AbortWithMsg(err.Error(), consts.StatusForbidden)
+			} else {
+				ctx.AbortWithStatus(consts.StatusUnauthorized)
+			}
 			return
 		}
 		ctx.Next(ctx2)
