@@ -2,7 +2,7 @@ package redis
 
 type Config struct {
 	Network  string   `json:"network" yaml:"network"`    //网络类型，tcp or unix，默认tcp
-	Adders   []string `json:"adders"  yaml:"adders"`     //主机名+冒号+端口，默认localhost:6379
+	Address  []string `json:"address"  yaml:"address"`   //主机名+冒号+端口，默认localhost:6379
 	Username string   `json:"username" yaml:"username"`  // 用户名
 	Password string   `json:"password"  yaml:"password"` //密码
 	DB       int      `json:"db" yaml:"db"`              // redis数据库index

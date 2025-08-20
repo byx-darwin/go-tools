@@ -2,17 +2,18 @@ package redis
 
 import (
 	"context"
+	"time"
+
 	redisConfig "gitee.com/byx_darwin/go-tools/config/redis"
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 func NewRedisClient(ctx context.Context,
 	config *redisConfig.Config,
 	isTrace bool) (*redis.Client, error) {
 	options := new(redis.Options)
-	options.Addr = config.Adders[0]
+	options.Addr = config.Address[0]
 	options.Password = config.Password
 	options.DB = config.DB
 	options.ContextTimeoutEnabled = true
