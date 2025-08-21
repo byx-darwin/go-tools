@@ -41,9 +41,11 @@ func Auth(authFace AuthFace, hFunc func() hash.Hash) app.HandlerFunc {
 		}
 		signed := GetSigned(ak, sk, string(ctx.Request.Path()), t, hFunc)
 		if signed != sign {
-			hlog.CtxErrorf(context, "sign invalid,client sign:%s,server client:%s", sign, signed)
+			msg := fmt.Sprintf("sign invalid,client sign:%s,server client:%s", sign, signed)
+			hlog.CtxErrorf(context, msg)
+
 			if isDebug {
-				ctx.AbortWithMsg(err.Error(), consts.StatusForbidden)
+				ctx.AbortWithMsg(msg, consts.StatusForbidden)
 			} else {
 				ctx.AbortWithStatus(consts.StatusUnauthorized)
 			}
