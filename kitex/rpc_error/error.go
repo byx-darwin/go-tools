@@ -6,10 +6,14 @@ type ErrorType int
 
 const (
 	ErrorTypeInvalid ErrorType = iota
-	// ErrorTypeDBDataRepeat 数据重复错误
-	ErrorTypeDBDataRepeat
+	// ErrorTypeDataRepeat 数据重复错误
+	ErrorTypeDataRepeat
 	// ErrorTypeDataInvalid 数据无效
 	ErrorTypeDataInvalid
+	//ErrorTypeDataOneself 数据自己
+	ErrorTypeDataOneself
+	//ErrorTypeParmaInvalid  参数无效
+	ErrorTypeParmaInvalid
 	// ErrorTypeSqlInsertFailure sql 插入失败
 	ErrorTypeSqlInsertFailure
 	// ErrorTypeSqlUpdateFailure sql 更新失败
