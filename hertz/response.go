@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strconv"
+
 	"gitee.com/byx_darwin/go-tools/kitex/rpc_error"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/common/utils"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	oteltrace "go.opentelemetry.io/otel/trace"
-	"strconv"
 )
 
 type Response struct {
@@ -76,7 +77,7 @@ func ReplyWithErr(ctx context.Context, c *app.RequestContext,
 func ReplyWithOk(ctx context.Context, c *app.RequestContext, publicMsg string, log hlog.CtxLogger, err error) {
 	if err != nil {
 		errType, privateErrMsg := rpc_error.ParseBizStatusError(err)
-		if errType == rpc_error.ErrorTypeDBDataRepeat {
+		if errType == rpc_error.ErrorTypeDataRepeat {
 			Result(ctx, c, consts.StatusOK, ERROR, nil, publicMsg)
 		} else {
 			path := string(c.Path())
