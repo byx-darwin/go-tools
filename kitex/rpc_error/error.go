@@ -10,7 +10,7 @@ const (
 	ErrorTypeDataRepeat
 	// ErrorTypeDataInvalid 数据无效
 	ErrorTypeDataInvalid
-	//ErrorTypeDataOneself 数据自己
+	//ErrorTypeDataOneself 数据自己(
 	ErrorTypeDataOneself
 	//ErrorTypeParmaInvalid  参数无效
 	ErrorTypeParmaInvalid

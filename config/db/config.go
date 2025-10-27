@@ -8,6 +8,8 @@ type Config struct {
 	Source string `json:"source" yaml:"source"`
 	// 数据库名称
 	Name string `json:"name" yaml:"name"`
+	// 表前缀
+	TablePrefix string `json:"table_prefix" yaml:"table_prefix"`
 	// 是否开启SQL debug日志
 	SqlLog bool `json:"sql_log" yaml:"sql_log"`
 	// 最大打开连接数
