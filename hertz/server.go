@@ -2,6 +2,8 @@ package hertz
 
 import (
 	"context"
+	"time"
+
 	hertzConfig "gitee.com/byx_darwin/go-tools/config/hertz"
 	"gitee.com/byx_darwin/go-tools/hertz/middleware"
 	"gitee.com/byx_darwin/go-tools/hertz/registry/polaris"
@@ -12,7 +14,6 @@ import (
 	"github.com/cloudwego/hertz/pkg/common/config"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/network/standard"
-	"time"
 )
 
 func NewHTTPServer(ctx context.Context,

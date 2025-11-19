@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"context"
+	"strconv"
+
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
-	"strconv"
 )
 
 type CasbinFace interface {
