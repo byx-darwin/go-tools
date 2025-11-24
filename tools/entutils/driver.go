@@ -2,13 +2,14 @@ package entutils
 
 import (
 	"context"
+	"time"
+
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"gitee.com/byx_darwin/go-tools/config/db"
 	"github.com/cloudwego/hertz/pkg/common/hlog"
 	"github.com/uptrace/opentelemetry-go-extra/otelsql"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
-	"time"
 )
 
 func NewDriver(ctx context.Context,
@@ -36,6 +37,7 @@ func NewDriver(ctx context.Context,
 	}
 	otelsql.WithAttributes(attribute)
 	otelsql.WithDBName(config.Name)
+	otelsql.WithDBSystem(config.Driver)
 	var drv dialect.Driver
 	drv = entsql.OpenDB(config.Driver, sql)
 	opts := make([]EntOption, 0, 2)
