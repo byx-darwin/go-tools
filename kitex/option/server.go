@@ -2,6 +2,9 @@ package option
 
 import (
 	"context"
+	"net"
+	"time"
+
 	"gitee.com/byx_darwin/go-tools/config/kitex"
 	"gitee.com/byx_darwin/go-tools/kitex/registry/polaris"
 	"gitee.com/byx_darwin/go-tools/tools/netutil"
@@ -13,25 +16,28 @@ import (
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/pkg/transmeta"
 	"github.com/cloudwego/kitex/server"
-	"net"
-	"time"
 )
 
 func NewServerOption(ctx context.Context,
 	config *kitex.ServerConfig, log klog.CtxLogger) ([]server.Option, error) {
 	options := make([]server.Option, 0)
-	internalIP, err := netutil.GetInternalIP()
-	if err != nil {
-		log.CtxFatalf(ctx, "GetInternalIP error:%v", err)
-		return nil, err
+	localIP := "127.0.0.1"
+	if config.RPC.Mode == 1 {
+		internalIP, err := netutil.GetInternalIP()
+		if err != nil {
+			log.CtxFatalf(ctx, "GetInternalIP error:%v", err)
+			return nil, err
+		}
+		localIP = internalIP
 	}
+
 	address := config.RPC.Port
 	if address == "" {
-		address = internalIP + ":9000"
+		address = localIP + ":9000"
 	} else if address[0] == ':' {
-		address = internalIP + address
+		address = localIP + address
 	} else if address[0] != ':' {
-		address = internalIP + ":" + address
+		address = localIP + ":" + address
 	}
 	addr, err := net.ResolveTCPAddr(config.RPC.Network, address)
 	if err != nil {

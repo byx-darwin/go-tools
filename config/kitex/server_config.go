@@ -14,6 +14,7 @@ type ServerConfig struct {
 type RPCOption struct {
 	Port    string `json:"port" yaml:"port"`        //端口
 	Network string `json:"network"  yaml:"network"` //连接方式 (tcp udp)
+	Mode    int    `json:"mode"  yaml:"mode"`       //运行模式 0:本地模式 1:局域网模式
 }
 
 // LimitOption 限流器配置
