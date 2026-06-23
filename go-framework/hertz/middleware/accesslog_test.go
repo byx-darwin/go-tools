@@ -1,0 +1,15 @@
+package middleware
+
+import (
+	"testing"
+
+	"gitee.com/byx_darwin/go-tools/go-common/log"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestAccessLog_ReturnsHandlerFunc(t *testing.T) {
+	l := log.New(log.Config{})
+	defer l.Close()
+	handler := AccessLog(l)
+	assert.NotNil(t, handler, "AccessLog should return a HandlerFunc")
+}

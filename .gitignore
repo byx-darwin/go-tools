@@ -1,13 +1,24 @@
-# Binaries for programs and plugins
+# Binaries
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, build with `go test -c`
 *.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# IDE
 .idea
+
+# Go workspace
+go.work.sum
+
+# Claude / Ruflo
+.claude-flow/
+.swarm/
+ruvector.db
+.mcp.json
+.pre-commit-config.yaml
+
+# OS
+.DS_Store
