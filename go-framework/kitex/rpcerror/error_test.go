@@ -162,3 +162,32 @@ func TestFrameworkErrorName(t *testing.T) {
 	// nil → 空
 	assert.Empty(t, FrameworkErrorName(nil))
 }
+
+func TestHTTPStatus(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"param invalid", ErrParamInvalid.Wrap(errors.New("bad")), 400},
+		{"auth failed", ErrAuthFailed.Wrap(errors.New("no")), 401},
+		{"system", ErrSystem.Wrap(errors.New("boom")), 500},
+		{"config not found", ErrConfigNotFound.Wrap(errors.New("miss")), 500},
+		{"rpc unavailable", ErrRPCUnavailable.Wrap(errors.New("down")), 503},
+		{"rpc timeout", ErrRPCTimeout.Wrap(errors.New("slow")), 504},
+		{"redis connect", ErrRedisConnect.Wrap(errors.New("redis down")), 503},
+		{"kafka connect", ErrKafkaConnect.Wrap(errors.New("kafka down")), 503},
+		{"db connect", ErrDBConnect.Wrap(errors.New("db down")), 503},
+		{"redis op", ErrRedisOp.Wrap(errors.New("fail")), 500},
+		{"kafka send", ErrKafkaSend.Wrap(errors.New("fail")), 500},
+		{"db query", ErrDBQuery.Wrap(errors.New("fail")), 500},
+		{"custom business", Code(40001).Public("data_duplicate").Wrap(errors.New("dup")), 500},
+		{"plain error", errors.New("plain"), 500},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, HTTPStatus(tt.err))
+		})
+	}
+}
