@@ -1,10 +1,11 @@
-module gitee.com/byx_darwin/go-tools/go-common
+module github.com/byx-darwin/go-tools/go-common
 
 go 1.25.0
 
 require (
 	github.com/cloudwego/hertz v0.10.5
 	github.com/cloudwego/kitex v0.16.2
+	github.com/mojocn/base64Captcha v1.3.8
 	github.com/samber/hot v0.13.0
 	github.com/stretchr/testify v1.11.1
 	github.com/valyala/fasthttp v1.71.0
@@ -20,7 +21,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
-	github.com/mojocn/base64Captcha v1.3.8 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect

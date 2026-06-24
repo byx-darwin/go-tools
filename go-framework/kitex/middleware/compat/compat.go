@@ -4,7 +4,7 @@
 //
 //	import (
 //	    "github.com/cloudwego/kitex/pkg/endpoint"
-//	    fwmw "gitee.com/byx_darwin/go-tools/go-framework/kitex/middleware/compat"
+//	    fwmw "github.com/byx-darwin/go-tools/go-framework/kitex/middleware/compat"
 //	)
 //	svr := xxxsvr.NewServer(handler,
 //	    server.WithMiddleware(fwmw.AccessLog(logger)),
@@ -14,8 +14,8 @@ package compat
 import (
 	"context"
 
-	"gitee.com/byx_darwin/go-tools/go-common/log"
-	"gitee.com/byx_darwin/go-tools/go-framework/kitex/middleware"
+	"github.com/byx-darwin/go-tools/go-common/log"
+	"github.com/byx-darwin/go-tools/go-framework/kitex/middleware"
 	"github.com/cloudwego/kitex/pkg/endpoint"
 )
 

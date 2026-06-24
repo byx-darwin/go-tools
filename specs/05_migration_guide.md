@@ -18,27 +18,27 @@ tools/{crypto,cache,http_client,...} → go-common
 
 | 旧路径 | 新路径 |
 |--------|--------|
-| `gitee.com/byx_darwin/go-tools/tools/crypto` | `gitee.com/byx_darwin/go-tools/go-common/crypto` |
-| `gitee.com/byx_darwin/go-tools/tools/cache` | `gitee.com/byx_darwin/go-tools/go-common/cache` |
-| `gitee.com/byx_darwin/go-tools/tools/time` | `gitee.com/byx_darwin/go-tools/go-common/timeutil` |
-| `gitee.com/byx_darwin/go-tools/tools/netutil` | `gitee.com/byx_darwin/go-tools/go-common/netutil` |
-| `gitee.com/byx_darwin/go-tools/tools/http_client` | `gitee.com/byx_darwin/go-tools/go-common/httpclient` |
-| `gitee.com/byx_darwin/go-tools/tools/captcha` | `gitee.com/byx_darwin/go-tools/go-common/captcha` |
-| `gitee.com/byx_darwin/go-tools/tools/ak.go` | `gitee.com/byx_darwin/go-tools/go-common/auth` |
-| `gitee.com/byx_darwin/go-tools/tools/entutils` | 已废弃 |
-| `gitee.com/byx_darwin/go-tools/config/redis` | `gitee.com/byx_darwin/go-tools/go-middleware/redis` |
-| `gitee.com/byx_darwin/go-tools/config/db` | `gitee.com/byx_darwin/go-tools/go-middleware/db` |
-| `gitee.com/byx_darwin/go-tools/config/kafka/sarama` | `gitee.com/byx_darwin/go-tools/go-middleware/kafka` |
-| `gitee.com/byx_darwin/go-tools/middleware/redis` | `gitee.com/byx_darwin/go-tools/go-middleware/redis` |
-| `gitee.com/byx_darwin/go-tools/middleware/kafka/sarama` | `gitee.com/byx_darwin/go-tools/go-middleware/kafka` |
-| `gitee.com/byx_darwin/go-tools/config` | `gitee.com/byx_darwin/go-tools/go-framework/config` |
-| `gitee.com/byx_darwin/go-tools/config/hertz` | `gitee.com/byx_darwin/go-tools/go-framework/config/hertz` |
-| `gitee.com/byx_darwin/go-tools/config/kitex` | `gitee.com/byx_darwin/go-tools/go-framework/config/kitex` |
-| `gitee.com/byx_darwin/go-tools/hertz` | `gitee.com/byx_darwin/go-tools/go-framework/hertz` |
-| `gitee.com/byx_darwin/go-tools/hertz/middleware` | `gitee.com/byx_darwin/go-tools/go-framework/hertz/middleware` |
-| `gitee.com/byx_darwin/go-tools/kitex/option` | `gitee.com/byx_darwin/go-tools/go-framework/kitex/option` |
-| `gitee.com/byx_darwin/go-tools/kitex/rpc_error` | `gitee.com/byx_darwin/go-tools/go-framework/kitex/rpcerror` |
-| `gitee.com/byx_darwin/go-tools/kitex/registry/polaris` | `gitee.com/byx_darwin/go-tools/go-framework/kitex/option` (合并) |
+| `github.com/byx-darwin/go-tools/tools/crypto` | `github.com/byx-darwin/go-tools/go-common/crypto` |
+| `github.com/byx-darwin/go-tools/tools/cache` | `github.com/byx-darwin/go-tools/go-common/cache` |
+| `github.com/byx-darwin/go-tools/tools/time` | `github.com/byx-darwin/go-tools/go-common/timeutil` |
+| `github.com/byx-darwin/go-tools/tools/netutil` | `github.com/byx-darwin/go-tools/go-common/netutil` |
+| `github.com/byx-darwin/go-tools/tools/http_client` | `github.com/byx-darwin/go-tools/go-common/httpclient` |
+| `github.com/byx-darwin/go-tools/tools/captcha` | `github.com/byx-darwin/go-tools/go-common/captcha` |
+| `github.com/byx-darwin/go-tools/tools/ak.go` | `github.com/byx-darwin/go-tools/go-common/auth` |
+| `github.com/byx-darwin/go-tools/tools/entutils` | 已废弃 |
+| `github.com/byx-darwin/go-tools/config/redis` | `github.com/byx-darwin/go-tools/go-middleware/redis` |
+| `github.com/byx-darwin/go-tools/config/db` | `github.com/byx-darwin/go-tools/go-middleware/db` |
+| `github.com/byx-darwin/go-tools/config/kafka/sarama` | `github.com/byx-darwin/go-tools/go-middleware/kafka` |
+| `github.com/byx-darwin/go-tools/middleware/redis` | `github.com/byx-darwin/go-tools/go-middleware/redis` |
+| `github.com/byx-darwin/go-tools/middleware/kafka/sarama` | `github.com/byx-darwin/go-tools/go-middleware/kafka` |
+| `github.com/byx-darwin/go-tools/config` | `github.com/byx-darwin/go-tools/go-framework/config` |
+| `github.com/byx-darwin/go-tools/config/hertz` | `github.com/byx-darwin/go-tools/go-framework/config/hertz` |
+| `github.com/byx-darwin/go-tools/config/kitex` | `github.com/byx-darwin/go-tools/go-framework/config/kitex` |
+| `github.com/byx-darwin/go-tools/hertz` | `github.com/byx-darwin/go-tools/go-framework/hertz` |
+| `github.com/byx-darwin/go-tools/hertz/middleware` | `github.com/byx-darwin/go-tools/go-framework/hertz/middleware` |
+| `github.com/byx-darwin/go-tools/kitex/option` | `github.com/byx-darwin/go-tools/go-framework/kitex/option` |
+| `github.com/byx-darwin/go-tools/kitex/rpc_error` | `github.com/byx-darwin/go-tools/go-framework/kitex/rpcerror` |
+| `github.com/byx-darwin/go-tools/kitex/registry/polaris` | `github.com/byx-darwin/go-tools/go-framework/kitex/option` (合并) |
 
 ## 关键变更
 
@@ -101,9 +101,9 @@ l.Info("msg", "key", "value")
 ```bash
 # 项目 go.mod
 require (
-    gitee.com/byx_darwin/go-tools/go-common v0.1.0
-    gitee.com/byx_darwin/go-tools/go-middleware v0.1.0
-    gitee.com/byx_darwin/go-tools/go-framework v0.1.0
+    github.com/byx-darwin/go-tools/go-common v0.1.0
+    github.com/byx-darwin/go-tools/go-middleware v0.1.0
+    github.com/byx-darwin/go-tools/go-framework v0.1.0
 )
 ```
 ```
@@ -111,8 +111,8 @@ require (
 ### 6. TLS 日志上报（新增）
 
 ```go
-import "gitee.com/byx_darwin/go-tools/go-middleware/tls"
-import "gitee.com/byx_darwin/go-tools/go-common/log"
+import "github.com/byx-darwin/go-tools/go-middleware/tls"
+import "github.com/byx-darwin/go-tools/go-common/log"
 
 // 方式一：直接发送
 p, _ := tls.NewProducer(tls.ProducerConfig{

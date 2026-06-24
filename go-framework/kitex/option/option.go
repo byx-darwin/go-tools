@@ -23,9 +23,9 @@ import (
 	"net"
 	"time"
 
-	"gitee.com/byx_darwin/go-tools/go-common/netutil"
-	"gitee.com/byx_darwin/go-tools/go-framework/config/kitex"
-	"gitee.com/byx_darwin/go-tools/go-framework/kitex/rpcerror"
+	"github.com/byx-darwin/go-tools/go-common/netutil"
+	"github.com/byx-darwin/go-tools/go-framework/config/kitex"
+	"github.com/byx-darwin/go-tools/go-framework/kitex/rpcerror"
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/pkg/connpool"
 	"github.com/cloudwego/kitex/pkg/limit"

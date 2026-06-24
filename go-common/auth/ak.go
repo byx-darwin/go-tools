@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"gitee.com/byx_darwin/go-tools/go-common/crypto"
+	"github.com/byx-darwin/go-tools/go-common/crypto"
 )
 
 // GetRandAk 生成随机ak

@@ -15,7 +15,7 @@ import (
 	"context"
 	"time"
 
-	"gitee.com/byx_darwin/go-tools/go-common/log"
+	"github.com/byx-darwin/go-tools/go-common/log"
 )
 
 // Endpoint Kitex RPC 端点函数（兼容 kitex endpoint.Endpoint）。

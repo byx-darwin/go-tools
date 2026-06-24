@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"gitee.com/byx_darwin/go-tools/go-framework/config"
+	"github.com/byx-darwin/go-tools/go-framework/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"

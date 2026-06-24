@@ -3,7 +3,7 @@ package middleware
 import (
 	"testing"
 
-	"gitee.com/byx_darwin/go-tools/go-common/log"
+	"github.com/byx-darwin/go-tools/go-common/log"
 	"github.com/stretchr/testify/assert"
 )
 

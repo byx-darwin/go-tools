@@ -30,7 +30,7 @@ package main
 import (
     "context"
     "os"
-    "gitee.com/byx_darwin/go-tools/go-middleware/tls"
+    "github.com/byx-darwin/go-tools/go-middleware/tls"
 )
 
 func main() {

@@ -22,7 +22,7 @@ package rpcerror
 import (
 	"errors"
 
-	"gitee.com/byx_darwin/go-tools/go-common/errcode"
+	"github.com/byx-darwin/go-tools/go-common/errcode"
 	"github.com/cloudwego/kitex/pkg/kerrors"
 	"github.com/samber/oops"
 )

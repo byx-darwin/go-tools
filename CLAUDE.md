@@ -142,7 +142,7 @@ Phases 1-3 are sequential (have dependencies). See `specs/05_implementation_phas
 ## Key Contracts
 
 ### Module boundaries
-Each sub-module has its own `go.mod`. Cross-module dependencies must use the `gitee.com/byx_darwin/go-tools/*` import path and be declared in `go.work`. Do not create circular dependencies between modules.
+Each sub-module has its own `go.mod`. Cross-module dependencies must use the `github.com/byx-darwin/go-tools/*` import path and be declared in `go.work`. Do not create circular dependencies between modules.
 
 ### Evolution direction
 New code should be written with the 3-library split in mind:

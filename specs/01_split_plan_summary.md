@@ -6,11 +6,11 @@
 
 ```text
 go-tools/                     (go workspace)
-├── config/                   module gitee.com/byx_darwin/go-tools/config
-├── hertz/                    module gitee.com/byx_darwin/go-tools/hertz
-├── kitex/                    module gitee.com/byx_darwin/go-tools/kitex
-├── middleware/               module gitee.com/byx_darwin/go-tools/middleware
-└── tools/                    module gitee.com/byx_darwin/go-tools/tools
+├── config/                   module github.com/byx-darwin/go-tools/config
+├── hertz/                    module github.com/byx-darwin/go-tools/hertz
+├── kitex/                    module github.com/byx-darwin/go-tools/kitex
+├── middleware/               module github.com/byx-darwin/go-tools/middleware
+└── tools/                    module github.com/byx-darwin/go-tools/tools
 ```
 
 **问题**：
@@ -89,16 +89,16 @@ go-framework        ← 框架适配（Hertz / Kitex + 配置）
 
 ```text
 # 拆分前
-import "gitee.com/byx_darwin/go-tools/config/redis"
-import "gitee.com/byx_darwin/go-tools/tools/crypto"
-import "gitee.com/byx_darwin/go-tools/hertz"
-import "gitee.com/byx_darwin/go-tools/kitex/option"
+import "github.com/byx-darwin/go-tools/config/redis"
+import "github.com/byx-darwin/go-tools/tools/crypto"
+import "github.com/byx-darwin/go-tools/hertz"
+import "github.com/byx-darwin/go-tools/kitex/option"
 
 # 拆分后
-import "gitee.com/byx_darwin/go-middleware/redis"
-import "gitee.com/byx_darwin/go-common/crypto"
-import "gitee.com/byx_darwin/go-framework/hertz"
-import "gitee.com/byx_darwin/go-framework/kitex/option"
+import "github.com/byx-darwin/go-middleware/redis"
+import "github.com/byx-darwin/go-common/crypto"
+import "github.com/byx-darwin/go-framework/hertz"
+import "github.com/byx-darwin/go-framework/kitex/option"
 ```
 
 ## 五、新增能力需求（来自  对齐）

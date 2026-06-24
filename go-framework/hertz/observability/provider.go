@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"gitee.com/byx_darwin/go-tools/go-framework/config"
+	"github.com/byx-darwin/go-tools/go-framework/config"
 	"github.com/cloudwego/hertz/pkg/app"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"

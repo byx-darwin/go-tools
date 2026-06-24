@@ -7,7 +7,7 @@ Hertz / Kitex 框架适配层。**go-tools 三层架构的最顶层**。
 ## 安装
 
 ```bash
-go get gitee.com/byx_darwin/go-tools/go-framework
+go get github.com/byx-darwin/go-tools/go-framework
 ```
 
 ## 包一览

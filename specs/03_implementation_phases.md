@@ -51,7 +51,7 @@ Phase 5: 验证 + 文档             ██████░░░░ 1.5 天
 
 **验收**：
 - `cd go-common && go test ./...` 全部通过
-- 没有 import `gitee.com/byx_darwin/go-tools/` 的旧路径
+- 没有 import `github.com/byx-darwin/go-tools/` 的旧路径
 
 ## Phase 2：go-middleware 拆分（2.5 天）
 

@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"gitee.com/byx_darwin/go-tools/go-common/log"
+	"github.com/byx-darwin/go-tools/go-common/log"
 	"github.com/cloudwego/hertz/pkg/app"
 )
 

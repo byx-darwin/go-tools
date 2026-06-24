@@ -2,7 +2,7 @@
 package kitex
 
 import (
-	"gitee.com/byx_darwin/go-tools/go-framework/config"
+	"github.com/byx-darwin/go-tools/go-framework/config"
 	"time"
 )
 

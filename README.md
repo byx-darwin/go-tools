@@ -16,9 +16,9 @@ go-framework       ← Hertz / Kitex 框架适配（Config / Server / Option / O
 
 | 模块 | 用途 | 独立模块 |
 |------|------|---------|
-| [go-common](./go-common) | 通用工具：crypto / cache / log / netutil / timeutil / httpclient / captcha / auth | `go get gitee.com/byx_darwin/go-tools/go-common` |
-| [go-middleware](./go-middleware) | 中间件客户端：redis / kafka / db / es / clickhouse / tls | `go get gitee.com/byx_darwin/go-tools/go-middleware` |
-| [go-framework](./go-framework) | 框架适配：hertz / kitex / config / observability / accesslog / rpcerror | `go get gitee.com/byx_darwin/go-tools/go-framework` |
+| [go-common](./go-common) | 通用工具：crypto / cache / log / netutil / timeutil / httpclient / captcha / auth | `go get github.com/byx-darwin/go-tools/go-common` |
+| [go-middleware](./go-middleware) | 中间件客户端：redis / kafka / db / es / clickhouse / tls | `go get github.com/byx-darwin/go-tools/go-middleware` |
+| [go-framework](./go-framework) | 框架适配：hertz / kitex / config / observability / accesslog / rpcerror | `go get github.com/byx-darwin/go-tools/go-framework` |
 
 ## 快速开始
 

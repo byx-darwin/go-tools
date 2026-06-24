@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"gitee.com/byx_darwin/go-tools/go-common/cache"
+	"github.com/byx-darwin/go-tools/go-common/cache"
 )
 
 const (

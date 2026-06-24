@@ -5,7 +5,7 @@
 ## 安装
 
 ```bash
-go get gitee.com/byx_darwin/go-tools/go-common
+go get github.com/byx-darwin/go-tools/go-common
 ```
 
 ## 包一览

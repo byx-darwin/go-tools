@@ -34,7 +34,7 @@ Strategic planning documents live in `specs/`. See `CLAUDE.md` for spec index.
 ## 4. Module Boundaries
 
 - Each sub-module has its own `go.mod` and is part of the `go.work` workspace.
-- Cross-module imports use `gitee.com/byx_darwin/go-tools/<module>` paths.
+- Cross-module imports use `github.com/byx-darwin/go-tools/<module>` paths.
 - Do not create circular dependencies between modules.
 - When adding a cross-module dependency, update both `go.mod` files and `go.work.sum`.
 - Keep modules independently publishable — avoid tight coupling.

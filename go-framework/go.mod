@@ -1,12 +1,13 @@
-module gitee.com/byx_darwin/go-tools/go-framework
+module github.com/byx-darwin/go-tools/go-framework
 
 go 1.25.8
 
 require (
-	gitee.com/byx_darwin/go-tools/go-common v0.0.0-00010101000000-000000000000
+	github.com/byx-darwin/go-tools/go-common v0.0.0-00010101000000-000000000000
 	github.com/cloudwego/hertz v0.10.5
 	github.com/cloudwego/kitex v0.16.2
 	github.com/polarismesh/polaris-go v1.7.1-rc3
+	github.com/samber/oops v1.22.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.44.0
@@ -15,7 +16,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace gitee.com/byx_darwin/go-tools/go-common => ../go-common
+replace github.com/byx-darwin/go-tools/go-common => ../go-common
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -64,7 +65,6 @@ require (
 	github.com/prometheus/common v0.69.0 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/samber/lo v1.53.0 // indirect
-	github.com/samber/oops v1.22.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
