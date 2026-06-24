@@ -1,4 +1,4 @@
-package rpcerror
+package error
 
 import (
 	"errors"
@@ -7,10 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// ── 错误码范围 ──
+
 func TestCodeConstants(t *testing.T) {
 	assert.Less(t, FrameworkCodeMax, MiddlewareCodeMin)
 	assert.Less(t, MiddlewareCodeMax, ProjectCodeMin)
 }
+
+// ── Code / Extract ──
 
 func TestCode_Basic(t *testing.T) {
 	original := errors.New("original error")
@@ -95,6 +99,8 @@ func TestAsOopsError_NonOops(t *testing.T) {
 	assert.False(t, ok)
 }
 
+// ── HTTP 状态码映射 ──
+
 func TestHTTPStatus(t *testing.T) {
 	tests := []struct {
 		name string
@@ -122,4 +128,25 @@ func TestHTTPStatus(t *testing.T) {
 			assert.Equal(t, tt.want, HTTPStatus(tt.err))
 		})
 	}
+}
+
+func TestIsClientError(t *testing.T) {
+	assert.True(t, IsClientError(CodeParamInvalid))
+	assert.True(t, IsClientError(CodeAuthFailed))
+	assert.False(t, IsClientError(CodeSystem))
+	assert.False(t, IsClientError(CodeDataNotFound))
+}
+
+func TestIsServerError(t *testing.T) {
+	assert.True(t, IsServerError(CodeSystem))
+	assert.True(t, IsServerError(CodeRPCUnavailable))
+	assert.True(t, IsServerError(CodeRedisConnect))
+	assert.False(t, IsServerError(CodeDataNotFound))
+}
+
+func TestIsBusinessErrorCode(t *testing.T) {
+	assert.True(t, IsBusinessErrorCode(CodeDataNotFound))
+	assert.True(t, IsBusinessErrorCode(40001))
+	assert.False(t, IsBusinessErrorCode(CodeSystem))
+	assert.False(t, IsBusinessErrorCode(CodeRedisConnect))
 }

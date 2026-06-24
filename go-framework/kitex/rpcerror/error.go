@@ -1,13 +1,13 @@
 // Package rpcerror 提供 Kitex RPC 框架的错误分类与适配。
 //
-// 核心错误处理（错误码、构造函数、Extract、预定义错误）已迁移至 go-common/rpcerror。
+// 核心错误处理（错误码、构造函数、Extract、预定义错误）已迁移至 go-common/error。
 // 本包仅保留 Kitex 特定的分类逻辑和 BizStatus 适配器。
 package rpcerror
 
 import (
 	"errors"
 
-	rpcerror "github.com/byx-darwin/go-tools/go-common/rpcerror"
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 	"github.com/cloudwego/kitex/pkg/kerrors"
 	"github.com/samber/oops"
 )
@@ -49,8 +49,8 @@ func IsTimeout(err error) bool {
 	if kerrors.IsTimeoutError(err) {
 		return true
 	}
-	code, _ := rpcerror.Extract(err)
-	return code == rpcerror.CodeRPCTimeout
+	code, _ := goerror.Extract(err)
+	return code == goerror.CodeRPCTimeout
 }
 
 // FrameworkErrorName 返回 Kitex 框架错误的名称，非框架错误返回空字符串。
@@ -117,7 +117,7 @@ type OopsStatusAdapter struct {
 // 编译期接口断言。
 var _ kerrors.BizStatusErrorIface = (*OopsStatusAdapter)(nil)
 
-func (a *OopsStatusAdapter) BizStatusCode() int32        { code, _ := rpcerror.Extract(a.Err); return int32(code) }
-func (a *OopsStatusAdapter) BizMessage() string          { _, public := rpcerror.Extract(a.Err); return public }
+func (a *OopsStatusAdapter) BizStatusCode() int32        { code, _ := goerror.Extract(a.Err); return int32(code) }
+func (a *OopsStatusAdapter) BizMessage() string          { _, public := goerror.Extract(a.Err); return public }
 func (a *OopsStatusAdapter) BizExtra() map[string]string { return a.Extra }
 func (a *OopsStatusAdapter) Error() string               { return a.Err.Error() }

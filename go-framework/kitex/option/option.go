@@ -25,7 +25,7 @@ import (
 
 	"github.com/byx-darwin/go-tools/go-common/netutil"
 	"github.com/byx-darwin/go-tools/go-framework/config/kitex"
-	"github.com/byx-darwin/go-tools/go-common/rpcerror"
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/pkg/connpool"
 	"github.com/cloudwego/kitex/pkg/limit"
@@ -44,7 +44,7 @@ import (
 // NewServerOption 创建 Kitex 服务端 Option 列表。
 func NewServerOption(ctx context.Context, cfg *kitex.ServerConfig) ([]server.Option, error) {
 	if cfg == nil {
-		return nil, rpcerror.ErrConfigInvalid.With("step", "NewServerOption").Wrap(
+		return nil, goerror.ErrConfigInvalid.With("step", "NewServerOption").Wrap(
 			errors.New("server config is nil"))
 	}
 	if cfg.RPC == nil {
@@ -56,13 +56,13 @@ func NewServerOption(ctx context.Context, cfg *kitex.ServerConfig) ([]server.Opt
 
 	internalIP, err := netutil.GetInternalIP()
 	if err != nil {
-		return nil, rpcerror.ErrSystem.With("step", "get_internal_ip").Wrap(err)
+		return nil, goerror.ErrSystem.With("step", "get_internal_ip").Wrap(err)
 	}
 
 	addr := resolveAddr(internalIP, cfg.RPC.Port)
 	tcpAddr, err := net.ResolveTCPAddr(cfg.RPC.Network, addr)
 	if err != nil {
-		return nil, rpcerror.ErrConfigInvalid.With("addr", addr).With("network", cfg.RPC.Network).Wrap(err)
+		return nil, goerror.ErrConfigInvalid.With("addr", addr).With("network", cfg.RPC.Network).Wrap(err)
 	}
 
 	options := []server.Option{
@@ -107,7 +107,7 @@ func resolveAddr(ip, port string) string {
 // NewClientOption 创建 Kitex 客户端 Option 列表。
 func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig) ([]client.Option, error) {
 	if cfg == nil || cfg.ClientOption == nil {
-		return nil, rpcerror.ErrConfigInvalid.With("step", "NewClientOption").Wrap(
+		return nil, goerror.ErrConfigInvalid.With("step", "NewClientOption").Wrap(
 			errors.New("client config is nil"))
 	}
 	co := cfg.ClientOption
