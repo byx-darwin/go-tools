@@ -85,8 +85,8 @@ go-middleware  20000-20699  ── redis/kafka/db/es/ch/tls/obs   HTTP: 500/503
 | 文件 | 内容 |
 |------|------|
 | `00_overview.md` | 本文档 |
-| `02_split_plan_summary.md` | 三库拆分方案（已完成） |
-| `04_config_schema_alignment.md` | 配置结构体参考 |
-| `05_implementation_phases.md` | 实施阶段（已完成） |
-| `06_cache_algorithm_guide.md` | 缓存算法选择指南 |
-| `07_migration_guide.md` | 旧模块迁移指南 |
+| `01_split_plan_summary.md` | 三库拆分方案（已完成） |
+| `02_config_schema_alignment.md` | 配置结构体参考 |
+| `03_implementation_phases.md` | 实施阶段（已完成） |
+| `04_cache_algorithm_guide.md` | 缓存算法选择指南 |
+| `05_migration_guide.md` | 旧模块迁移指南 |
