@@ -174,6 +174,46 @@ const (
 	CodeRPCEncodeError = 10013
 )
 
+// ── go-middleware 预定义错误码 (20000-20699) ──
+
+const (
+	// Redis 错误码 20001-20099
+	CodeRedisConnect  = 20001
+	CodeRedisPing     = 20002
+	CodeRedisOp       = 20003
+	CodeRedisPipeline = 20004
+	CodeRedisSentinel = 20005
+
+	// Kafka 错误码 20101-20199
+	CodeKafkaConnect   = 20101
+	CodeKafkaSend      = 20102
+	CodeKafkaConsume   = 20103
+	CodeKafkaCommit    = 20104
+	CodeKafkaRebalance = 20105
+
+	// DB 错误码 20201-20299
+	CodeDBConnect = 20201
+	CodeDBQuery   = 20202
+	CodeDBExec    = 20203
+	CodeDBMigrate = 20204
+
+	// ES 错误码 20301-20399
+	CodeESConnect = 20301
+	CodeESQuery   = 20302
+
+	// ClickHouse 错误码 20401-20499
+	CodeCHConnect = 20401
+	CodeCHQuery   = 20402
+
+	// TLS 错误码 20501-20599
+	CodeTLSConnect = 20501
+	CodeTLSSend    = 20502
+
+	// Observability 错误码 20601-20699
+	CodeObsInit   = 20601
+	CodeObsExport = 20602
+)
+
 // ── 预定义错误构造器 ──
 
 // ErrSystem 系统错误
