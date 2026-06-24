@@ -54,6 +54,8 @@ See `specs/00_overview.md` for full error code table.
 | `specs/03_implementation_phases.md` | 5-phase implementation plan (✅ completed) |
 | `specs/04_cache_algorithm_guide.md` | Cache algorithm selection guide (FIFO/LRU/LFU/CLOCK/ARC + samber/hot) |
 | `specs/05_migration_guide.md` | Migration guide: go-tools v1 → v2 |
+| `specs/06_kitex_observability_migration.md` | obs-opentelemetry (Kitex) migration ✅ completed |
+| `specs/07_hertz_observability_migration.md` | obs-opentelemetry (Hertz) migration ✅ completed |
 
 ## Development Commands
 
@@ -113,9 +115,14 @@ go-middleware/             → Middleware clients (no Hertz/Kitex dependency)
   tls/                     → TLS connection setup (火山引擎)
 go-framework/              → Framework adapters (depends on go-common + go-middleware)
   hertz/                   → Hertz HTTP server, response helpers, middleware
-  kitex/                   → Kitex RPC options, discovery, registry, rpcerror (Kitex adapter)
+  hertz/observability/     → OTel Tracing + Metrics (W3C + B3 propagator, runtime metrics)
+  kitex/                   → Kitex RPC options, discovery, registry, rpcerror
+  kitex/observability/     → OTel Tracing + Metrics (stats.Tracer, Suite, peer service topology)
   config/                  → Configuration loading (Polaris, DB, Hertz, Kitex, Kafka, Redis)
 specs/                     → Strategic planning documents
+  ...
+  06_kitex_observability_migration.md → Kitex OTel migration ✅
+  07_hertz_observability_migration.md → Hertz OTel migration ✅
 ```
 
 ## Key Contracts

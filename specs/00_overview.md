@@ -50,14 +50,14 @@ go-framework        ← 框架适配
 
 | 包 | 职责 |
 |---|------|
-| `config` | 公共配置 + Hertz/Kitex 配置（ServerConfig / ClientConfig / CaptchaOption） |
+| `config` | 公共配置 + Hertz/Kitex 配置（ServerConfig / ClientConfig / ObservabilityConfig） |
 | `hertz/server` | Hertz HTTP 服务工厂 |
 | `hertz/middleware` | CORS / Auth / AccessLog 中间件 |
-| `hertz/observability` | OTel 链路追踪 |
+| `hertz/observability` | OTel Tracing + Metrics（OTLP gRPC, 复合 Propagator, runtime metrics） |
 | `kitex/option` | Kitex RPC Option 工厂（长连接池 + TTHeaderStreaming） |
 | `kitex/rpcerror` | 基于 oops 的统一错误处理 + Kitex BizStatusErrorIface 适配 |
 | `kitex/middleware` | AccessLog 中间件 |
-| `kitex/observability` | OTel 链路追踪 |
+| `kitex/observability` | OTel Tracing + Metrics（stats.Tracer, Suite, peer service 拓扑, RED 指标） |
 
 ## 四、错误码体系
 
@@ -118,3 +118,5 @@ go-middleware  20000-20699  ── redis/kafka/db/es/ch/tls/obs
 | `03_implementation_phases.md` | 实施阶段（已完成） |
 | `04_cache_algorithm_guide.md` | 缓存算法选择指南 |
 | `05_migration_guide.md` | 旧模块迁移指南 |
+| `06_kitex_observability_migration.md` | obs-opentelemetry (Kitex) 迁移评估与实施方案 ✅ |
+| `07_hertz_observability_migration.md` | obs-opentelemetry (Hertz) 迁移评估与实施方案 ✅ |
