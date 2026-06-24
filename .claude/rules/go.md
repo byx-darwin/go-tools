@@ -76,7 +76,88 @@ When adding new code, place it according to these rules:
 - If code introduces a new exported type, function, or interface, document it with godoc comments.
 - Keep README and examples aligned with the actual API.
 
-## 8. Avoid
+## 8. Static Analysis (golangci-lint)
+
+项目使用 `golangci-lint` 进行静态分析，配置在 `.golangci.yml`。所有新代码 MUST 通过 lint 检查。
+
+### 8.1 启用的 Linter
+
+| Linter | 规则 | 编码要求 |
+|--------|------|---------|
+| `gofmt` | 代码格式 | 所有文件必须 gofmt 格式化 |
+| `goimports` | import 分组 | 标准库 / 第三方 / 本项目 三组 |
+| `revive` | 导出符号注释 | 所有 `exported` 类型、函数、常量、变量必须有 `// Name ...` 格式的 godoc 注释 |
+| `errcheck` | 错误返回值 | 函数返回的 error 必须处理：检查、`_ =` 显式忽略、或 `require.NoError` |
+| `gocritic` | 代码风格 | 见下方具体规则 |
+| `misspell` | 拼写 | 使用美式拼写 |
+| `unconvert` | 冗余类型转换 | 避免不必要的类型转换 |
+| `unparam` | 未使用参数 | 未使用的参数用 `_` 替代 |
+
+### 8.2 gocritic 具体规则
+
+- **octalLiteral**: 使用新八进制写法 `0o644` 而非 `0644`
+- **paramTypeCombine**: 同类型参数合并 `func(a, b int)` 而非 `func(a int, b int)`
+- **builtinShadow**: 不要覆盖内置标识符（如 `max`、`min`、`copy`）
+- **unnecessaryDefer**: 不要在 `return` 之前的语句用 `defer`
+- **whyNoLint**: `//nolint:xxx` 必须附带解释 `//nolint:xxx // 原因`
+
+### 8.3 godoc 注释规范
+
+```go
+// ✅ 正确：注释以符号名开头
+// LRU 最近最少使用淘汰算法。
+const LRU = hot.LRU
+
+// Send 发送 HTTP 请求。
+func Send(url string) error { ... }
+
+// ❌ 错误：缺少注释或注释不以符号名开头
+const LRU = hot.LRU
+// 发送请求
+func Send(url string) error { ... }
+```
+
+分组常量/变量时，每个分组前加一行分组注释即可：
+```go
+// Redis 错误码 20001-20099。
+const (
+    CodeRedisConnect = 20001 // Redis 连接失败
+    CodeRedisPing    = 20002 // Redis Ping 失败
+)
+```
+
+### 8.4 错误处理规范
+
+```go
+// ✅ defer 清理资源时显式忽略
+defer func() { _ = f.Close() }()
+
+// ✅ 测试中使用 require 检查
+require.NoError(t, store.Set("key", "value"))
+
+// ✅ 生产代码中 nolint 必须带解释
+InsecureSkipVerify: true, //nolint:gosec // 用户可通过配置显式关闭 TLS 校验
+
+// ❌ 不允许
+defer f.Close()          // errcheck 报错
+//nolint:gosec           // 缺少解释
+```
+
+### 8.5 类型规范
+
+- 使用 `any` 替代 `interface{}`（Go 1.18+）
+
+### 8.6 Workspace 下运行 lint
+
+golangci-lint 不支持 workspace 根目录 `./...`，必须逐 module 运行：
+
+```bash
+for m in go-common go-middleware go-framework; do
+  golangci-lint run --timeout=5m ./$m/...
+done
+```
+
+## 9. Avoid
 
 - Large opportunistic refactors during behavior work
 - Mixing docs-only, refactor-only, and behavior changes without need

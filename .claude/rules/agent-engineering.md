@@ -56,6 +56,7 @@ Always verify that the workspace builds after changes:
 
 - `go build ./...` to verify all modules compile
 - `go vet ./...` to check for common issues
+- `golangci-lint run` per module to check static analysis (see `.golangci.yml`)
 
 ## 6. Validation Order
 
@@ -71,6 +72,7 @@ For final PR-quality validation, use the workspace-wide checks:
 
 - `go build ./...`
 - `go vet ./...`
+- `golangci-lint run` (per module, see `.claude/rules/go.md` § 8.6)
 - `go test ./... -count=1`
 
 ## 7. Failure Handling

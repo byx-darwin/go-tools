@@ -73,9 +73,13 @@ go test ./go-framework/... -count=1
 gofmt -l $(find . -name '*.go' -not -path '*/vendor/*' -not -path './.git/*')
 go vet ./go-common/... ./go-middleware/... ./go-framework/...
 
+# Lint (golangci-lint, workspace 必须逐 module 运行)
+for m in go-common go-middleware go-framework; do golangci-lint run --timeout=5m ./$m/...; done
+
 # Full validation (CI-equivalent)
 go build ./go-common/... ./go-middleware/... ./go-framework/... && \
   go vet ./go-common/... ./go-middleware/... ./go-framework/... && \
+  for m in go-common go-middleware go-framework; do golangci-lint run --timeout=5m ./$m/... || exit 1; done && \
   go test ./go-common/... ./go-middleware/... ./go-framework/... -count=1
 
 # Pre-commit setup
@@ -147,6 +151,6 @@ Exported functions, types, and interfaces are contract-sensitive. Changes requir
 ## Rules
 
 Hand-authored rules in `.claude/rules/`:
-- `go.md` — Go coding style, workspace structure, module boundaries.
+- `go.md` — Go coding style, workspace structure, module boundaries, **static analysis (golangci-lint) rules**.
 - `agent-engineering.md` — Execution workflow, validation order, failure handling, risk control.
 - `options-pattern.md` — Functional Options pattern standard.

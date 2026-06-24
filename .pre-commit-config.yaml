@@ -17,9 +17,9 @@ repos:
 
   - repo: local
     hooks:
-      - id: gofmt
-        name: gofmt
-        entry: bash -c 'gofmt -w $(find . -name "*.go" -not -path "./.git/*" -not -path "*/vendor/*")' --
+      - id: go-fmt
+        name: gofmt + goimports
+        entry: bash -c 'find . -name "*.go" -not -path "./.git/*" -not -path "*/vendor/*" | xargs gofmt -w && find . -name "*.go" -not -path "./.git/*" -not -path "*/vendor/*" | xargs goimports -w'
         language: system
         pass_filenames: false
         types:
@@ -45,6 +45,14 @@ repos:
       - id: go-build
         name: go build ./...
         entry: bash -c 'go build ./...'
+        language: system
+        pass_filenames: false
+        stages:
+          - pre-push
+
+      - id: go-lint
+        name: golangci-lint
+        entry: bash -c 'for m in go-common go-middleware go-framework; do echo "==> $m"; golangci-lint run --timeout=5m ./$m/... || exit 1; done'
         language: system
         pass_filenames: false
         stages:
