@@ -24,8 +24,6 @@ go-framework        ← 框架适配 (hertz, kitex, config)
 | `go-middleware` | `github.com/byx-darwin/go-tools/go-middleware` | Middleware clients: redis, kafka, db, es, clickhouse, tls |
 | `go-framework` | `github.com/byx-darwin/go-tools/go-framework` | Framework adapters: hertz, kitex, config |
 
-Legacy `config/` and `kitex/` directories remain as empty stubs for backward reference (D5).
-
 ## Key Decisions (Confirmed 2026-06-23)
 
 | # | Decision | Conclusion | Status |
@@ -34,7 +32,7 @@ Legacy `config/` and `kitex/` directories remain as empty stubs for backward ref
 | D2 | Config time units | **time.Duration** (YAML: `30s` format) | ✅ done |
 | D3 | Error library | **oops** as primary | ✅ done |
 | D4 | Release strategy | **Independent versioning** | ✅ active |
-| D5 | Old modules | **Mark deprecated**, keep stubs for 1-2 cycles | ✅ done |
+| D5 | Old modules | **Fully removed**, all code migrated to 3 libraries | ✅ done |
 
 ## Error Code Ranges
 
@@ -114,8 +112,6 @@ go-framework/              → Framework adapters (depends on go-common + go-mid
   kitex/                   → Kitex RPC options, discovery, registry, rpcerror (Kitex adapter)
   config/                  → Configuration loading (Polaris, DB, Hertz, Kitex, Kafka, Redis)
 specs/                     → Strategic planning documents
-config/                    → Legacy stub (empty, for backward reference)
-kitex/                     → Legacy stub (empty, for backward reference)
 ```
 
 ## Key Contracts
