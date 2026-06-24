@@ -74,6 +74,23 @@ const (
 	CodeTLSSend        = errcode.CodeTLSSend
 	CodeObsInit        = errcode.CodeObsInit
 	CodeObsExport      = errcode.CodeObsExport
+
+	// 业务错误
+	CodeDataNotFound        = errcode.CodeDataNotFound
+	CodeDataDuplicate       = errcode.CodeDataDuplicate
+	CodeDataConflict        = errcode.CodeDataConflict
+	CodePasswordWrong       = errcode.CodePasswordWrong
+	CodeTokenExpired        = errcode.CodeTokenExpired
+	CodeTokenInvalid        = errcode.CodeTokenInvalid
+	CodePermissionDenied    = errcode.CodePermissionDenied
+	CodeRateLimit           = errcode.CodeRateLimit
+	CodeQuotaExceeded       = errcode.CodeQuotaExceeded
+	CodeIPBlocked           = errcode.CodeIPBlocked
+	CodeAccountDisabled     = errcode.CodeAccountDisabled
+	CodeOrderInvalid        = errcode.CodeOrderInvalid
+	CodeBalanceInsufficient = errcode.CodeBalanceInsufficient
+	CodeVerificationFailed  = errcode.CodeVerificationFailed
+	CodeOperationDenied     = errcode.CodeOperationDenied
 )
 
 // ── 错误分类 ──
@@ -218,6 +235,23 @@ var (
 	// Observability
 	ErrObsInit   = Code(CodeObsInit).Public("observability_init_error")
 	ErrObsExport = Code(CodeObsExport).Public("observability_export_error")
+
+	// 业务错误
+	ErrDataNotFound        = Code(CodeDataNotFound).Public("data_not_found")
+	ErrDataDuplicate       = Code(CodeDataDuplicate).Public("data_duplicate")
+	ErrDataConflict        = Code(CodeDataConflict).Public("data_conflict")
+	ErrPasswordWrong       = Code(CodePasswordWrong).Public("password_wrong")
+	ErrTokenExpired        = Code(CodeTokenExpired).Public("token_expired")
+	ErrTokenInvalid        = Code(CodeTokenInvalid).Public("token_invalid")
+	ErrPermissionDenied    = Code(CodePermissionDenied).Public("permission_denied")
+	ErrRateLimit           = Code(CodeRateLimit).Public("rate_limit")
+	ErrQuotaExceeded       = Code(CodeQuotaExceeded).Public("quota_exceeded")
+	ErrIPBlocked           = Code(CodeIPBlocked).Public("ip_blocked")
+	ErrAccountDisabled     = Code(CodeAccountDisabled).Public("account_disabled")
+	ErrOrderInvalid        = Code(CodeOrderInvalid).Public("order_invalid")
+	ErrBalanceInsufficient = Code(CodeBalanceInsufficient).Public("balance_insufficient")
+	ErrVerificationFailed  = Code(CodeVerificationFailed).Public("verification_failed")
+	ErrOperationDenied     = Code(CodeOperationDenied).Public("operation_denied")
 )
 
 // ── 构造函数 ──

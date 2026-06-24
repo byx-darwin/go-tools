@@ -81,6 +81,34 @@ const (
 	CodeObsExport = 20602
 )
 
+// ── 项目自定义业务错误码 (40000-59999) — RPC 调用成功，HTTP 返回 200 ──
+// 按百位分区：数据/认证/限制/业务状态
+
+const (
+	// 数据相关 40010-40019
+	CodeDataNotFound  = 40010 // 数据不存在
+	CodeDataDuplicate = 40011 // 数据重复
+	CodeDataConflict  = 40012 // 数据冲突（并发修改）
+
+	// 认证/授权 40110-40119
+	CodePasswordWrong    = 40110 // 密码错误
+	CodeTokenExpired     = 40111 // 凭证过期
+	CodeTokenInvalid     = 40112 // 凭证无效
+	CodePermissionDenied = 40113 // 无权限
+
+	// 限制/风控 40210-40219
+	CodeRateLimit     = 40210 // 频率限制
+	CodeQuotaExceeded = 40211 // 配额用尽
+	CodeIPBlocked     = 40212 // IP 受限
+
+	// 业务状态 40310-40319
+	CodeAccountDisabled     = 40310 // 账户已禁用
+	CodeOrderInvalid        = 40311 // 订单状态不符
+	CodeBalanceInsufficient = 40312 // 余额不足
+	CodeVerificationFailed  = 40313 // 验证码错误
+	CodeOperationDenied     = 40314 // 操作被拒绝
+)
+
 // ── HTTP 状态码映射 ──
 
 // HTTPStatus 根据错误码返回对应的 HTTP 状态码。
