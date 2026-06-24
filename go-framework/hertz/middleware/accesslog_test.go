@@ -8,7 +8,7 @@ import (
 )
 
 func TestAccessLog_ReturnsHandlerFunc(t *testing.T) {
-	l := log.New(log.Config{})
+	l := log.NewFromConfig(log.Config{})
 	defer l.Close()
 	handler := AccessLog(l)
 	assert.NotNil(t, handler, "AccessLog should return a HandlerFunc")

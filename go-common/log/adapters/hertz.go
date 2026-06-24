@@ -15,7 +15,7 @@ import (
 //
 // 用法:
 //
-//	l := log.New(log.Config{Level: "info"})
+//	l := log.New(log.WithLevel("info"))
 //	hlog.SetLogger(adapters.NewHertzAdapter(l))
 type HertzAdapter struct {
 	logger *log.Logger

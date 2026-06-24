@@ -28,16 +28,20 @@ func NewHTTPServer(ctx context.Context, serverConfig *hertzConfig.ServerConfig) 
 	if serverConfig.HTTP == nil {
 		serverConfig.HTTP = &hertzConfig.HTTPOption{}
 	}
-	if serverConfig.HTTP.IdleTimeout == 0 {
-		serverConfig.HTTP.IdleTimeout = 3 * time.Second
+
+	// 使用局部变量填充默认值，不修改传入的 config
+	idleTimeout := serverConfig.HTTP.IdleTimeout
+	if idleTimeout == 0 {
+		idleTimeout = 3 * time.Second
 	}
-	if serverConfig.HTTP.ExitWaitTime == 0 {
-		serverConfig.HTTP.ExitWaitTime = 5 * time.Second
+	exitWaitTime := serverConfig.HTTP.ExitWaitTime
+	if exitWaitTime == 0 {
+		exitWaitTime = 5 * time.Second
 	}
 
 	options = append(options,
-		httpServer.WithExitWaitTime(serverConfig.HTTP.ExitWaitTime),
-		httpServer.WithIdleTimeout(serverConfig.HTTP.IdleTimeout),
+		httpServer.WithExitWaitTime(exitWaitTime),
+		httpServer.WithIdleTimeout(idleTimeout),
 		httpServer.WithNetwork(serverConfig.HTTP.Network),
 	)
 

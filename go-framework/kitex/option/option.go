@@ -11,7 +11,8 @@
 //   - 服务地址解析（内网 IP + 端口）
 //   - Polaris 服务注册与发现
 //   - Jaeger 链路追踪（OTel）
-//   - 限流、超时、多路复用
+//   - 限流、超时、长连接池
+//   - 传输协议 TTHeaderStreaming（同时兼容 unary 和 streaming）
 //   - 负载均衡（一致性哈希）
 //   - 失败重试
 package option
@@ -25,9 +26,11 @@ import (
 	"gitee.com/byx_darwin/go-tools/go-common/netutil"
 	"gitee.com/byx_darwin/go-tools/go-framework/config/kitex"
 	"github.com/cloudwego/kitex/client"
+	"github.com/cloudwego/kitex/pkg/connpool"
 	"github.com/cloudwego/kitex/pkg/limit"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
 	"github.com/cloudwego/kitex/pkg/remote/codec/thrift"
+	remoteConnpool "github.com/cloudwego/kitex/pkg/remote/connpool"
 	"github.com/cloudwego/kitex/pkg/retry"
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/pkg/transmeta"
@@ -62,11 +65,9 @@ func NewServerOption(ctx context.Context, cfg *kitex.ServerConfig) ([]server.Opt
 
 	options := []server.Option{
 		server.WithServiceAddr(tcpAddr),
-		server.WithMuxTransport(),
 		server.WithMetaHandler(transmeta.ServerTTHeaderHandler),
 		server.WithPayloadCodec(thrift.NewThriftCodec()),
 	}
-
 	if cfg.Limit != nil && cfg.Limit.Enable {
 		options = append(options, server.WithLimit(&limit.Option{
 			MaxConnections: cfg.Limit.MaxConnections,
@@ -111,7 +112,7 @@ func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig) ([]client.Opt
 	options := []client.Option{
 		client.WithPayloadCodec(thrift.NewThriftCodec()),
 		client.WithMetaHandler(transmeta.ClientTTHeaderHandler),
-		client.WithTransportProtocol(transport.TTHeaderFramed),
+		client.WithTransportProtocol(transport.TTHeaderStreaming),
 	}
 
 	if cfg.RPC != nil && cfg.RPC.Intranet != "" && !co.Resolver.Enable {
@@ -128,11 +129,16 @@ func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig) ([]client.Opt
 		options = append(options, client.WithRPCTimeout(co.Timeout.RPCTimeout))
 	}
 
-	if co.MuxConnNum > 0 {
-		options = append(options, client.WithMuxConnection(co.MuxConnNum))
-	} else {
-		options = append(options, client.WithMuxConnection(2))
-	}
+	// 长连接池（替代已废弃的 Mux Connection）
+	options = append(options, client.WithConnPool(remoteConnpool.NewLongPool(
+		co.Resolver.Name,
+		connpool.IdleConfig{
+			MinIdlePerAddress: co.ConnPool.MinIdlePerAddress,
+			MaxIdlePerAddress: co.ConnPool.MaxIdlePerAddress,
+			MaxIdleGlobal:     co.ConnPool.MaxIdleGlobal,
+			MaxIdleTimeout:    co.ConnPool.MaxIdleTimeout,
+		},
+	)))
 
 	if co.Failure.Enable {
 		fp := retry.NewFailurePolicy()
@@ -142,7 +148,7 @@ func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig) ([]client.Opt
 
 	if co.LoadBalancer.Enable {
 		options = append(options, client.WithLoadBalancer(loadbalance.NewConsistBalancer(
-			loadbalance.NewConsistentHashOption(func(ctx context.Context, request interface{}) string {
+			loadbalance.NewConsistentHashOption(func(ctx context.Context, request any) string {
 				if s, ok := request.(interface{ Key() string }); ok {
 					return s.Key()
 				}

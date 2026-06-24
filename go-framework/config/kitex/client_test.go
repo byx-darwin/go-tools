@@ -34,6 +34,12 @@ func TestClientConfig_Full(t *testing.T) {
 			},
 			LoadBalancer: LoadBalancer{Enable: true},
 			CBSuite:      CBSuite{Enable: true},
+			ConnPool: ConnPool{
+				MinIdlePerAddress: 1,
+				MaxIdlePerAddress: 10,
+				MaxIdleGlobal:     1000,
+				MaxIdleTimeout:    30 * time.Second,
+			},
 		},
 	}
 
@@ -43,6 +49,10 @@ func TestClientConfig_Full(t *testing.T) {
 	assert.Equal(t, 50*time.Millisecond, c.ClientOption.Timeout.ConnectTimeOut)
 	assert.True(t, c.ClientOption.LoadBalancer.Enable)
 	assert.True(t, c.ClientOption.CBSuite.Enable)
+	assert.Equal(t, 1, c.ClientOption.ConnPool.MinIdlePerAddress)
+	assert.Equal(t, 10, c.ClientOption.ConnPool.MaxIdlePerAddress)
+	assert.Equal(t, 1000, c.ClientOption.ConnPool.MaxIdleGlobal)
+	assert.Equal(t, 30*time.Second, c.ClientOption.ConnPool.MaxIdleTimeout)
 }
 
 func TestClientConfig_DurationFields(t *testing.T) {

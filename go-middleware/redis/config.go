@@ -15,9 +15,9 @@ type Config struct {
 	DB       int    `json:"db" yaml:"db"`
 
 	// Sentinel 配置
-	MasterName        string `json:"master_name" yaml:"master_name"`
-	SentinelUsername  string `json:"sentinel_username" yaml:"sentinel_username"`
-	SentinelPassword  string `json:"sentinel_password" yaml:"sentinel_password"`
+	MasterName       string `json:"master_name" yaml:"master_name"`
+	SentinelUsername string `json:"sentinel_username" yaml:"sentinel_username"`
+	SentinelPassword string `json:"sentinel_password" yaml:"sentinel_password"`
 
 	// Protocol 协议版本（2=RESP2, 3=RESP3）
 	Protocol   int    `json:"protocol" yaml:"protocol"`
@@ -34,8 +34,8 @@ type Config struct {
 	PoolTimeout  time.Duration `json:"pool_timeout" yaml:"pool_timeout"`
 
 	// 连接生命周期
-	ConnMaxIdleTime time.Duration `json:"conn_max_idle_time" yaml:"conn_max_idle_time"`
-	ConnMaxLifetime time.Duration `json:"conn_max_lifetime" yaml:"conn_max_lifetime"`
+	ConnMaxIdleTime    time.Duration `json:"conn_max_idle_time" yaml:"conn_max_idle_time"`
+	ConnMaxLifetime    time.Duration `json:"conn_max_lifetime" yaml:"conn_max_lifetime"`
 	IdleCheckFrequency time.Duration `json:"idle_check_frequency" yaml:"idle_check_frequency"`
 
 	// 重试

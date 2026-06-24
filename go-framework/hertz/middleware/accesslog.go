@@ -14,7 +14,7 @@ import (
 //
 // 用法:
 //
-//	l := log.New(log.Config{Level: "info"})
+//	l := log.New(log.WithLevel("info"))
 //	h.Use(middleware.AccessLog(l))
 func AccessLog(logger *log.Logger) app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {

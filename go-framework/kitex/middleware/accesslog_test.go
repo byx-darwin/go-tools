@@ -10,14 +10,14 @@ import (
 )
 
 func TestAccessLog_Kitex(t *testing.T) {
-	logger := log.New(log.Config{Level: "error"})
+	logger := log.NewFromConfig(log.Config{Level: "error"})
 	defer logger.Close()
 
 	mw := AccessLog(logger)
 	assert.NotNil(t, mw)
 
 	// Test middleware chain
-	endpoint := func(ctx context.Context, req, resp interface{}) error {
+	endpoint := func(ctx context.Context, req, resp any) error {
 		return nil
 	}
 
@@ -27,11 +27,11 @@ func TestAccessLog_Kitex(t *testing.T) {
 }
 
 func TestAccessLog_Kitex_Error(t *testing.T) {
-	logger := log.New(log.Config{Level: "error"})
+	logger := log.NewFromConfig(log.Config{Level: "error"})
 	defer logger.Close()
 
 	mw := AccessLog(logger)
-	endpoint := func(ctx context.Context, req, resp interface{}) error {
+	endpoint := func(ctx context.Context, req, resp any) error {
 		return errors.New("rpc error")
 	}
 
@@ -42,11 +42,11 @@ func TestAccessLog_Kitex_Error(t *testing.T) {
 
 func TestAccessLog_Kitex_TypeCompatibility(t *testing.T) {
 	// Verify Middleware type is compatible with kitex endpoint.Middleware
-	var mw Middleware = AccessLog(log.New(log.Config{}))
+	var mw Middleware = AccessLog(log.NewFromConfig(log.Config{}))
 	assert.NotNil(t, mw)
 
 	// Verify Endpoint type
-	var ep Endpoint = func(ctx context.Context, req, resp interface{}) error {
+	var ep Endpoint = func(ctx context.Context, req, resp any) error {
 		return nil
 	}
 	assert.NotNil(t, ep)

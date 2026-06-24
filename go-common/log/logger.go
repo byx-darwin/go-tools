@@ -7,7 +7,15 @@
 //
 // 用法：
 //
-//	l := log.New(log.Config{Level: "info", FilePath: "/var/log/app.log"})
+//	// Options 模式（推荐）
+//	l := log.New(
+//	    log.WithLevel("info"),
+//	    log.WithFilePath("/var/log/app.log"),
+//	)
+//
+//	// Config 模式（YAML 加载场景）
+//	l := log.NewFromConfig(cfg)
+//
 //	l.Info("server started", "port", 8080)
 //	l.Error("something failed", "error", err)
 package log
@@ -23,7 +31,14 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Config 日志配置
+const (
+	defaultLevel      = "info"
+	defaultMaxSize    = 100
+	defaultMaxBackups = 7
+	defaultMaxAge     = 30
+)
+
+// Config 日志配置（用于 YAML 反序列化）。
 type Config struct {
 	// Level 日志级别: "debug", "info", "warn", "error"（默认 "info"）
 	Level string `json:"level" yaml:"level"`
@@ -47,6 +62,76 @@ type Config struct {
 	JSON bool `json:"json" yaml:"json"`
 }
 
+// Option 定义日志配置选项函数。
+type Option func(*loggerConfig)
+
+type loggerConfig struct {
+	level      string
+	filePath   string
+	maxSize    int
+	maxBackups int
+	maxAge     int
+	compress   bool
+	json       bool
+}
+
+// WithLevel 设置日志级别: "debug", "info", "warn", "error"。
+func WithLevel(level string) Option {
+	return func(c *loggerConfig) {
+		if level != "" {
+			c.level = level
+		}
+	}
+}
+
+// WithFilePath 设置日志文件路径。为空则输出到 stdout。
+func WithFilePath(filePath string) Option {
+	return func(c *loggerConfig) {
+		c.filePath = filePath
+	}
+}
+
+// WithMaxSize 设置单个日志文件最大 MB。
+func WithMaxSize(maxSize int) Option {
+	return func(c *loggerConfig) {
+		if maxSize > 0 {
+			c.maxSize = maxSize
+		}
+	}
+}
+
+// WithMaxBackups 设置保留的旧日志文件最大数量。
+func WithMaxBackups(maxBackups int) Option {
+	return func(c *loggerConfig) {
+		if maxBackups > 0 {
+			c.maxBackups = maxBackups
+		}
+	}
+}
+
+// WithMaxAge 设置保留旧日志文件的最大天数。
+func WithMaxAge(maxAge int) Option {
+	return func(c *loggerConfig) {
+		if maxAge > 0 {
+			c.maxAge = maxAge
+		}
+	}
+}
+
+// WithCompress 设置是否 gzip 压缩旧日志文件。
+func WithCompress(compress bool) Option {
+	return func(c *loggerConfig) {
+		c.compress = compress
+	}
+}
+
+// WithJSON 设置是否输出 JSON 格式（默认 true，false 为 text）。
+func WithJSON(json bool) Option {
+	return func(c *loggerConfig) {
+		c.json = json
+	}
+}
+
 // Logger 结构化日志记录器，封装 slog.Logger。
 type Logger struct {
 	*slog.Logger
@@ -56,31 +141,64 @@ type Logger struct {
 	writer io.WriteCloser
 }
 
-// New 创建 Logger。
-// 自动处理文件轮转（lumberjack 风格）、日志压缩、OTel span 关联。
-func New(cfg Config) *Logger {
-	if cfg.Level == "" {
-		cfg.Level = "info"
+// New 创建 Logger，支持 Options 配置。
+//
+// 默认配置：
+//   - level: "info"
+//   - maxSize: 100
+//   - maxBackups: 7
+//   - maxAge: 30
+//   - json: true
+func New(opts ...Option) *Logger {
+	cfg := &loggerConfig{
+		level:      defaultLevel,
+		maxSize:    defaultMaxSize,
+		maxBackups: defaultMaxBackups,
+		maxAge:     defaultMaxAge,
+		json:       true,
 	}
-	if cfg.MaxSize == 0 {
-		cfg.MaxSize = 100
+	for _, opt := range opts {
+		opt(cfg)
 	}
-	if cfg.MaxBackups == 0 {
-		cfg.MaxBackups = 7
-	}
-	if cfg.MaxAge == 0 {
-		cfg.MaxAge = 30
-	}
+	return buildLogger(cfg)
+}
 
+// NewFromConfig 从 Config 创建 Logger（用于 YAML 加载场景）。
+func NewFromConfig(c Config) *Logger {
+	cfg := &loggerConfig{
+		level:      c.Level,
+		filePath:   c.FilePath,
+		maxSize:    c.MaxSize,
+		maxBackups: c.MaxBackups,
+		maxAge:     c.MaxAge,
+		compress:   c.Compress,
+		json:       c.JSON,
+	}
+	// 应用默认值
+	if cfg.level == "" {
+		cfg.level = defaultLevel
+	}
+	if cfg.maxSize == 0 {
+		cfg.maxSize = defaultMaxSize
+	}
+	if cfg.maxBackups == 0 {
+		cfg.maxBackups = defaultMaxBackups
+	}
+	if cfg.maxAge == 0 {
+		cfg.maxAge = defaultMaxAge
+	}
+	return buildLogger(cfg)
+}
+
+func buildLogger(cfg *loggerConfig) *Logger {
 	var w io.Writer = os.Stdout
 	var wc io.WriteCloser
 
-	if cfg.FilePath != "" {
-		dir := filepath.Dir(cfg.FilePath)
+	if cfg.filePath != "" {
+		dir := filepath.Dir(cfg.filePath)
 		_ = os.MkdirAll(dir, 0755)
-		f, err := os.OpenFile(cfg.FilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(cfg.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			// fallback to stdout on open failure
 			f = nil
 		}
 		if f != nil {
@@ -89,28 +207,32 @@ func New(cfg Config) *Logger {
 		}
 	}
 
-	level := parseLevel(cfg.Level)
+	level := parseLevel(cfg.level)
 	var handler slog.Handler
-	opts := &slog.HandlerOptions{
-		Level: level,
-	}
+	opts := &slog.HandlerOptions{Level: level}
 
-	if cfg.JSON {
+	if cfg.json {
 		handler = slog.NewJSONHandler(w, opts)
 	} else {
 		handler = slog.NewTextHandler(w, opts)
 	}
 
-	// Wrap handler to inject OTel trace info
 	handler = &otelHandler{next: handler}
 
-	l := &Logger{
+	return &Logger{
 		Logger: slog.New(handler),
-		config: cfg,
+		config: Config{
+			Level:      cfg.level,
+			FilePath:   cfg.filePath,
+			MaxSize:    cfg.maxSize,
+			MaxBackups: cfg.maxBackups,
+			MaxAge:     cfg.maxAge,
+			Compress:   cfg.compress,
+			JSON:       cfg.json,
+		},
 		level:  level,
 		writer: wc,
 	}
-	return l
 }
 
 // Close 关闭日志文件（如有）。

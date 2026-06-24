@@ -36,13 +36,13 @@ func TestConfig_Sentinel(t *testing.T) {
 
 func TestConfig_Durations(t *testing.T) {
 	c := Config{
-		DialTimeout:       5 * time.Second,
-		ReadTimeout:       3 * time.Second,
-		WriteTimeout:      3 * time.Second,
-		ConnMaxIdleTime:   5 * time.Minute,
-		ConnMaxLifetime:   30 * time.Minute,
-		MinRetryBackoff:   8 * time.Millisecond,
-		MaxRetryBackoff:   512 * time.Millisecond,
+		DialTimeout:     5 * time.Second,
+		ReadTimeout:     3 * time.Second,
+		WriteTimeout:    3 * time.Second,
+		ConnMaxIdleTime: 5 * time.Minute,
+		ConnMaxLifetime: 30 * time.Minute,
+		MinRetryBackoff: 8 * time.Millisecond,
+		MaxRetryBackoff: 512 * time.Millisecond,
 	}
 
 	assert.Equal(t, 5*time.Second, c.DialTimeout)
@@ -84,19 +84,19 @@ func TestToFailoverOptions(t *testing.T) {
 
 func TestApplyOpts_ZeroValuesIgnore(t *testing.T) {
 	opts := &redis.Options{PoolSize: 100} // default
-	applyOpts(opts, &Config{PoolSize: 0})  // zero → keep default
+	applyOpts(opts, &Config{PoolSize: 0}) // zero → keep default
 	assert.Equal(t, 100, opts.PoolSize)
 }
 
 func TestApplyOpts_Overrides(t *testing.T) {
 	opts := &redis.Options{}
 	cfg := &Config{
-		ClientName:     "myapp",
-		Protocol:       3,
-		MaxRetries:     5,
-		MinIdleConns:   10,
-		DialTimeout:    5 * time.Second,
-		ReadTimeout:    3 * time.Second,
+		ClientName:   "myapp",
+		Protocol:     3,
+		MaxRetries:   5,
+		MinIdleConns: 10,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
 	}
 
 	applyOpts(opts, cfg)

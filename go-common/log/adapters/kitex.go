@@ -15,7 +15,7 @@ import (
 //
 // 用法:
 //
-//	l := log.New(log.Config{Level: "info"})
+//	l := log.New(log.WithLevel("info"))
 //	klog.SetLogger(adapters.NewKitexAdapter(l))
 type KitexAdapter struct {
 	logger *log.Logger

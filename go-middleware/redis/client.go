@@ -12,6 +12,20 @@ type Client interface {
 	redis.UniversalClient
 }
 
+// ClientOption 定义 Redis 客户端创建选项。
+type ClientOption func(*clientOptions)
+
+type clientOptions struct {
+	trace bool
+}
+
+// WithTrace 启用 OpenTelemetry 追踪和指标。
+func WithTrace() ClientOption {
+	return func(o *clientOptions) {
+		o.trace = true
+	}
+}
+
 // NewUniversalClient 创建 Redis UniversalClient。
 // 根据配置自动选择单节点、哨兵或集群模式。
 // 返回 (client, closeFunc, error)。
@@ -42,11 +56,23 @@ func NewUniversalClient(ctx context.Context, cfg *Config) (Client, func(), error
 	return rdb, closeFn, nil
 }
 
-// NewClient 创建带 OpenTelemetry 追踪的 Redis Client。
-// 如果 isTrace 为 true，注册 redisotel 追踪和指标。
-func NewClient(ctx context.Context, cfg *Config, isTrace bool) (*redis.Client, error) {
+// NewClient 创建 Redis Client，支持 Options 配置。
+//
+// 用法：
+//
+//	// 不带追踪
+//	client, err := redis.NewClient(ctx, cfg)
+//
+//	// 启用 OpenTelemetry 追踪
+//	client, err := redis.NewClient(ctx, cfg, redis.WithTrace())
+func NewClient(ctx context.Context, cfg *Config, opts ...ClientOption) (*redis.Client, error) {
+	o := &clientOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
 	client := redis.NewClient(toOptions(cfg))
-	if isTrace {
+	if o.trace {
 		if err := redisotel.InstrumentTracing(client); err != nil {
 			panic(err)
 		}
