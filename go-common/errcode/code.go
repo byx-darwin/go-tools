@@ -91,7 +91,7 @@ const (
 	CodeDataConflict  = 40012 // 数据冲突（并发修改）
 
 	// 认证/授权 40110-40119
-	CodePasswordWrong    = 40110 // 密码错误
+	CodeLoginFailed      = 40110 // 账号或密码错误（安全规范：不区分账号/密码）
 	CodeTokenExpired     = 40111 // 凭证过期
 	CodeTokenInvalid     = 40112 // 凭证无效
 	CodePermissionDenied = 40113 // 无权限

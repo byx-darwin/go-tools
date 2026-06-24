@@ -79,7 +79,7 @@ const (
 	CodeDataNotFound        = errcode.CodeDataNotFound
 	CodeDataDuplicate       = errcode.CodeDataDuplicate
 	CodeDataConflict        = errcode.CodeDataConflict
-	CodePasswordWrong       = errcode.CodePasswordWrong
+	CodeLoginFailed         = errcode.CodeLoginFailed
 	CodeTokenExpired        = errcode.CodeTokenExpired
 	CodeTokenInvalid        = errcode.CodeTokenInvalid
 	CodePermissionDenied    = errcode.CodePermissionDenied
@@ -240,7 +240,7 @@ var (
 	ErrDataNotFound        = Code(CodeDataNotFound).Public("data_not_found")
 	ErrDataDuplicate       = Code(CodeDataDuplicate).Public("data_duplicate")
 	ErrDataConflict        = Code(CodeDataConflict).Public("data_conflict")
-	ErrPasswordWrong       = Code(CodePasswordWrong).Public("password_wrong")
+	ErrLoginFailed         = Code(CodeLoginFailed).Public("login_failed")
 	ErrTokenExpired        = Code(CodeTokenExpired).Public("token_expired")
 	ErrTokenInvalid        = Code(CodeTokenInvalid).Public("token_invalid")
 	ErrPermissionDenied    = Code(CodePermissionDenied).Public("permission_denied")
