@@ -84,8 +84,8 @@ const (
 // ── HTTP 状态码映射 ──
 
 // HTTPStatus 根据错误码返回对应的 HTTP 状态码。
-//   - 框架/中间件错误（10000-10499, 20000-20699）默认 500/503
-//   - 业务错误（40000+）需业务方自行映射，此处返回 500 兜底
+//   - 框架/中间件错误（10000-10499, 20000-20699）→ 5xx
+//   - 业务错误（40000+）→ 200（RPC 调用成功，错误信息在响应体中）
 func HTTPStatus(code int) int {
 	switch code {
 	// 4xx — 客户端错误
@@ -144,18 +144,24 @@ func HTTPStatus(code int) int {
 	case CodeObsExport:
 		return 500
 
-	// 业务错误（40000+）→ 500 兜底，建议业务方用 ErrWithHTTPStatus 自定义
+	// 业务错误（40000+）→ 200，RPC 调用本身成功
 	default:
-		return 500
+		return 200
 	}
 }
 
 // IsClientError 判断错误码是否属于客户端错误（4xx）。
 func IsClientError(code int) bool {
-	return HTTPStatus(code) >= 400 && HTTPStatus(code) < 500
+	s := HTTPStatus(code)
+	return s >= 400 && s < 500
 }
 
-// IsServerError 判断错误码是否属于服务端错误（5xx）。
+// IsServerError 判断错误码是否属于服务端/基础设施错误（5xx）。
 func IsServerError(code int) bool {
 	return HTTPStatus(code) >= 500
+}
+
+// IsBusinessError 判断错误码是否属于业务错误（200，RPC 成功）。
+func IsBusinessErrorCode(code int) bool {
+	return code >= ProjectCodeMin || (code < FrameworkCodeMin && code > 0)
 }

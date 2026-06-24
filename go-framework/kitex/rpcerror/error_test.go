@@ -181,8 +181,8 @@ func TestHTTPStatus(t *testing.T) {
 		{"redis op", ErrRedisOp.Wrap(errors.New("fail")), 500},
 		{"kafka send", ErrKafkaSend.Wrap(errors.New("fail")), 500},
 		{"db query", ErrDBQuery.Wrap(errors.New("fail")), 500},
-		{"custom business", Code(40001).Public("data_duplicate").Wrap(errors.New("dup")), 500},
-		{"plain error", errors.New("plain"), 500},
+		{"custom business", Code(40001).Public("data_duplicate").Wrap(errors.New("dup")), 200},
+		{"plain error", errors.New("plain"), 200},
 	}
 
 	for _, tt := range tests {
