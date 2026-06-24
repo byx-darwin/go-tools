@@ -108,7 +108,7 @@ import "gitee.com/byx_darwin/go-framework/kitex/option"
 | 能力 | 来源 | 归入模块 | 说明 |
 |------|------|---------|------|
 | Kitex interceptor 中间件 |  `interceptor.yaml` | go-framework `kitex/middleware/` | RequestID/AccessLog/Recovery/Timeout/CallerAllowlist |
-| oops 风格 rpcerror |  `rpcerror.yaml` | go-framework `kitex/rpcerror/` | 替代当前的 ErrorType 枚举方式 |
+| oops 风格 rpcerror ✅ | — | go-framework `kitex/rpcerror/` | 已完成：基于 samber/oops，替代 ErrorType 枚举 |
 | Hertz response 工具 |  `layout.yaml` 内嵌 | go-framework `hertz/response.go` | 升级现有的 response.go |
 | 统一 Redis UniversalClient |  `optional/redis.go` | go-middleware `redis/` | 升级 *redis.Client → UniversalClient |
 | Kafka 库统一 |  `optional/kafka.go` | go-middleware `kafka/` | 已决策 kafka-go（D1），替代现有 sarama 实现 |
