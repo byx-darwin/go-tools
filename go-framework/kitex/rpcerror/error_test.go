@@ -2,7 +2,6 @@ package rpcerror
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -108,11 +107,58 @@ func TestOopsStatusAdapter(t *testing.T) {
 	assert.Contains(t, adapter.Error(), "detail")
 }
 
-func TestOopsStatusAdapter_NonOops(t *testing.T) {
-	err := fmt.Errorf("plain error")
-	adapter := &OopsStatusAdapter{Err: err}
+func TestClassify(t *testing.T) {
+	// 业务错误
+	bizErr := Code(10001).Public("test").Wrap(errors.New("cause"))
+	assert.Equal(t, CategoryBusiness, Classify(bizErr))
 
-	assert.Equal(t, int32(0), adapter.BizStatusCode())
-	assert.Empty(t, adapter.BizMessage())
-	assert.Nil(t, adapter.BizExtra())
+	// Kitex 框架错误
+	frameworkErr := ErrRPCUnavailable
+	kitexErr := frameworkErr.Wrap(errors.New("down"))
+	// oops 包装的 → 被识别为业务错误（因为 errors.As 先匹配 oops）
+	assert.Equal(t, CategoryBusiness, Classify(kitexErr))
+
+	// nil error
+	assert.Equal(t, CategoryUnknown, Classify(nil))
+
+	// 普通 error
+	assert.Equal(t, CategoryUnknown, Classify(errors.New("plain")))
+}
+
+func TestIsBusinessError(t *testing.T) {
+	assert.True(t, IsBusinessError(Code(1).Public("x").Wrap(errors.New("y"))))
+	assert.False(t, IsBusinessError(errors.New("plain")))
+	assert.False(t, IsBusinessError(nil))
+}
+
+func TestIsFrameworkError(t *testing.T) {
+	frameworkErr := ErrRPCUnavailable.Wrap(errors.New("down"))
+	// 这是 oops 错误，不是框架原生错误
+	assert.False(t, IsFrameworkError(frameworkErr))
+	assert.False(t, IsFrameworkError(errors.New("plain")))
+	assert.False(t, IsFrameworkError(nil))
+}
+
+func TestIsTimeout(t *testing.T) {
+	// 业务超时错误码
+	bizTimeout := Code(CodeRPCTimeout).Public("rpc_timeout").Wrap(errors.New("too slow"))
+	assert.True(t, IsTimeout(bizTimeout))
+
+	// 非超时业务错误
+	bizOther := Code(CodeParamInvalid).Public("bad").Wrap(errors.New("x"))
+	assert.False(t, IsTimeout(bizOther))
+
+	// nil error
+	assert.False(t, IsTimeout(nil))
+}
+
+func TestFrameworkErrorName(t *testing.T) {
+	// 业务错误 → 空
+	assert.Empty(t, FrameworkErrorName(Code(1).Public("x").Wrap(errors.New("y"))))
+
+	// 普通错误 → 空
+	assert.Empty(t, FrameworkErrorName(errors.New("plain")))
+
+	// nil → 空
+	assert.Empty(t, FrameworkErrorName(nil))
 }

@@ -28,6 +28,110 @@ import (
 // 编译期接口断言：确保 OopsStatusAdapter 实现 Kitex BizStatusErrorIface。
 var _ kerrors.BizStatusErrorIface = (*OopsStatusAdapter)(nil)
 
+// ── 错误分类 ──
+
+// ErrorCategory 错误类别
+type ErrorCategory int
+
+const (
+	// CategoryBusiness 业务错误（oops 包装的错误）
+	CategoryBusiness ErrorCategory = iota
+	// CategoryFramework Kitex 框架错误（kerrors.ErrRPCTimeout 等）
+	CategoryFramework
+	// CategoryUnknown 未知错误
+	CategoryUnknown
+)
+
+// Classify 对错误进行分类。
+//
+//	err := kerrors.ErrRPCTimeout
+//	cat := rpcerror.Classify(err)  // CategoryFramework
+//
+//	err = rpcerror.ErrParamInvalid.Wrap(errors.New("bad"))
+//	cat := rpcerror.Classify(err)  // CategoryBusiness
+func Classify(err error) ErrorCategory {
+	if err == nil {
+		return CategoryUnknown
+	}
+	// 先检查是否是 oops 错误（业务错误）
+	var oopsErr oops.OopsError
+	if errors.As(err, &oopsErr) {
+		return CategoryBusiness
+	}
+	// 再检查是否是 Kitex 框架错误
+	if kerrors.IsKitexError(err) {
+		return CategoryFramework
+	}
+	return CategoryUnknown
+}
+
+// IsFrameworkError 判断是否是 Kitex 框架错误。
+func IsFrameworkError(err error) bool {
+	return Classify(err) == CategoryFramework
+}
+
+// IsBusinessError 判断是否是业务错误（oops 错误）。
+func IsBusinessError(err error) bool {
+	return Classify(err) == CategoryBusiness
+}
+
+// IsTimeout 判断是否是超时错误（框架或业务）。
+func IsTimeout(err error) bool {
+	if kerrors.IsTimeoutError(err) {
+		return true
+	}
+	// 检查业务错误码是否是超时
+	code, _ := Extract(err)
+	return code == CodeRPCTimeout
+}
+
+// FrameworkErrorName 返回 Kitex 框架错误的名称（用于日志）。
+// 如果不是框架错误，返回空字符串。
+func FrameworkErrorName(err error) string {
+	if !IsFrameworkError(err) {
+		return ""
+	}
+	// 通过 errors.Is 判断具体类型
+	switch {
+	case errors.Is(err, kerrors.ErrRPCTimeout):
+		return "ErrRPCTimeout"
+	case errors.Is(err, kerrors.ErrInternalException):
+		return "ErrInternalException"
+	case errors.Is(err, kerrors.ErrServiceDiscovery):
+		return "ErrServiceDiscovery"
+	case errors.Is(err, kerrors.ErrGetConnection):
+		return "ErrGetConnection"
+	case errors.Is(err, kerrors.ErrLoadbalance):
+		return "ErrLoadbalance"
+	case errors.Is(err, kerrors.ErrNoMoreInstance):
+		return "ErrNoMoreInstance"
+	case errors.Is(err, kerrors.ErrCanceledByBusiness):
+		return "ErrCanceledByBusiness"
+	case errors.Is(err, kerrors.ErrTimeoutByBusiness):
+		return "ErrTimeoutByBusiness"
+	case errors.Is(err, kerrors.ErrACL):
+		return "ErrACL"
+	case errors.Is(err, kerrors.ErrCircuitBreak):
+		return "ErrCircuitBreak"
+	case errors.Is(err, kerrors.ErrRemoteOrNetwork):
+		return "ErrRemoteOrNetwork"
+	case errors.Is(err, kerrors.ErrOverlimit):
+		return "ErrOverlimit"
+	case errors.Is(err, kerrors.ErrPanic):
+		return "ErrPanic"
+	case errors.Is(err, kerrors.ErrBiz):
+		return "ErrBiz"
+	case errors.Is(err, kerrors.ErrRetry):
+		return "ErrRetry"
+	case errors.Is(err, kerrors.ErrRoute):
+		return "ErrRoute"
+	case errors.Is(err, kerrors.ErrPayloadValidation):
+		return "ErrPayloadValidation"
+	default:
+		return "UnknownKitexError"
+	}
+}
+
 // ── 错误码范围 ──
 
 const (
