@@ -13,12 +13,5 @@
 # Go workspace
 go.work.sum
 
-# Claude / Ruflo
-.claude-flow/
-.swarm/
-ruvector.db
-.mcp.json
-.pre-commit-config.yaml
-
 # OS
 .DS_Store
