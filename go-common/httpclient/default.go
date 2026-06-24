@@ -2,6 +2,7 @@ package httpclient
 
 import "time"
 
+// 默认常量和 HTTP 方法。
 const (
 	DefaultSleep    = 500 * time.Millisecond
 	MethodGet       = "GET"

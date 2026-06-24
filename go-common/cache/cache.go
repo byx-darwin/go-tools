@@ -5,12 +5,13 @@ import "github.com/samber/hot"
 // EvictionAlgorithm 淘汰算法类型（别名）
 type EvictionAlgorithm = hot.EvictionAlgorithm
 
+// 淘汰算法常量，对应 samber/hot 的算法实现。
 const (
-	LRU      = hot.LRU
-	LFU      = hot.LFU
-	FIFO     = hot.FIFO
-	TwoQueue = hot.TwoQueue
-	ARC      = hot.ARC
+	LRU      = hot.LRU      // 最近最少使用
+	LFU      = hot.LFU      // 最不经常使用
+	FIFO     = hot.FIFO     // 先进先出
+	TwoQueue = hot.TwoQueue // 双队列
+	ARC      = hot.ARC      // 自适应替换缓存
 )
 
 // HotCache 泛型缓存类型别名，直接暴露 samber/hot 的 HotCache。

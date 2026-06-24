@@ -15,11 +15,11 @@ type Config struct {
 	Password string   `json:"password" yaml:"password"` // 密码
 
 	// 连接配置
-	DialTimeout      int `json:"dial_timeout" yaml:"dial_timeout"`           // 连接超时（秒）
-	MaxOpenConns     int `json:"max_open_conns" yaml:"max_open_conns"`       // 最大打开连接数
-	MaxIdleConns     int `json:"max_idle_conns" yaml:"max_idle_conns"`       // 最大空闲连接数
-	ConnMaxLifetime  int `json:"conn_max_lifetime" yaml:"conn_max_lifetime"`  // 连接最大生命周期（秒）
-	Compress         bool `json:"compress" yaml:"compress"`                  // 是否启用压缩
+	DialTimeout     int  `json:"dial_timeout" yaml:"dial_timeout"`           // 连接超时（秒）
+	MaxOpenConns    int  `json:"max_open_conns" yaml:"max_open_conns"`       // 最大打开连接数
+	MaxIdleConns    int  `json:"max_idle_conns" yaml:"max_idle_conns"`       // 最大空闲连接数
+	ConnMaxLifetime int  `json:"conn_max_lifetime" yaml:"conn_max_lifetime"` // 连接最大生命周期（秒）
+	Compress        bool `json:"compress" yaml:"compress"`                   // 是否启用压缩
 
 	// TLS 配置
 	TLS struct {

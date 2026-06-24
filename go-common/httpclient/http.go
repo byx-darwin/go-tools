@@ -1,15 +1,18 @@
 package httpclient
 
 import (
-	"github.com/valyala/fasthttp"
 	"time"
+
+	"github.com/valyala/fasthttp"
 )
 
+// Send 发送单次 HTTP 请求。
 func Send(url, method string, body []byte, headers map[string]string, timeout time.Duration) (*fasthttp.Response, int, error) {
 	headers["User-Agent"] = "sznc-fasthttp-client-" + FasthttpVersion
 	return doSend(url, method, body, headers, timeout)
 }
 
+// SendWithRetry 发送 HTTP 请求，失败时自动重试。
 func SendWithRetry(url, method string,
 	body []byte,
 	headers map[string]string,
@@ -36,5 +39,6 @@ func doSend(url, method string, body []byte, headers map[string]string, timeout 
 	if err := fasthttp.DoTimeout(req, rsp, timeout); err != nil {
 		return nil, 0, err
 	}
-	return rsp, rsp.StatusCode(), nil
+	statusCode := rsp.StatusCode()
+	return rsp, statusCode, nil
 }

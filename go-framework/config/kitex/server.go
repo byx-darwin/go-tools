@@ -2,8 +2,9 @@
 package kitex
 
 import (
-	"github.com/byx-darwin/go-tools/go-framework/config"
 	"time"
+
+	"github.com/byx-darwin/go-tools/go-framework/config"
 )
 
 // ServerConfig Kitex RPC 服务配置

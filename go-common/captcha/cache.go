@@ -153,7 +153,7 @@ func (c *CacheStore) snapshot() (string, time.Duration) {
 }
 
 // Set 实现 base64Captcha.Store 接口。
-func (c *CacheStore) Set(id string, value string) error {
+func (c *CacheStore) Set(id, value string) error {
 	preKey, expiration := c.snapshot()
 	c.cache.SetWithTTL(preKey+id, value, expiration)
 	return nil

@@ -26,7 +26,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"go.opentelemetry.io/otel/trace"
 )
@@ -137,7 +136,6 @@ type Logger struct {
 	*slog.Logger
 	config Config
 	level  slog.Level
-	mu     sync.Mutex
 	writer io.WriteCloser
 }
 
@@ -196,8 +194,8 @@ func buildLogger(cfg *loggerConfig) *Logger {
 
 	if cfg.filePath != "" {
 		dir := filepath.Dir(cfg.filePath)
-		_ = os.MkdirAll(dir, 0755)
-		f, err := os.OpenFile(cfg.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		_ = os.MkdirAll(dir, 0o755)
+		f, err := os.OpenFile(cfg.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			f = nil
 		}

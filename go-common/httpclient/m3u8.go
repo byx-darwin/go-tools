@@ -1,9 +1,10 @@
 package httpclient
 
 import (
-	"github.com/valyala/fasthttp"
 	"strconv"
 	"time"
+
+	"github.com/valyala/fasthttp"
 )
 
 // GetM3u8TsSize 函数用于获取 m3u8 文件的 ts 分片大小

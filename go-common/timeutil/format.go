@@ -24,6 +24,8 @@ var placeholder = map[string]string{
 	"[at]": "at",      // at string
 }
 
+// Format 将 Unix 时间戳格式化为指定格式和时区的时间字符串。
+// format 使用 moment.js 风格占位符（YYYY/MM/DD/HH/mm/ss），tz 为空则使用本地时区。
 func Format(unix int64, format, tz string) (formatted string) {
 	toFormat := ""
 	from := []rune(format)

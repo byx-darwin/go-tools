@@ -29,13 +29,14 @@ import (
 
 // ── 范围常量 ──
 
+// 错误码范围边界常量。
 const (
-	FrameworkCodeMin  = 10000
-	FrameworkCodeMax  = 10499
-	MiddlewareCodeMin = 20000
-	MiddlewareCodeMax = 20699
-	ProjectCodeMin    = 40000
-	ProjectCodeMax    = 59999
+	FrameworkCodeMin  = 10000 // go-framework 最小错误码
+	FrameworkCodeMax  = 10499 // go-framework 最大错误码
+	MiddlewareCodeMin = 20000 // go-middleware 最小错误码
+	MiddlewareCodeMax = 20699 // go-middleware 最大错误码
+	ProjectCodeMin    = 40000 // 项目自定义最小错误码
+	ProjectCodeMax    = 59999 // 项目自定义最大错误码
 )
 
 // ── go-framework 预定义错误码 (10000-10499) ──
@@ -63,64 +64,82 @@ const (
 
 // ── go-middleware 预定义错误码 (20000-20699) ──
 
+// Redis 错误码 20001-20099。
 const (
-	// Redis 错误码 20001-20099
-	CodeRedisConnect  = 20001
-	CodeRedisPing     = 20002
-	CodeRedisOp       = 20003
-	CodeRedisPipeline = 20004
-	CodeRedisSentinel = 20005
+	CodeRedisConnect  = 20001 // Redis 连接失败
+	CodeRedisPing     = 20002 // Redis Ping 失败
+	CodeRedisOp       = 20003 // Redis 操作失败
+	CodeRedisPipeline = 20004 // Redis Pipeline 失败
+	CodeRedisSentinel = 20005 // Redis Sentinel 失败
+)
 
-	// Kafka 错误码 20101-20199
-	CodeKafkaConnect   = 20101
-	CodeKafkaSend      = 20102
-	CodeKafkaConsume   = 20103
-	CodeKafkaCommit    = 20104
-	CodeKafkaRebalance = 20105
+// Kafka 错误码 20101-20199。
+const (
+	CodeKafkaConnect   = 20101 // Kafka 连接失败
+	CodeKafkaSend      = 20102 // Kafka 发送失败
+	CodeKafkaConsume   = 20103 // Kafka 消费失败
+	CodeKafkaCommit    = 20104 // Kafka 提交偏移失败
+	CodeKafkaRebalance = 20105 // Kafka 重平衡失败
+)
 
-	// DB 错误码 20201-20299
-	CodeDBConnect = 20201
-	CodeDBQuery   = 20202
-	CodeDBExec    = 20203
-	CodeDBMigrate = 20204
+// DB 错误码 20201-20299。
+const (
+	CodeDBConnect = 20201 // DB 连接失败
+	CodeDBQuery   = 20202 // DB 查询失败
+	CodeDBExec    = 20203 // DB 执行失败
+	CodeDBMigrate = 20204 // DB 迁移失败
+)
 
-	// ES 错误码 20301-20399
-	CodeESConnect = 20301
-	CodeESQuery   = 20302
+// ES 错误码 20301-20399。
+const (
+	CodeESConnect = 20301 // ES 连接失败
+	CodeESQuery   = 20302 // ES 查询失败
+)
 
-	// ClickHouse 错误码 20401-20499
-	CodeCHConnect = 20401
-	CodeCHQuery   = 20402
+// ClickHouse 错误码 20401-20499。
+const (
+	CodeCHConnect = 20401 // ClickHouse 连接失败
+	CodeCHQuery   = 20402 // ClickHouse 查询失败
+)
 
-	// TLS 错误码 20501-20599
-	CodeTLSConnect = 20501
-	CodeTLSSend    = 20502
+// TLS 错误码 20501-20599。
+const (
+	CodeTLSConnect = 20501 // TLS 连接失败
+	CodeTLSSend    = 20502 // TLS 发送失败
+)
 
-	// Observability 错误码 20601-20699
-	CodeObsInit   = 20601
-	CodeObsExport = 20602
+// Observability 错误码 20601-20699。
+const (
+	CodeObsInit   = 20601 // Observability 初始化失败
+	CodeObsExport = 20602 // Observability 导出失败
 )
 
 // ── 项目自定义业务错误码 (40000-59999) — RPC 调用成功，HTTP 返回 200 ──
 
+// 数据相关错误码 40010-40019。
 const (
-	// 数据相关 40010-40019
 	CodeDataNotFound  = 40010 // 数据不存在
 	CodeDataDuplicate = 40011 // 数据重复
 	CodeDataConflict  = 40012 // 数据冲突（并发修改）
+)
 
-	// 认证/授权 40110-40119
+// 认证/授权错误码 40110-40119。
+const (
 	CodeLoginFailed      = 40110 // 账号或密码错误
 	CodeTokenExpired     = 40111 // 凭证过期
 	CodeTokenInvalid     = 40112 // 凭证无效
 	CodePermissionDenied = 40113 // 无权限
+)
 
-	// 限制/风控 40210-40219
+// 限制/风控错误码 40210-40219。
+const (
 	CodeRateLimit     = 40210 // 频率限制
 	CodeQuotaExceeded = 40211 // 配额用尽
 	CodeIPBlocked     = 40212 // IP 受限
+)
 
-	// 业务状态 40310-40319
+// 业务状态错误码 40310-40319。
+const (
 	CodeAccountDisabled     = 40310 // 账户已禁用
 	CodeOrderInvalid        = 40311 // 订单状态不符
 	CodeBalanceInsufficient = 40312 // 余额不足
@@ -130,6 +149,7 @@ const (
 
 // ── 预定义错误构造器 ──
 
+// go-framework 预定义错误。
 var (
 	ErrSystem         = Code(CodeSystem).Public("system_error")
 	ErrParamInvalid   = Code(CodeParamInvalid).Public("param_invalid")
@@ -140,44 +160,60 @@ var (
 	ErrRPCTimeout     = Code(CodeRPCTimeout).Public("rpc_timeout")
 	ErrRPCDecodeError = Code(CodeRPCDecodeError).Public("rpc_decode_error")
 	ErrRPCEncodeError = Code(CodeRPCEncodeError).Public("rpc_encode_error")
+)
 
-	// Redis
+// Redis 预定义错误。
+var (
 	ErrRedisConnect  = Code(CodeRedisConnect).Public("redis_connect_error")
 	ErrRedisPing     = Code(CodeRedisPing).Public("redis_ping_error")
 	ErrRedisOp       = Code(CodeRedisOp).Public("redis_operation_error")
 	ErrRedisPipeline = Code(CodeRedisPipeline).Public("redis_pipeline_error")
 	ErrRedisSentinel = Code(CodeRedisSentinel).Public("redis_sentinel_error")
+)
 
-	// Kafka
+// Kafka 预定义错误。
+var (
 	ErrKafkaConnect   = Code(CodeKafkaConnect).Public("kafka_connect_error")
 	ErrKafkaSend      = Code(CodeKafkaSend).Public("kafka_send_error")
 	ErrKafkaConsume   = Code(CodeKafkaConsume).Public("kafka_consume_error")
 	ErrKafkaCommit    = Code(CodeKafkaCommit).Public("kafka_commit_error")
 	ErrKafkaRebalance = Code(CodeKafkaRebalance).Public("kafka_rebalance_error")
+)
 
-	// DB
+// DB 预定义错误。
+var (
 	ErrDBConnect = Code(CodeDBConnect).Public("db_connect_error")
 	ErrDBQuery   = Code(CodeDBQuery).Public("db_query_error")
 	ErrDBExec    = Code(CodeDBExec).Public("db_exec_error")
 	ErrDBMigrate = Code(CodeDBMigrate).Public("db_migrate_error")
+)
 
-	// ES
+// ES 预定义错误。
+var (
 	ErrESConnect = Code(CodeESConnect).Public("es_connect_error")
 	ErrESQuery   = Code(CodeESQuery).Public("es_query_error")
+)
 
-	// ClickHouse
+// ClickHouse 预定义错误。
+var (
 	ErrCHConnect = Code(CodeCHConnect).Public("ch_connect_error")
 	ErrCHQuery   = Code(CodeCHQuery).Public("ch_query_error")
+)
 
-	// TLS
+// TLS 预定义错误。
+var (
 	ErrTLSConnect = Code(CodeTLSConnect).Public("tls_connect_error")
 	ErrTLSSend    = Code(CodeTLSSend).Public("tls_send_error")
+)
 
-	// Observability
+// Observability 预定义错误。
+var (
 	ErrObsInit   = Code(CodeObsInit).Public("observability_init_error")
 	ErrObsExport = Code(CodeObsExport).Public("observability_export_error")
+)
 
-	// 业务错误
+// 业务预定义错误。
+var (
 	ErrDataNotFound        = Code(CodeDataNotFound).Public("data_not_found")
 	ErrDataDuplicate       = Code(CodeDataDuplicate).Public("data_duplicate")
 	ErrDataConflict        = Code(CodeDataConflict).Public("data_conflict")

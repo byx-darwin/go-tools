@@ -62,7 +62,7 @@ func TestJaegerOption(t *testing.T) {
 func TestLoadYAML(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/cfg.yaml"
-	require.NoError(t, os.WriteFile(path, []byte("name: test\nport: 8080\n"), 0644))
+	require.NoError(t, os.WriteFile(path, []byte("name: test\nport: 8080\n"), 0o644))
 
 	type appCfg struct {
 		Name string `yaml:"name"`
@@ -83,9 +83,11 @@ func TestLoadYAML_NotFound(t *testing.T) {
 func TestMustLoadYAML_OK(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/ok.yaml"
-	require.NoError(t, os.WriteFile(path, []byte("x: 1"), 0644))
+	require.NoError(t, os.WriteFile(path, []byte("x: 1"), 0o644))
 
-	type cfg struct{ X int `yaml:"x"` }
+	type cfg struct {
+		X int `yaml:"x"`
+	}
 	assert.NotPanics(t, func() {
 		c := MustLoadYAML[cfg](path)
 		assert.Equal(t, 1, c.X)

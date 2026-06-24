@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 
-	"golang.org/x/crypto/tea"
+	"golang.org/x/crypto/tea" //nolint:staticcheck // TEA 加密仍在使用中，后续迁移到 AES
 )
 
 func teaPad(cipherText []byte) ([]byte, int) {
@@ -18,6 +18,7 @@ func teaPad(cipherText []byte) ([]byte, int) {
 	}
 }
 
+// DecodeTeaStr 使用 TEA 密钥解密 src，pad 为填充长度。
 func DecodeTeaStr(src []byte, pad int, teaKey string) ([]byte, error) {
 	cr, err := tea.NewCipherWithRounds([]byte(teaKey), 32)
 	if err != nil {
@@ -58,6 +59,7 @@ func DecodeTeaStr(src []byte, pad int, teaKey string) ([]byte, error) {
 	}
 }
 
+// EncodeTeaStr 使用 TEA 密钥加密 src，返回密文和总填充长度。
 func EncodeTeaStr(src []byte, teaKey string) ([]byte, int, error) {
 	cr, err := tea.NewCipherWithRounds([]byte(teaKey), 32)
 	if err != nil {
@@ -93,6 +95,7 @@ func EncodeTeaStr(src []byte, teaKey string) ([]byte, int, error) {
 	return rs, totalPad, nil
 }
 
+// GetTeaPadLen 返回 TEA 分组对齐所需的填充长度。
 func GetTeaPadLen(length int) int {
 	if length%tea.BlockSize == 0 {
 		return 0
@@ -102,6 +105,7 @@ func GetTeaPadLen(length int) int {
 	}
 }
 
+// TeaHexDecode 将十六进制密文解码后使用 TEA 密钥解密。
 func TeaHexDecode(hexBody []byte, bLen int, teaKey string) ([]byte, error) {
 	body := make([]byte, hex.DecodedLen(len(hexBody)))
 	_, err := hex.Decode(body, hexBody)

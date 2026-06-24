@@ -52,7 +52,7 @@ func TestNewWriter(t *testing.T) {
 	})
 	assert.NotNil(t, w)
 	assert.NotNil(t, w.w)
-	defer w.Close()
+	_ = w.Close()
 }
 
 func TestNewWriter_WithTLS(t *testing.T) {
@@ -60,7 +60,7 @@ func TestNewWriter_WithTLS(t *testing.T) {
 	cfg.TLS.Enable = true
 	w := NewWriter(cfg)
 	assert.NotNil(t, w)
-	defer w.Close()
+	_ = w.Close()
 }
 
 func TestNewConsumer(t *testing.T) {
@@ -69,7 +69,7 @@ func TestNewConsumer(t *testing.T) {
 		Topic:  "test",
 	})
 	assert.NotNil(t, c)
-	defer c.Close()
+	_ = c.Close()
 }
 
 func TestWriter_Close(t *testing.T) {

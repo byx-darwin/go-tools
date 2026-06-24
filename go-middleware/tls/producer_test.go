@@ -35,10 +35,8 @@ func TestNewProducer_Defaults(t *testing.T) {
 	assert.Equal(t, "go-tools", p.config.Source)
 	assert.Equal(t, 10, p.config.BatchSize)
 	assert.Equal(t, 5*time.Second, p.config.FlushInterval)
-	defer func() {
-		// Close may error due to flush to invalid endpoint, ignore
-		_ = p.Close()
-	}()
+	// Close may error due to flush to invalid endpoint, ignore
+	_ = p.Close()
 }
 
 func TestProducer_SendLog_Buffers(t *testing.T) {
@@ -48,7 +46,7 @@ func TestProducer_SendLog_Buffers(t *testing.T) {
 		AccessKeySecret: "sk",
 		Region:          "cn-beijing",
 		TopicID:         "topic-123",
-		BatchSize:        100, // large batch so flush is not triggered
+		BatchSize:       100, // large batch so flush is not triggered
 	})
 	assert.NoError(t, err)
 	defer func() { _ = p.Close() }()
@@ -69,7 +67,7 @@ func TestProducer_SendLogs_Buffers(t *testing.T) {
 		AccessKeySecret: "sk",
 		Region:          "cn-beijing",
 		TopicID:         "topic-123",
-		BatchSize:        100,
+		BatchSize:       100,
 	})
 	assert.NoError(t, err)
 	defer func() { _ = p.Close() }()
@@ -96,7 +94,7 @@ func TestProducer_Flush_NetworkError(t *testing.T) {
 	defer func() { _ = p.Close() }()
 
 	// Flush will fail because the endpoint is fake, but shouldn't panic
-	p.SendLog(context.Background(), map[string]string{"k": "v"})
+	_ = p.SendLog(context.Background(), map[string]string{"k": "v"})
 	err = p.Flush(context.Background())
 	// Network error is expected — just verify no panic
 	t.Logf("expected network error: %v", err)

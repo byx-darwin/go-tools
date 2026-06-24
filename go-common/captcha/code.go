@@ -20,9 +20,9 @@ func GenerateCode(length int, charset string) string {
 		chars = alphanumericChars
 	}
 	buf := make([]byte, length)
-	max := big.NewInt(int64(len(chars)))
+	maxInt := big.NewInt(int64(len(chars)))
 	for i := range buf {
-		n, err := rand.Int(rand.Reader, max)
+		n, err := rand.Int(rand.Reader, maxInt)
 		if err != nil {
 			// crypto/rand.Read 在正常系统上不会失败；
 			// 极端降级：使用数学随机（理论上不应走到这里）。

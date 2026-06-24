@@ -25,7 +25,7 @@ func (e *WriterError) Unwrap() error { return e.Err }
 func NewWriter(cfg WriterConfig) *Writer {
 	var transportTLS *tls.Config
 	if cfg.TLS.Enable {
-		transportTLS = &tls.Config{InsecureSkipVerify: cfg.TLS.InsecureSkipVerify} //nolint:gosec
+		transportTLS = &tls.Config{InsecureSkipVerify: cfg.TLS.InsecureSkipVerify} //nolint:gosec // 用户可通过配置显式关闭 TLS 校验
 	}
 
 	return &Writer{

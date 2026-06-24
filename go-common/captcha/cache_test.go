@@ -3,6 +3,8 @@ package captcha
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewCacheStore_Defaults(t *testing.T) {
@@ -66,7 +68,7 @@ func TestCacheStoreSetAndGet(t *testing.T) {
 func TestCacheStoreGetClear(t *testing.T) {
 	store := NewCacheStore(WithCapacity(10))
 
-	store.Set("testid", "XYZ")
+	require.NoError(t, store.Set("testid", "XYZ"))
 	val := store.Get("testid", true)
 
 	if val != "XYZ" {
@@ -82,7 +84,7 @@ func TestCacheStoreGetClear(t *testing.T) {
 func TestCacheStoreGetNoClear(t *testing.T) {
 	store := NewCacheStore(WithCapacity(10))
 
-	store.Set("testid", "DATA")
+	require.NoError(t, store.Set("testid", "DATA"))
 	val := store.Get("testid", false)
 
 	if val != "DATA" {
@@ -98,7 +100,7 @@ func TestCacheStoreGetNoClear(t *testing.T) {
 func TestCacheStoreVerify(t *testing.T) {
 	store := NewCacheStore(WithCapacity(10))
 
-	store.Set("id1", "A1B2")
+	require.NoError(t, store.Set("id1", "A1B2"))
 	if !store.Verify("id1", "A1B2", false) {
 		t.Error("Verify should return true for correct answer")
 	}
@@ -110,7 +112,7 @@ func TestCacheStoreVerify(t *testing.T) {
 func TestCacheStoreVerifyClear(t *testing.T) {
 	store := NewCacheStore(WithCapacity(10))
 
-	store.Set("id1", "S3CR3T")
+	require.NoError(t, store.Set("id1", "S3CR3T"))
 	if !store.Verify("id1", "S3CR3T", true) {
 		t.Error("first Verify should succeed")
 	}
@@ -131,7 +133,7 @@ func TestCacheStoreGetMissingKey(t *testing.T) {
 func TestCacheStorePreKeyPrefix(t *testing.T) {
 	store := NewCacheStore(WithCapacity(10), WithPreKey("TEST_"))
 
-	store.Set("abc", "123")
+	require.NoError(t, store.Set("abc", "123"))
 	val := store.Get("abc", false)
 	if val != "123" {
 		t.Errorf("Get with same id should return stored value, got %q", val)
@@ -145,7 +147,7 @@ func TestCacheStoreExpiration(t *testing.T) {
 	store := NewCacheStore(WithCapacity(10))
 	store.SetExpiration(50 * time.Millisecond)
 
-	store.Set("exp", "value")
+	require.NoError(t, store.Set("exp", "value"))
 	val := store.Get("exp", false)
 	if val != "value" {
 		t.Fatal("value should exist before expiry")
@@ -192,7 +194,7 @@ func TestUpdate(t *testing.T) {
 
 func TestGetAndDelete(t *testing.T) {
 	store := NewCacheStore(WithCapacity(10))
-	store.Set("k1", "v1")
+	require.NoError(t, store.Set("k1", "v1"))
 
 	val, ok := store.GetAndDelete("k1")
 	if !ok || val != "v1" {
@@ -208,8 +210,8 @@ func TestGetAndDelete(t *testing.T) {
 
 func TestClear(t *testing.T) {
 	store := NewCacheStore(WithCapacity(10))
-	store.Set("a", "1")
-	store.Set("b", "2")
+	require.NoError(t, store.Set("a", "1"))
+	require.NoError(t, store.Set("b", "2"))
 
 	store.Clear()
 	if store.Len() != 0 {

@@ -23,9 +23,9 @@ import (
 	"net"
 	"time"
 
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 	"github.com/byx-darwin/go-tools/go-common/netutil"
 	"github.com/byx-darwin/go-tools/go-framework/config/kitex"
-	goerror "github.com/byx-darwin/go-tools/go-common/error"
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/pkg/connpool"
 	"github.com/cloudwego/kitex/pkg/limit"

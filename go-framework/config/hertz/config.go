@@ -2,8 +2,9 @@
 package hertz
 
 import (
-	"github.com/byx-darwin/go-tools/go-framework/config"
 	"time"
+
+	"github.com/byx-darwin/go-tools/go-framework/config"
 )
 
 // ServerConfig Hertz HTTP 服务配置

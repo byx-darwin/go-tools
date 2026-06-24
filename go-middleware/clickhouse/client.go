@@ -55,7 +55,7 @@ func NewClient(config Config) (clickhouse.Conn, error) {
 
 	if config.TLS.Enable {
 		opts.TLS = &tls.Config{
-			InsecureSkipVerify: config.TLS.InsecureSkipVerify, //nolint:gosec
+			InsecureSkipVerify: config.TLS.InsecureSkipVerify, //nolint:gosec // 用户可通过配置显式关闭 TLS 校验
 		}
 	}
 

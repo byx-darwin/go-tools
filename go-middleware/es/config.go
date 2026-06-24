@@ -25,6 +25,6 @@ type Config struct {
 	} `json:"tls" yaml:"tls"`
 
 	// 连接池配置
-	MaxRetries          int `json:"max_retries" yaml:"max_retries"`                     // 最大重试次数
+	MaxRetries          int `json:"max_retries" yaml:"max_retries"`                         // 最大重试次数
 	MaxIdleConnsPerHost int `json:"max_idle_conns_per_host" yaml:"max_idle_conns_per_host"` // 每个 host 最大空闲连接
 }

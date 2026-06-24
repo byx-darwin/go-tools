@@ -17,6 +17,7 @@ import (
 // ErrorCategory 错误类别
 type ErrorCategory int
 
+// 错误分类常量。
 const (
 	CategoryBusiness  ErrorCategory = iota // 业务错误（oops）
 	CategoryFramework                      // Kitex 框架错误
@@ -100,8 +101,8 @@ func FrameworkErrorName(err error) string {
 
 // ── Kitex BizStatus 适配 ──
 
-// Statuser Kitex BizStatus 接口。
-type Statuser interface {
+// BizStatusGetter Kitex BizStatus 接口。
+type BizStatusGetter interface {
 	BizStatusCode() int32
 	BizMessage() string
 	BizExtra() map[string]string
@@ -117,7 +118,17 @@ type OopsStatusAdapter struct {
 // 编译期接口断言。
 var _ kerrors.BizStatusErrorIface = (*OopsStatusAdapter)(nil)
 
-func (a *OopsStatusAdapter) BizStatusCode() int32        { code, _ := goerror.Extract(a.Err); return int32(code) }
-func (a *OopsStatusAdapter) BizMessage() string          { _, public := goerror.Extract(a.Err); return public }
+// BizStatusCode 返回 oops 错误码。
+func (a *OopsStatusAdapter) BizStatusCode() int32 {
+	code, _ := goerror.Extract(a.Err)
+	return int32(code)
+}
+
+// BizMessage 返回公开错误消息。
+func (a *OopsStatusAdapter) BizMessage() string { _, public := goerror.Extract(a.Err); return public }
+
+// BizExtra 返回附加信息。
 func (a *OopsStatusAdapter) BizExtra() map[string]string { return a.Extra }
-func (a *OopsStatusAdapter) Error() string               { return a.Err.Error() }
+
+// Error 返回错误字符串。
+func (a *OopsStatusAdapter) Error() string { return a.Err.Error() }

@@ -25,7 +25,7 @@ func TestNew_WithLevel(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithLevel("debug"), WithFilePath(path), WithJSON(true))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Debug("debug msg")
 	data, _ := os.ReadFile(path)
@@ -37,7 +37,7 @@ func TestNew_WithFilePath(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithFilePath(path))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Info("hello")
 	_, err := os.Stat(path)
@@ -49,7 +49,7 @@ func TestNew_WithJSON_Text(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithLevel("info"), WithFilePath(path), WithJSON(false))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Info("text msg")
 	data, _ := os.ReadFile(path)
@@ -65,7 +65,7 @@ func TestNew_WithJSON_Format(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithLevel("info"), WithFilePath(path), WithJSON(true))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Info("hello", "key", "value")
 	data, _ := os.ReadFile(path)
@@ -82,7 +82,7 @@ func TestNew_CreatesDir(t *testing.T) {
 	path := filepath.Join(dir, "logs", "subdir", "app.log")
 
 	l := New(WithFilePath(path))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Info("test")
 	_, err := os.Stat(path)
@@ -94,7 +94,7 @@ func TestNew_InvalidLevelDefaultsToInfo(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithLevel("invalid"), WithFilePath(path))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Debug("should not appear")
 	l.Info("should appear")
@@ -116,7 +116,7 @@ func TestNewFromConfig_JSON(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := NewFromConfig(Config{Level: "info", FilePath: path, JSON: true})
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Info("hello", "key", "value")
 	data, _ := os.ReadFile(path)
@@ -132,7 +132,7 @@ func TestNewFromConfig_Text(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := NewFromConfig(Config{Level: "debug", FilePath: path, JSON: false})
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Debug("debug message")
 	data, _ := os.ReadFile(path)
@@ -151,7 +151,7 @@ func TestLogger_LevelsDebug(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithLevel("debug"), WithFilePath(path), WithJSON(true))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Debug("debug msg")
 	l.Info("info msg")
@@ -171,7 +171,7 @@ func TestLogger_LevelsError(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithLevel("error"), WithFilePath(path), WithJSON(true))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	l.Info("should be filtered")
 	l.Error("should appear")
@@ -186,7 +186,7 @@ func TestLogger_WithContext(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithLevel("info"), WithFilePath(path), WithJSON(true))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	ctx := context.Background()
 	l.InfoContext(ctx, "with context", "ctx_key", "ctx_val")
@@ -201,7 +201,7 @@ func TestLogger_WithAttrs(t *testing.T) {
 	path := filepath.Join(dir, "test.log")
 
 	l := New(WithLevel("info"), WithFilePath(path), WithJSON(true))
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	child := l.With("component", "test")
 	child.Info("from child logger")

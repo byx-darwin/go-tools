@@ -120,7 +120,7 @@ func (p *Producer) Flush(ctx context.Context) error {
 	return p.flush(ctx)
 }
 
-func (p *Producer) flush(ctx context.Context) error {
+func (p *Producer) flush(_ context.Context) error {
 	p.mu.Lock()
 	if len(p.buf) == 0 {
 		p.mu.Unlock()

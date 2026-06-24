@@ -22,6 +22,7 @@ import (
 	"time"
 )
 
+// FileShipperConfig 文件上报配置。
 type FileShipperConfig struct {
 	ProducerConfig ProducerConfig `json:"producer" yaml:"producer"`
 	FilePath       string         `json:"file_path" yaml:"file_path"`
@@ -29,6 +30,7 @@ type FileShipperConfig struct {
 	MaxLineSize    int            `json:"max_line_size" yaml:"max_line_size"`
 }
 
+// FileShipper 定时读取本地日志文件并批量上报到 TLS。
 type FileShipper struct {
 	producer *Producer
 	config   FileShipperConfig
@@ -37,6 +39,7 @@ type FileShipper struct {
 	done     chan struct{}
 }
 
+// NewFileShipper 创建文件上报器。
 func NewFileShipper(cfg FileShipperConfig) (*FileShipper, error) {
 	if cfg.FilePath == "" {
 		return nil, fmt.Errorf("tls: file_path is required")
@@ -55,7 +58,10 @@ func NewFileShipper(cfg FileShipperConfig) (*FileShipper, error) {
 	return &FileShipper{producer: producer, config: cfg, ctx: ctx, cancel: cancel, done: make(chan struct{})}, nil
 }
 
-func (s *FileShipper) Start()          { go s.run() }
+// Start 启动后台轮协程。
+func (s *FileShipper) Start() { go s.run() }
+
+// Close 停止轮询并关闭底层 Producer。
 func (s *FileShipper) Close() error {
 	s.cancel()
 	select {
@@ -74,7 +80,7 @@ func (s *FileShipper) run() {
 	if f, err := os.Open(s.config.FilePath); err == nil {
 		fi, _ := f.Stat()
 		offset = fi.Size()
-		f.Close()
+		_ = f.Close()
 	}
 
 	for {
@@ -95,7 +101,7 @@ func (s *FileShipper) shipSince(offset int64) (int64, error) {
 	if err != nil {
 		return offset, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	fi, err := f.Stat()
 	if err != nil {
@@ -105,7 +111,7 @@ func (s *FileShipper) shipSince(offset int64) (int64, error) {
 		return offset, nil
 	}
 
-	f.Seek(offset, io.SeekStart)
+	_, _ = f.Seek(offset, io.SeekStart)
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, s.config.MaxLineSize), s.config.MaxLineSize)
 

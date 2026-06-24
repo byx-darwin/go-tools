@@ -21,7 +21,7 @@ func LoadPolarisConfig(namespace, fileGroup, fileName string,
 		return nil, fmt.Errorf("polaris init failed: %w", err)
 	}
 
-	configFile, err := configAPI.GetConfigFile(namespace, fileGroup, fileName)
+	configFile, err := configAPI.GetConfigFile(namespace, fileGroup, fileName) //nolint:staticcheck // Polaris SDK 尚未提供 FetchConfigFile 稳定版本
 	if err != nil {
 		return nil, fmt.Errorf("polaris get config file: %w", err)
 	}

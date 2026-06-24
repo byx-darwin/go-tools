@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// MonthAdd 计算当前时间加减 months 个月后的起止月份。
+// 返回 (startYearMonth, endYearMonth) 格式为 YYYYMM 整数，按时间升序排列。
 func MonthAdd(months int) (int, int) {
 	cUnix := time.Now()
 	cYear := cUnix.Year()
@@ -25,10 +27,12 @@ func MonthAdd(months int) (int, int) {
 	}
 }
 
+// GetHalfYearMonth 获取最近 6 个月的起止月份（YYYYMM 格式）。
 func GetHalfYearMonth() (int, int) {
 	return MonthAdd(-5)
 }
 
+// GetAllYearMonth 获取最近 12 个月的起止月份（YYYYMM 格式）。
 func GetAllYearMonth() (int, int) {
 	return MonthAdd(-11)
 }

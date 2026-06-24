@@ -27,24 +27,24 @@ repos:
         require_serial: true
 
       - id: go-vet
-        name: go vet ./...
-        entry: bash -c 'go vet ./...'
+        name: go vet
+        entry: bash -c 'go vet ./go-common/... ./go-middleware/... ./go-framework/...'
         language: system
         pass_filenames: false
         stages:
           - pre-push
 
       - id: go-test
-        name: go test ./... -count=1
-        entry: bash -c 'go test ./... -count=1'
+        name: go test
+        entry: bash -c 'go test ./go-common/... ./go-middleware/... ./go-framework/... -count=1'
         language: system
         pass_filenames: false
         stages:
           - pre-push
 
       - id: go-build
-        name: go build ./...
-        entry: bash -c 'go build ./...'
+        name: go build
+        entry: bash -c 'go build ./go-common/... ./go-middleware/... ./go-framework/...'
         language: system
         pass_filenames: false
         stages:

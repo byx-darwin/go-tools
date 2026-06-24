@@ -41,7 +41,7 @@ func TestNewFileShipper_RequiresFilePath(t *testing.T) {
 func TestFileShipper_Success(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/app.log"
-	require.NoError(t, os.WriteFile(path, []byte(`{"level":"info","msg":"line1"}`+"\n"), 0644))
+	require.NoError(t, os.WriteFile(path, []byte(`{"level":"info","msg":"line1"}`+"\n"), 0o644))
 
 	shipper, err := NewFileShipper(FileShipperConfig{
 		ProducerConfig: ProducerConfig{
@@ -70,8 +70,8 @@ func TestFileShipper_Defaults(t *testing.T) {
 			TopicID:         "t",
 			AccessKeyID:     "ak",
 			AccessKeySecret: "sk",
-			FlushInterval:    1 * time.Hour,
-			BatchSize:         9999,
+			FlushInterval:   1 * time.Hour,
+			BatchSize:       9999,
 		},
 		FilePath:      "/tmp/test.log",
 		CheckInterval: 100 * time.Millisecond,

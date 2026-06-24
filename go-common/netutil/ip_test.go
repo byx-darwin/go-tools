@@ -73,9 +73,9 @@ func TestIsInternalIP_IPv6(t *testing.T) {
 		ip   string
 		want bool
 	}{
-		{"loopback", "::1", false},            // IsLoopback → false
-		{"link-local", "fe80::1", false},       // link-local unicast, not IsPrivate
-		{"unique-local", "fc00::1", true},      // ULA, IsPrivate = true
+		{"loopback", "::1", false},        // IsLoopback → false
+		{"link-local", "fe80::1", false},  // link-local unicast, not IsPrivate
+		{"unique-local", "fc00::1", true}, // ULA
 		{"global-unicast", "2001:db8::1", false},
 	}
 
@@ -119,10 +119,8 @@ func TestCheckNetwork_ReturnsStatus(t *testing.T) {
 		if status.Error != nil {
 			t.Error("error should be nil when online")
 		}
-	} else {
-		if status.Error == nil {
-			t.Error("error should be non-nil when offline")
-		}
+	} else if status.Error == nil {
+		t.Error("error should be non-nil when offline")
 	}
 }
 

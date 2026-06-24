@@ -35,7 +35,7 @@ func NewClient(config Config) (*elasticsearchv8.Client, error) {
 			cfg.Transport = &http.Transport{}
 		}
 		cfg.Transport.(*http.Transport).TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: config.TLS.InsecureSkipVerify, //nolint:gosec
+			InsecureSkipVerify: config.TLS.InsecureSkipVerify, //nolint:gosec // 用户可通过配置显式关闭 TLS 校验
 		}
 	}
 

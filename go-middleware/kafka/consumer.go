@@ -26,7 +26,7 @@ func NewConsumer(cfg ReaderConfig) *Consumer {
 
 	if cfg.TLS.Enable {
 		rCfg.Dialer = &kafka.Dialer{
-			TLS: &tls.Config{InsecureSkipVerify: cfg.TLS.InsecureSkipVerify}, //nolint:gosec
+			TLS: &tls.Config{InsecureSkipVerify: cfg.TLS.InsecureSkipVerify}, //nolint:gosec // 用户可通过配置显式关闭 TLS 校验
 		}
 	}
 

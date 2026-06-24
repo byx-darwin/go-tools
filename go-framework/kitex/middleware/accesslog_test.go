@@ -11,7 +11,7 @@ import (
 
 func TestAccessLog_Kitex(t *testing.T) {
 	logger := log.NewFromConfig(log.Config{Level: "error"})
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	mw := AccessLog(logger)
 	assert.NotNil(t, mw)
@@ -28,7 +28,7 @@ func TestAccessLog_Kitex(t *testing.T) {
 
 func TestAccessLog_Kitex_Error(t *testing.T) {
 	logger := log.NewFromConfig(log.Config{Level: "error"})
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	mw := AccessLog(logger)
 	endpoint := func(ctx context.Context, req, resp any) error {

@@ -96,7 +96,7 @@ func TestLRUEviction(t *testing.T) {
 	c.Set("b", 2)
 	c.Set("c", 3)
 	// Access "a" to make it recently used
-	c.Get("a")
+	_, _, _ = c.Get("a")
 	c.Set("d", 4)
 	assert.False(t, c.Has("b"), "LRU: least recently used should be evicted")
 	assert.True(t, c.Has("a"), "LRU: accessed key should stay")

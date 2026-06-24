@@ -13,7 +13,7 @@ type Response struct {
 }
 
 // Result 写入统一 JSON 响应
-func Result(c *app.RequestContext, httpCode int, code int, data any, msg string) {
+func Result(c *app.RequestContext, httpCode, code int, data any, msg string) {
 	if data == nil {
 		c.JSON(httpCode, utils.H{"code": code, "msg": msg})
 	} else {

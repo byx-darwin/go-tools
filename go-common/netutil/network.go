@@ -32,7 +32,7 @@ func CheckNetwork() NetworkStatus {
 		var d net.Dialer
 		conn, err := d.DialContext(ctx, "tcp", host)
 		if err == nil {
-			conn.Close()
+			_ = conn.Close()
 			return NetworkStatus{
 				IsOnline: true,
 				Latency:  time.Since(start),
