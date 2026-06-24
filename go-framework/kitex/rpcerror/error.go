@@ -1,96 +1,15 @@
-// Package rpcerror 提供基于 oops 的 RPC 错误处理。
+// Package rpcerror 提供 Kitex RPC 框架的错误分类与适配。
 //
-// 错误码定义在 go-common/errcode，各层均可引用：
-//
-//	go-framework: 10000-10499  (system, param, auth, config, RPC middleware)
-//	go-middleware:  20000-20699 (redis, kafka, db, es, clickhouse, observability)
-//	Project custom: 40000-59999 (business modules, external dependencies)
-//
-// 用法：
-//
-//	// 创建 oops 错误
-//	err := rpcerror.ErrParamInvalid.Wrap(originalErr)
-//
-//	// 自定义错误码
-//	err := rpcerror.Code(40001).Public("data_duplicate").Wrap(err)
-//
-//	// 提取 + HTTP 状态码映射
-//	code, msg := rpcerror.Extract(err)
-//	httpStatus := rpcerror.HTTPStatus(err)
+// 核心错误处理（错误码、构造函数、Extract、预定义错误）已迁移至 go-common/rpcerror。
+// 本包仅保留 Kitex 特定的分类逻辑和 BizStatus 适配器。
 package rpcerror
 
 import (
 	"errors"
 
-	"github.com/byx-darwin/go-tools/go-common/errcode"
+	rpcerror "github.com/byx-darwin/go-tools/go-common/rpcerror"
 	"github.com/cloudwego/kitex/pkg/kerrors"
 	"github.com/samber/oops"
-)
-
-// 编译期接口断言。
-var _ kerrors.BizStatusErrorIface = (*OopsStatusAdapter)(nil)
-
-// ── 错误码常量（从 go-common/errcode 重导出，保持向下兼容） ──
-
-const (
-	FrameworkCodeMin  = errcode.FrameworkCodeMin
-	FrameworkCodeMax  = errcode.FrameworkCodeMax
-	MiddlewareCodeMin = errcode.MiddlewareCodeMin
-	MiddlewareCodeMax = errcode.MiddlewareCodeMax
-	ProjectCodeMin    = errcode.ProjectCodeMin
-	ProjectCodeMax    = errcode.ProjectCodeMax
-
-	// go-framework
-	CodeSystem         = errcode.CodeSystem
-	CodeParamInvalid   = errcode.CodeParamInvalid
-	CodeAuthFailed     = errcode.CodeAuthFailed
-	CodeConfigNotFound = errcode.CodeConfigNotFound
-	CodeConfigInvalid  = errcode.CodeConfigInvalid
-	CodeRPCUnavailable = errcode.CodeRPCUnavailable
-	CodeRPCTimeout     = errcode.CodeRPCTimeout
-	CodeRPCDecodeError = errcode.CodeRPCDecodeError
-	CodeRPCEncodeError = errcode.CodeRPCEncodeError
-
-	// go-middleware
-	CodeRedisConnect   = errcode.CodeRedisConnect
-	CodeRedisPing      = errcode.CodeRedisPing
-	CodeRedisOp        = errcode.CodeRedisOp
-	CodeRedisPipeline  = errcode.CodeRedisPipeline
-	CodeRedisSentinel  = errcode.CodeRedisSentinel
-	CodeKafkaConnect   = errcode.CodeKafkaConnect
-	CodeKafkaSend      = errcode.CodeKafkaSend
-	CodeKafkaConsume   = errcode.CodeKafkaConsume
-	CodeKafkaCommit    = errcode.CodeKafkaCommit
-	CodeKafkaRebalance = errcode.CodeKafkaRebalance
-	CodeDBConnect      = errcode.CodeDBConnect
-	CodeDBQuery        = errcode.CodeDBQuery
-	CodeDBExec         = errcode.CodeDBExec
-	CodeDBMigrate      = errcode.CodeDBMigrate
-	CodeESConnect      = errcode.CodeESConnect
-	CodeESQuery        = errcode.CodeESQuery
-	CodeCHConnect      = errcode.CodeCHConnect
-	CodeCHQuery        = errcode.CodeCHQuery
-	CodeTLSConnect     = errcode.CodeTLSConnect
-	CodeTLSSend        = errcode.CodeTLSSend
-	CodeObsInit        = errcode.CodeObsInit
-	CodeObsExport      = errcode.CodeObsExport
-
-	// 业务错误
-	CodeDataNotFound        = errcode.CodeDataNotFound
-	CodeDataDuplicate       = errcode.CodeDataDuplicate
-	CodeDataConflict        = errcode.CodeDataConflict
-	CodeLoginFailed         = errcode.CodeLoginFailed
-	CodeTokenExpired        = errcode.CodeTokenExpired
-	CodeTokenInvalid        = errcode.CodeTokenInvalid
-	CodePermissionDenied    = errcode.CodePermissionDenied
-	CodeRateLimit           = errcode.CodeRateLimit
-	CodeQuotaExceeded       = errcode.CodeQuotaExceeded
-	CodeIPBlocked           = errcode.CodeIPBlocked
-	CodeAccountDisabled     = errcode.CodeAccountDisabled
-	CodeOrderInvalid        = errcode.CodeOrderInvalid
-	CodeBalanceInsufficient = errcode.CodeBalanceInsufficient
-	CodeVerificationFailed  = errcode.CodeVerificationFailed
-	CodeOperationDenied     = errcode.CodeOperationDenied
 )
 
 // ── 错误分类 ──
@@ -119,17 +38,22 @@ func Classify(err error) ErrorCategory {
 	return CategoryUnknown
 }
 
+// IsFrameworkError 判断是否为 Kitex 框架错误。
 func IsFrameworkError(err error) bool { return Classify(err) == CategoryFramework }
-func IsBusinessError(err error) bool  { return Classify(err) == CategoryBusiness }
 
+// IsBusinessError 判断是否为业务错误（oops）。
+func IsBusinessError(err error) bool { return Classify(err) == CategoryBusiness }
+
+// IsTimeout 判断是否为超时错误（Kitex 原生超时或业务 RPCTimeout）。
 func IsTimeout(err error) bool {
 	if kerrors.IsTimeoutError(err) {
 		return true
 	}
-	code, _ := Extract(err)
-	return code == CodeRPCTimeout
+	code, _ := rpcerror.Extract(err)
+	return code == rpcerror.CodeRPCTimeout
 }
 
+// FrameworkErrorName 返回 Kitex 框架错误的名称，非框架错误返回空字符串。
 func FrameworkErrorName(err error) string {
 	if !IsFrameworkError(err) {
 		return ""
@@ -174,130 +98,9 @@ func FrameworkErrorName(err error) string {
 	}
 }
 
-// ── HTTP 状态码映射 ──
+// ── Kitex BizStatus 适配 ──
 
-// HTTPStatus 从 error 中提取错误码，映射为 HTTP 状态码。
-//   - 框架/中间件错误 → 500/503/504
-//   - 业务错误（40000+）→ 500 兜底
-//   - 非 oops 错误 → 500
-//
-// 详细映射见 go-common/errcode.HTTPStatus。
-func HTTPStatus(err error) int {
-	code, _ := Extract(err)
-	return errcode.HTTPStatus(code)
-}
-
-// ── 预定义错误构造器 ──
-
-var (
-	ErrSystem         = Code(CodeSystem).Public("system_error")
-	ErrParamInvalid   = Code(CodeParamInvalid).Public("param_invalid")
-	ErrAuthFailed     = Code(CodeAuthFailed).Public("auth_failed")
-	ErrConfigNotFound = Code(CodeConfigNotFound).Public("config_not_found")
-	ErrConfigInvalid  = Code(CodeConfigInvalid).Public("config_invalid")
-	ErrRPCUnavailable = Code(CodeRPCUnavailable).Public("rpc_unavailable")
-	ErrRPCTimeout     = Code(CodeRPCTimeout).Public("rpc_timeout")
-	ErrRPCDecodeError = Code(CodeRPCDecodeError).Public("rpc_decode_error")
-	ErrRPCEncodeError = Code(CodeRPCEncodeError).Public("rpc_encode_error")
-
-	// Redis
-	ErrRedisConnect  = Code(CodeRedisConnect).Public("redis_connect_error")
-	ErrRedisPing     = Code(CodeRedisPing).Public("redis_ping_error")
-	ErrRedisOp       = Code(CodeRedisOp).Public("redis_operation_error")
-	ErrRedisPipeline = Code(CodeRedisPipeline).Public("redis_pipeline_error")
-	ErrRedisSentinel = Code(CodeRedisSentinel).Public("redis_sentinel_error")
-
-	// Kafka
-	ErrKafkaConnect   = Code(CodeKafkaConnect).Public("kafka_connect_error")
-	ErrKafkaSend      = Code(CodeKafkaSend).Public("kafka_send_error")
-	ErrKafkaConsume   = Code(CodeKafkaConsume).Public("kafka_consume_error")
-	ErrKafkaCommit    = Code(CodeKafkaCommit).Public("kafka_commit_error")
-	ErrKafkaRebalance = Code(CodeKafkaRebalance).Public("kafka_rebalance_error")
-
-	// DB
-	ErrDBConnect = Code(CodeDBConnect).Public("db_connect_error")
-	ErrDBQuery   = Code(CodeDBQuery).Public("db_query_error")
-	ErrDBExec    = Code(CodeDBExec).Public("db_exec_error")
-	ErrDBMigrate = Code(CodeDBMigrate).Public("db_migrate_error")
-
-	// ES
-	ErrESConnect = Code(CodeESConnect).Public("es_connect_error")
-	ErrESQuery   = Code(CodeESQuery).Public("es_query_error")
-
-	// ClickHouse
-	ErrCHConnect = Code(CodeCHConnect).Public("ch_connect_error")
-	ErrCHQuery   = Code(CodeCHQuery).Public("ch_query_error")
-
-	// TLS
-	ErrTLSConnect = Code(CodeTLSConnect).Public("tls_connect_error")
-	ErrTLSSend    = Code(CodeTLSSend).Public("tls_send_error")
-
-	// Observability
-	ErrObsInit   = Code(CodeObsInit).Public("observability_init_error")
-	ErrObsExport = Code(CodeObsExport).Public("observability_export_error")
-
-	// 业务错误
-	ErrDataNotFound        = Code(CodeDataNotFound).Public("data_not_found")
-	ErrDataDuplicate       = Code(CodeDataDuplicate).Public("data_duplicate")
-	ErrDataConflict        = Code(CodeDataConflict).Public("data_conflict")
-	ErrLoginFailed         = Code(CodeLoginFailed).Public("login_failed")
-	ErrTokenExpired        = Code(CodeTokenExpired).Public("token_expired")
-	ErrTokenInvalid        = Code(CodeTokenInvalid).Public("token_invalid")
-	ErrPermissionDenied    = Code(CodePermissionDenied).Public("permission_denied")
-	ErrRateLimit           = Code(CodeRateLimit).Public("rate_limit")
-	ErrQuotaExceeded       = Code(CodeQuotaExceeded).Public("quota_exceeded")
-	ErrIPBlocked           = Code(CodeIPBlocked).Public("ip_blocked")
-	ErrAccountDisabled     = Code(CodeAccountDisabled).Public("account_disabled")
-	ErrOrderInvalid        = Code(CodeOrderInvalid).Public("order_invalid")
-	ErrBalanceInsufficient = Code(CodeBalanceInsufficient).Public("balance_insufficient")
-	ErrVerificationFailed  = Code(CodeVerificationFailed).Public("verification_failed")
-	ErrOperationDenied     = Code(CodeOperationDenied).Public("operation_denied")
-)
-
-// ── 构造函数 ──
-
-type Builder = oops.OopsErrorBuilder
-
-func Code(code any) oops.OopsErrorBuilder    { return oops.Code(code) }
-func In(domain string) oops.OopsErrorBuilder { return oops.In(domain) }
-
-// ── 提取函数 ──
-
-func Extract(err error) (code int, public string) {
-	if err == nil {
-		return 0, ""
-	}
-	var oopsErr oops.OopsError
-	if errors.As(err, &oopsErr) {
-		if c, ok := oopsErr.Code().(int); ok {
-			return c, oopsErr.Public()
-		}
-		return 0, oopsErr.Public()
-	}
-	return 0, ""
-}
-
-func ExtractWithFallback(err error, fallbackCode int) (code int, public string) {
-	if err == nil {
-		return 0, ""
-	}
-	code, public = Extract(err)
-	if code == 0 {
-		return fallbackCode, err.Error()
-	}
-	return
-}
-
-func AsOopsError(err error) (oops.OopsError, bool) {
-	var oopsErr oops.OopsError
-	if errors.As(err, &oopsErr) {
-		return oopsErr, true
-	}
-	return oops.OopsError{}, false
-}
-
-// ── Kitex 适配 ──
-
+// Statuser Kitex BizStatus 接口。
 type Statuser interface {
 	BizStatusCode() int32
 	BizMessage() string
@@ -305,12 +108,16 @@ type Statuser interface {
 	Error() string
 }
 
+// OopsStatusAdapter 将 oops error 适配为 Kitex BizStatus。
 type OopsStatusAdapter struct {
 	Err   error
 	Extra map[string]string
 }
 
-func (a *OopsStatusAdapter) BizStatusCode() int32        { code, _ := Extract(a.Err); return int32(code) }
-func (a *OopsStatusAdapter) BizMessage() string          { _, public := Extract(a.Err); return public }
+// 编译期接口断言。
+var _ kerrors.BizStatusErrorIface = (*OopsStatusAdapter)(nil)
+
+func (a *OopsStatusAdapter) BizStatusCode() int32        { code, _ := rpcerror.Extract(a.Err); return int32(code) }
+func (a *OopsStatusAdapter) BizMessage() string          { _, public := rpcerror.Extract(a.Err); return public }
 func (a *OopsStatusAdapter) BizExtra() map[string]string { return a.Extra }
 func (a *OopsStatusAdapter) Error() string               { return a.Err.Error() }

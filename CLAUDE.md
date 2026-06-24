@@ -11,7 +11,7 @@ The 5-module → 3-library split (2026-06-23) is **complete**. ncgo generated pr
 ### Structure
 
 ```text
-go-common          ← 最底层，零框架依赖 (crypto, cache, httpclient, log, timeutil, netutil, captcha, auth, errcode)
+go-common          ← 最底层，零框架依赖 (crypto, cache, httpclient, log, timeutil, netutil, captcha, auth, errcode, rpcerror)
     ↑
 go-middleware       ← 中间件客户端 (redis, kafka, db, es, clickhouse, tls)
     ↑
@@ -20,7 +20,7 @@ go-framework        ← 框架适配 (hertz, kitex, config)
 
 | Module | Import Path | Purpose |
 |--------|------------|---------|
-| `go-common` | `github.com/byx-darwin/go-tools/go-common` | Pure utilities: crypto, cache, log, timeutil, netutil, httpclient, captcha, auth |
+| `go-common` | `github.com/byx-darwin/go-tools/go-common` | Pure utilities: crypto, cache, log, rpcerror, timeutil, netutil, httpclient, captcha, auth |
 | `go-middleware` | `github.com/byx-darwin/go-tools/go-middleware` | Middleware clients: redis, kafka, db, es, clickhouse, tls |
 | `go-framework` | `github.com/byx-darwin/go-tools/go-framework` | Framework adapters: hertz, kitex, config |
 
@@ -102,6 +102,7 @@ go-common/                 → Zero-dependency utilities
   timeutil/                → Time formatting helpers
   auth/                    → Auth helpers (AK/SK)
   errcode/                 → Error code constants
+  rpcerror/                → Error handling framework (oops-based, framework-agnostic)
 go-middleware/             → Middleware clients (no Hertz/Kitex dependency)
   redis/                   → Redis client (go-redis v9, UniversalClient)
   kafka/                   → Kafka client (kafka-go)
@@ -111,7 +112,7 @@ go-middleware/             → Middleware clients (no Hertz/Kitex dependency)
   tls/                     → TLS connection setup (火山引擎)
 go-framework/              → Framework adapters (depends on go-common + go-middleware)
   hertz/                   → Hertz HTTP server, response helpers, middleware
-  kitex/                   → Kitex RPC options, discovery, registry
+  kitex/                   → Kitex RPC options, discovery, registry, rpcerror (Kitex adapter)
   config/                  → Configuration loading (Polaris, DB, Hertz, Kitex, Kafka, Redis)
 specs/                     → Strategic planning documents
 config/                    → Legacy stub (empty, for backward reference)

@@ -25,7 +25,7 @@ import (
 
 	"github.com/byx-darwin/go-tools/go-common/netutil"
 	"github.com/byx-darwin/go-tools/go-framework/config/kitex"
-	"github.com/byx-darwin/go-tools/go-framework/kitex/rpcerror"
+	"github.com/byx-darwin/go-tools/go-common/rpcerror"
 	"github.com/cloudwego/kitex/client"
 	"github.com/cloudwego/kitex/pkg/connpool"
 	"github.com/cloudwego/kitex/pkg/limit"
