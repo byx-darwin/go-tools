@@ -237,6 +237,50 @@ var ErrRPCUnavailable = Code(CodeRPCUnavailable).Public("rpc_unavailable")
 // ErrRPCTimeout RPC 超时
 var ErrRPCTimeout = Code(CodeRPCTimeout).Public("rpc_timeout")
 
+// ErrRPCDecodeError RPC 解码错误
+var ErrRPCDecodeError = Code(CodeRPCDecodeError).Public("rpc_decode_error")
+
+// ErrRPCEncodeError RPC 编码错误
+var ErrRPCEncodeError = Code(CodeRPCEncodeError).Public("rpc_encode_error")
+
+// ── go-middleware 预定义错误构造器 ──
+
+// Redis
+var ErrRedisConnect = Code(CodeRedisConnect).Public("redis_connect_error")
+var ErrRedisPing = Code(CodeRedisPing).Public("redis_ping_error")
+var ErrRedisOp = Code(CodeRedisOp).Public("redis_operation_error")
+var ErrRedisPipeline = Code(CodeRedisPipeline).Public("redis_pipeline_error")
+var ErrRedisSentinel = Code(CodeRedisSentinel).Public("redis_sentinel_error")
+
+// Kafka
+var ErrKafkaConnect = Code(CodeKafkaConnect).Public("kafka_connect_error")
+var ErrKafkaSend = Code(CodeKafkaSend).Public("kafka_send_error")
+var ErrKafkaConsume = Code(CodeKafkaConsume).Public("kafka_consume_error")
+var ErrKafkaCommit = Code(CodeKafkaCommit).Public("kafka_commit_error")
+var ErrKafkaRebalance = Code(CodeKafkaRebalance).Public("kafka_rebalance_error")
+
+// DB
+var ErrDBConnect = Code(CodeDBConnect).Public("db_connect_error")
+var ErrDBQuery = Code(CodeDBQuery).Public("db_query_error")
+var ErrDBExec = Code(CodeDBExec).Public("db_exec_error")
+var ErrDBMigrate = Code(CodeDBMigrate).Public("db_migrate_error")
+
+// ES
+var ErrESConnect = Code(CodeESConnect).Public("es_connect_error")
+var ErrESQuery = Code(CodeESQuery).Public("es_query_error")
+
+// ClickHouse
+var ErrCHConnect = Code(CodeCHConnect).Public("ch_connect_error")
+var ErrCHQuery = Code(CodeCHQuery).Public("ch_query_error")
+
+// TLS
+var ErrTLSConnect = Code(CodeTLSConnect).Public("tls_connect_error")
+var ErrTLSSend = Code(CodeTLSSend).Public("tls_send_error")
+
+// Observability
+var ErrObsInit = Code(CodeObsInit).Public("observability_init_error")
+var ErrObsExport = Code(CodeObsExport).Public("observability_export_error")
+
 // ── 构造函数 ──
 
 // Builder 是 oops.OopsErrorBuilder 的别名，用于链式构造错误。
