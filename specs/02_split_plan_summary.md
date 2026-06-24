@@ -1,6 +1,6 @@
 # go-tools 拆库方案摘要
 
-> 详见 [`spces/SPLIT_PLAN.md`](../spces/SPLIT_PLAN.md)，本文为摘要。
+> 
 
 ## 一、当前结构
 
@@ -54,8 +54,8 @@ go-framework        ← 框架适配（Hertz / Kitex + 配置）
 | `config/redis/config.go` | `go-middleware/redis/config.go` | Redis 配置结构体 |
 | `middleware/kafka/sarama/producer.go` | `go-middleware/kafka/producer.go` | Kafka 生产者 |
 | `config/kafka/sarama/config.go` | `go-middleware/kafka/config.go` | Kafka 配置结构体（已决策 kafka-go D1） |
-| — | `go-middleware/es/` | Elasticsearch 客户端（新增，来自 ncgo 模板反哺） |
-| — | `go-middleware/clickhouse/` | ClickHouse 客户端（新增，来自 ncgo 模板反哺） |
+| — | `go-middleware/es/` | Elasticsearch 客户端（新增，来自 反哺） |
+| — | `go-middleware/clickhouse/` | ClickHouse 客户端（新增，来自 反哺） |
 | — | `go-middleware/tls/` | 火山引擎日志服务 TLS 客户端（新增：结构化日志上报） |
 | `config/db/config.go` | `go-middleware/db/config.go` | 数据库配置结构体 |
 
@@ -101,21 +101,21 @@ import "gitee.com/byx_darwin/go-framework/hertz"
 import "gitee.com/byx_darwin/go-framework/kitex/option"
 ```
 
-## 五、新增能力需求（来自 ncgo 对齐）
+## 五、新增能力需求（来自  对齐）
 
-拆分过程中需要从 ncgo 模板"回流"到 go-tools 的能力：
+拆分过程中需要从 "回流"到 go-tools 的能力：
 
 | 能力 | 来源 | 归入模块 | 说明 |
 |------|------|---------|------|
-| Kitex interceptor 中间件 | ncgo `interceptor.yaml` | go-framework `kitex/middleware/` | RequestID/AccessLog/Recovery/Timeout/CallerAllowlist |
-| oops 风格 rpcerror | ncgo `rpcerror.yaml` | go-framework `kitex/rpcerror/` | 替代当前的 ErrorType 枚举方式 |
-| Hertz response 工具 | ncgo `layout.yaml` 内嵌 | go-framework `hertz/response.go` | 升级现有的 response.go |
-| 统一 Redis UniversalClient | ncgo `optional/redis.go` | go-middleware `redis/` | 升级 *redis.Client → UniversalClient |
-| Kafka 库统一 | ncgo `optional/kafka.go` | go-middleware `kafka/` | 已决策 kafka-go（D1），替代现有 sarama 实现 |
-| 配置结构体增强 | ncgo conf.yaml | go-middleware/* + go-framework/config/* | 字段对齐 + 单位统一（D2：time.Duration） |
-| Kitex 链路追踪 | ncgo `observability_logging.go` | go-framework `kitex/observability/` | OTel 标准协议，通过 `kitex-contrib/obs-opentelemetry` 集成 |
-| Hertz 链路追踪 | ncgo `observability_logging.go` | go-framework `hertz/observability/` | OTel 标准协议，通过 `hertz-contrib/obs-opentelemetry` 集成 |
-| 日志服务客户端 | ncgo `observability_logging.go` | go-middleware `tls/` | 火山引擎 TLS 日志 Producer/Consumer |
+| Kitex interceptor 中间件 |  `interceptor.yaml` | go-framework `kitex/middleware/` | RequestID/AccessLog/Recovery/Timeout/CallerAllowlist |
+| oops 风格 rpcerror |  `rpcerror.yaml` | go-framework `kitex/rpcerror/` | 替代当前的 ErrorType 枚举方式 |
+| Hertz response 工具 |  `layout.yaml` 内嵌 | go-framework `hertz/response.go` | 升级现有的 response.go |
+| 统一 Redis UniversalClient |  `optional/redis.go` | go-middleware `redis/` | 升级 *redis.Client → UniversalClient |
+| Kafka 库统一 |  `optional/kafka.go` | go-middleware `kafka/` | 已决策 kafka-go（D1），替代现有 sarama 实现 |
+| 配置结构体增强 |  conf.yaml | go-middleware/* + go-framework/config/* | 字段对齐 + 单位统一（D2：time.Duration） |
+| Kitex 链路追踪 |  `observability_logging.go` | go-framework `kitex/observability/` | OTel 标准协议，通过 `kitex-contrib/obs-opentelemetry` 集成 |
+| Hertz 链路追踪 |  `observability_logging.go` | go-framework `hertz/observability/` | OTel 标准协议，通过 `hertz-contrib/obs-opentelemetry` 集成 |
+| 日志服务客户端 |  `observability_logging.go` | go-middleware `tls/` | 火山引擎 TLS 日志 Producer/Consumer |
 
 ## 六、库间接口契约
 
@@ -129,7 +129,7 @@ import "github.com/samber/hot"
 // 用法: cache := hot.NewHotCache[K, V](hot.LRU, maxEntries).Build()
 type HotCache[K comparable, V any] = hot.HotCache[K, V]
 
-// NewCache 创建带 TTL 的缓存（对齐 ncgo 模板中的 signature/ratelimit/idempotency 用法）
+// NewCache 创建带 TTL 的缓存（对齐 中的 signature/ratelimit/idempotency 用法）
 func NewCache[K comparable, V any](policy hot.Policy, size int) *hot.HotCache[K, V] {
     return hot.NewHotCache[K, V](policy, size).Build()
 }
@@ -144,12 +144,12 @@ func TEAEncrypt(data, key []byte) ([]byte, error)
 type Logger struct { *slog.Logger; config *Config }
 func New(cfg Config) *Logger  // 自动处理文件轮转+压缩+OTel span联动
 
-// go-common/log/adapters/kitex.go — klog.FullLogger 适配器（对齐 ncgo 模板）
+// go-common/log/adapters/kitex.go — klog.FullLogger 适配器（对齐 ）
 type KitexAdapter struct { ... }
 func NewKitexAdapter(l *Logger) klog.FullLogger
 // 用法: klog.SetLogger(log.NewKitexAdapter(logger))
 
-// go-common/log/adapters/hertz.go — hlog.FullLogger 适配器（对齐 ncgo 模板）
+// go-common/log/adapters/hertz.go — hlog.FullLogger 适配器（对齐 ）
 type HertzAdapter struct { ... }
 func NewHertzAdapter(l *Logger) hlog.FullLogger
 // 用法: hlog.SetLogger(log.NewHertzAdapter(logger))

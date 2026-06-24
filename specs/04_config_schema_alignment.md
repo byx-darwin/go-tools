@@ -1,6 +1,6 @@
-# 配置结构体 & YAML Schema 对齐方案
+# go-tools 配置结构体参考
 
-> 本文档说明 go-tools 和 ncgo 模板之间配置结构体和 YAML 配置文件的字段对齐策略。
+> 本文档说明 go-tools 和 之间配置结构体和 YAML 配置文件的字段对齐策略。
 
 ## 一、对标策略
 
@@ -32,7 +32,7 @@
                              ↑
                              │ import
 ┌─────────────────────────────────────────────────────────────┐
-│   ncgo 生成的项目的 internal/base/conf/conf.go               │
+│    生成的项目的 internal/base/conf/conf.go               │
 │   ┌───────────────────────────────────────────────────┐     │
 │   │ type Config struct {                              │     │
 │   │     Log      golog.Config          // 日志配置     │     │
@@ -51,7 +51,7 @@
 
 ### 当前差异
 
-| 属性 | ncgo (redis.yaml) | go-tools (config/redis/Config) | 统一方案 |
+| 属性 |  (redis.yaml) | go-tools (config/redis/Config) | 统一方案 |
 |------|------------------|-------------------------------|---------|
 | `addrs` | `[]string` | `address []string` | → `Addrs []string` |
 | `db` | `int` | `DB int` | → `DB int` ✅ |
@@ -188,7 +188,7 @@ database:
 
 ### 选型对比（已确认）
 
-| 维度 | ncgo (kafka-go) ✅ | go-tools (sarama) ❌ deprecated |
+| 维度 |  (kafka-go) ✅ | go-tools (sarama) ❌ deprecated |
 |------|-------------------|-------------------------------|
 | 仓库 | `github.com/segmentio/kafka-go` | `github.com/IBM/sarama` |
 | 设计风格 | 原生 Go，简洁 API | Java Kafka 客户端迁移，丰富功能 |
@@ -221,13 +221,13 @@ func (c *WriterConfig) Build() *kafka.Writer { ... }
 
 ## 五、配置加载统一
 
-ncgo 和 go-tools 的配置加载方式需要统一风格：
+ 和 go-tools 的配置加载方式需要统一风格：
 
 ### 当前
 
 | 项目 | 加载方式 | 错误库 | YAML 库 |
 |------|---------|--------|---------|
-| ncgo | `os.ReadFile` + `yaml.Unmarshal` + `Validate()` | `oops` | `yaml.v3` |
+|  | `os.ReadFile` + `yaml.Unmarshal` + `Validate()` | `oops` | `yaml.v3` |
 | go-tools | `os.ReadFile` + `yaml.Unmarshal` | `pkg/errors` | `yaml.v2` |
 
 ### 统一后
@@ -300,7 +300,7 @@ func LoadYAML[T any](path string) (*T, error) {
 }
 ```
 
-ncgo 生成的 `.env.example` 模板中预设所有环境变量占位符。
+ 生成的 `.env.example` 模板中预设所有环境变量占位符。
 
 ## 七、Elasticsearch 配置结构体
 
@@ -659,9 +659,9 @@ func (h *otelHandler) Handle(ctx context.Context, r slog.Record) error {
 }
 ```
 
-### ncgo 对齐：klog/hlog 适配器
+###  对齐：klog/hlog 适配器
 
-ncgo 模板生成的项目使用 Kitex `klog` / Hertz `hlog` 原生接口。通过适配器桥接：
+生成的项目使用 Kitex `klog` / Hertz `hlog` 原生接口。通过适配器桥接：
 
 ```go
 // go-common/log/adapters/kitex.go
@@ -684,7 +684,7 @@ func NewHertzAdapter(l *Logger) hlog.FullLogger { ... }
 // 在 main.go 中替换：hlog.SetLogger(NewHertzAdapter(logger))
 ```
 
-**对齐效果**：ncgo 模板中的 `klog.Infof(...)` / `hlog.Debugf(...)` 自动走 slog → JSON 输出，无需修改模板代码。
+**对齐效果**：中的 `klog.Infof(...)` / `hlog.Debugf(...)` 自动走 slog → JSON 输出，无需修改模板代码。
 
 ### YAML 示例
 
