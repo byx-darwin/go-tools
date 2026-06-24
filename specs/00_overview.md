@@ -25,18 +25,22 @@ go-framework        ← 框架适配
 | 包 | 职责 |
 |---|------|
 | `cache` | 泛型缓存（基于 samber/hot，支持 FIFO/LRU/LFU/CLOCK/MRU + TTL） |
-| `captcha` | 验证码生成与校验（图片验证码 + 数字/字母码 + 缓存存储） |
+| `captcha` | 验证码生成与校验（图片验证码 + 数字/字母码 + CacheStore） |
 | `errcode` | 统一错误码定义（10000-59999）+ HTTP 状态码映射 |
-| `log` | 结构化日志（基于 slog + OTel TraceID/SpanID 自动关联 + 文件轮转） |
-| `netutil` | 网络工具（内网 IP 获取等） |
-| 其他 | crypto, httpclient, timeutil, auth |
+| `log` | 结构化日志（基于 slog + OTel TraceID/SpanID + 文件轮转） |
+| `log/adapters` | Hertz/Kitex 日志适配器 |
+| `netutil` | 网络工具（内网 IP 获取） |
+| `crypto` | 加密（MD5/SHA/HMAC/TEA） |
+| `httpclient` | HTTP 客户端（重试/M3U8） |
+| `auth` | AK/SK 生成 |
+| `timeutil` | 时间工具 |
 
 ### go-middleware
 
 | 包 | 职责 |
 |---|------|
 | `redis` | Redis UniversalClient 工厂（单节点/哨兵，可选 OTel 追踪） |
-| `kafka` | Kafka Writer（生产者）/ Consumer（消费者） |
+| `kafka` | Kafka Writer（Producer）/ Consumer（kafka-go） |
 | `db` | 数据库客户端工厂（MySQL/PostgreSQL/SQLite） |
 | `es` | Elasticsearch 客户端 |
 | `clickhouse` | ClickHouse 客户端 |
@@ -46,19 +50,43 @@ go-framework        ← 框架适配
 
 | 包 | 职责 |
 |---|------|
-| `config` | 公共配置类型 + Hertz/Kitex 配置（ServerConfig / ClientConfig / CaptchaOption 等） |
+| `config` | 公共配置 + Hertz/Kitex 配置（ServerConfig / ClientConfig / CaptchaOption） |
 | `hertz/server` | Hertz HTTP 服务工厂 |
 | `hertz/middleware` | CORS / Auth / AccessLog 中间件 |
-| `kitex/option` | Kitex RPC 服务端/客户端 Option 工厂（长连接池 + TTHeaderStreaming） |
+| `hertz/observability` | OTel 链路追踪 |
+| `kitex/option` | Kitex RPC Option 工厂（长连接池 + TTHeaderStreaming） |
 | `kitex/rpcerror` | 基于 oops 的统一错误处理 + Kitex BizStatusErrorIface 适配 |
 | `kitex/middleware` | AccessLog 中间件 |
+| `kitex/observability` | OTel 链路追踪 |
 
 ## 四、错误码体系
 
 ```
-go-framework  10000-10499  ── system/param/auth/config/RPC    HTTP: 400/401/500/503/504
-go-middleware  20000-20699  ── redis/kafka/db/es/ch/tls/obs   HTTP: 500/503
-项目业务       40000-59999  ── 数据/认证/限制/状态            HTTP: 200
+go-framework  10000-10499  ── system/param/auth/config/RPC
+  10000 CodeSystem            → HTTP 500
+  10001 CodeParamInvalid      → HTTP 400
+  10002 CodeAuthFailed        → HTTP 401
+  10003 CodeConfigNotFound    → HTTP 500
+  10004 CodeConfigInvalid     → HTTP 500
+  10010 CodeRPCUnavailable    → HTTP 503
+  10011 CodeRPCTimeout        → HTTP 504
+  10012 CodeRPCDecodeError    → HTTP 500
+  10013 CodeRPCEncodeError    → HTTP 500
+
+go-middleware  20000-20699  ── redis/kafka/db/es/ch/tls/obs
+  20001-20005  Redis      → HTTP 500/503
+  20101-20105  Kafka      → HTTP 500/503
+  20201-20204  DB         → HTTP 500/503
+  20301-20302  ES         → HTTP 500/503
+  20401-20402  ClickHouse → HTTP 500/503
+  20501-20502  TLS        → HTTP 500/503
+  20601-20602  Obs        → HTTP 500/503
+
+项目业务       40000-59999  ── HTTP 200（RPC 调用成功）
+  40010-40012  数据（NotFound/Duplicate/Conflict）
+  40110-40113  认证（LoginFailed/TokenExpired/TokenInvalid/PermissionDenied）
+  40210-40212  限制（RateLimit/QuotaExceeded/IPBlocked）
+  40310-40314  状态（AccountDisabled/OrderInvalid/BalanceInsufficient/VerificationFailed/OperationDenied）
 ```
 
 详见 `go-common/errcode/code.go` 和 `go-framework/kitex/rpcerror/error.go`。
