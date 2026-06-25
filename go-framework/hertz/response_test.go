@@ -123,3 +123,9 @@ func TestNewResponder_EmptyRequestIDHeader_Disables(t *testing.T) {
 	r := NewResponder(WithRequestIDHeader(""))
 	assert.Equal(t, "", r.reqIDHeader)
 }
+
+func TestResponder_Middleware_Exists(t *testing.T) {
+	r := NewResponder()
+	handler := r.Middleware()
+	assert.NotNil(t, handler)
+}

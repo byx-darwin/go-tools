@@ -178,8 +178,6 @@ func WithDefaultBizCode(successCode, failCode int) Option {
 
 // extractRequestID 提取请求 ID。
 // 优先级：OTel trace-id → X-Request-ID header → UUID 生成。
-//
-//nolint:unused // Task 6 (Middleware) 中使用
 func (r *Responder) extractRequestID(ctx context.Context, rc *app.RequestContext) string {
 	// 1. OTel trace-id（hex 格式）
 	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
@@ -328,4 +326,85 @@ func (r *Responder) translate(c context.Context, ctx *app.RequestContext, msg st
 	}
 	lang := r.extractLang(ctx)
 	return r.translator.Translate(c, lang, msg)
+}
+
+// ── Context Keys ──
+
+type ctxKey string
+
+const (
+	ctxKeyRequestID ctxKey = "responder:request_id"
+	ctxKeyLang      ctxKey = "responder:lang"
+	ctxKeyResponder ctxKey = "responder:instance"
+)
+
+// ── Middleware ──
+
+// Middleware 返回 Hertz 中间件处理函数。
+// 中间件职责：
+//  1. 提取/生成 Request ID → 设置响应头 + 注入 ctx
+//  2. 提取语言偏好 → 注入 ctx
+//  3. 注入 Responder 实例 → 注入 ctx
+func (r *Responder) Middleware() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
+		// 1. 提取 Request ID
+		reqID := r.extractRequestID(ctx, c)
+		if reqID != "" && r.reqIDHeader != "" {
+			c.Response.Header.Set(r.reqIDHeader, reqID)
+		}
+		c.Set(string(ctxKeyRequestID), reqID)
+
+		// 2. 提取语言偏好
+		lang := r.extractLang(c)
+		c.Set(string(ctxKeyLang), lang)
+
+		// 3. 注入 Responder
+		c.Set(string(ctxKeyResponder), r)
+
+		c.Next(ctx)
+	}
+}
+
+// ── Context 辅助函数 ──
+
+var defaultResponder = NewResponder()
+
+// RespondFrom 从请求上下文获取 Responder。
+// 若未通过 Middleware 注入，返回默认 Responder。
+func RespondFrom(ctx *app.RequestContext) *Responder {
+	if v, ok := ctx.Value(string(ctxKeyResponder)).(*Responder); ok {
+		return v
+	}
+	return defaultResponder
+}
+
+// RequestIDFrom 从请求上下文获取当前 Request ID。
+// 若未通过 Middleware 提取，返回空字符串。
+func RequestIDFrom(ctx *app.RequestContext) string {
+	if v, ok := ctx.Value(string(ctxKeyRequestID)).(string); ok {
+		return v
+	}
+	return ""
+}
+
+// ── 包级便捷函数（使用默认 Responder）──
+
+// Success 成功响应（使用默认 Responder）。
+func Success(ctx *app.RequestContext, data any) {
+	defaultResponder.Success(ctx, data)
+}
+
+// Error 错误响应（使用默认 Responder）。
+func Error(c context.Context, ctx *app.RequestContext, err error, publicMsg string) {
+	defaultResponder.Error(c, ctx, err, publicMsg)
+}
+
+// ErrorWithCode 指定业务码的错误响应（使用默认 Responder）。
+func ErrorWithCode(c context.Context, ctx *app.RequestContext, httpCode, bizCode int, msg string) {
+	defaultResponder.ErrorWithCode(c, ctx, httpCode, bizCode, msg)
+}
+
+// Reply 原始响应写入（使用默认 Responder）。
+func Reply(ctx *app.RequestContext, httpCode int, obj any) {
+	defaultResponder.Reply(ctx, httpCode, obj)
 }
