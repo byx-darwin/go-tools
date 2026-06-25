@@ -118,7 +118,7 @@ type Response struct {
 ```
 
 **设计说明**:
-- `Code`: 业务码，0 = 成功
+- `Code`: 业务码，200 = 成功
 - `Msg`: 用户可见消息（经 i18n 翻译后）
 - `Data`: 业务数据，可选
 - Request ID 通过响应头 `X-Request-ID` 返回，不放响应体
@@ -253,7 +253,7 @@ func WithRequestIDGenerator(fn func() string) Option
 func WithLangHeader(name string) Option
 
 // WithDefaultBizCode 设置默认成功/失败业务码。
-// 默认 successCode=0, failCode=500。
+// 默认 successCode=200, failCode=500。
 func WithDefaultBizCode(successCode, failCode int) Option
 ```
 
@@ -265,7 +265,7 @@ func WithDefaultBizCode(successCode, failCode int) Option
 //   - debug: false
 //   - reqIDHeader: "X-Request-ID"
 //   - langHeader: "Accept-Language"
-//   - successCode: 0
+//   - successCode: 200
 //   - failCode: 500
 func NewResponder(opts ...Option) *Responder
 ```
@@ -278,7 +278,7 @@ func NewResponder(opts ...Option) *Responder
 
 ```go
 // Success 成功响应。
-// HTTP 200，业务码为 successCode（默认 0），msg 为 "ok"。
+// HTTP 200，业务码为 successCode（默认 200），msg 为 "ok"。
 // data 为 nil 时响应体不含 data 字段。
 func (r *Responder) Success(ctx *app.RequestContext, data any)
 
@@ -649,7 +649,7 @@ X-Request-ID: 4f3a2b1c-8d9e-4f7a-bc1d-2e3f4a5b6c7d
 Content-Type: application/json; charset=utf-8
 
 {
-    "code": 0,
+    "code": 200,
     "msg": "ok",
     "data": { "id": 123, "name": "Alice" }
 }
