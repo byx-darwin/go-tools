@@ -46,6 +46,7 @@
 | Context 辅助 | 通用方法 + 框架特定预定义函数 |
 | oops 错误提取 | 直接依赖，提供 ErrorAttrs() |
 | 框架适配器 | 移到 go-framework 层 |
+| 敏感数据脱敏 | 自动检测并脱敏敏感字段（password, token, credit_card 等） |
 | 实施方案 | 完全重新设计（破坏性变更） |
 
 ## 3. 架构设计
@@ -60,6 +61,7 @@ go-common/log/              # 核心日志库（无框架依赖）
 ├── release.go              # ReleaseInfo
 ├── context.go              # Context 辅助工具
 ├── error.go                # oops 错误提取
+├── mask.go                 # 敏感数据脱敏
 ├── handler.go              # slog.Handler 实现（multiHandler 等）
 ├── global.go               # 全局单例管理
 ├── rotation.go             # lumberjack 集成（build tag: with_rotation）
@@ -150,6 +152,9 @@ type Config struct {
 
     // 分类配置
     Categories map[string]CategoryConfig `yaml:"categories"`
+
+    // 敏感数据脱敏
+    Masking MaskConfig `yaml:"masking"`
 }
 
 type FileConfig struct {
@@ -165,6 +170,12 @@ type CategoryConfig struct {
     Enabled  bool   `yaml:"enabled"`   // 是否启用
     File     string `yaml:"file"`      // 独立文件名（相对于 Dir）
     Level    string `yaml:"level"`     // 独立级别
+}
+
+type MaskConfig struct {
+    Enabled      bool     `yaml:"enabled"`
+    MaskedFields []string `yaml:"masked_fields"` // 需要脱敏的字段名
+    Mode         string   `yaml:"mode"`          // "full" 或 "partial"
 }
 ```
 
@@ -293,7 +304,58 @@ log.L().ErrorContext(ctx, "operation failed", err, log.ErrorAttrs(err)...)
 // 输出: {"error.message": "db failed", "error.code": "DB_ERROR", ...}
 ```
 
-### 4.7 文件轮转（可选）
+### 4.7 敏感数据脱敏
+
+```go
+// MaskConfig 敏感数据脱敏配置
+type MaskConfig struct {
+    Enabled      bool     `yaml:"enabled"`
+    MaskedFields []string `yaml:"masked_fields"` // 需要脱敏的字段名
+    Mode         string   `yaml:"mode"`          // "full" 或 "partial"
+}
+
+// Masker 敏感数据脱敏器
+type Masker struct {
+    config MaskConfig
+}
+
+// Mask 对日志属性进行脱敏
+func (m *Masker) Mask(attrs []slog.Attr) []slog.Attr
+```
+
+**自动脱敏规则：**
+
+| 字段名 | 脱敏模式 | 示例 |
+|--------|---------|------|
+| password, passwd, pwd | full | `***` |
+| secret, api_key, token | full | `***` |
+| credit_card, card_number | partial | `****-****-****-1234` |
+| phone, mobile | partial | `138****1234` |
+| id_card, ssn | partial | `110***********1234` |
+| email | partial | `a***@example.com` |
+
+**使用示例：**
+
+```go
+// 配置
+cfg := log.Config{
+    Masking: log.MaskConfig{
+        Enabled:      true,
+        MaskedFields: []string{"password", "token", "credit_card"},
+        Mode:         "partial",
+    },
+}
+
+// 日志
+log.L().InfoContext(ctx, "user login",
+    "username", "alice",
+    "password", "secret123",      // 自动脱敏为 "***"
+    "token", "abc123xyz",         // 自动脱敏为 "***"
+)
+// 输出: {"username": "alice", "password": "***", "token": "***"}
+```
+
+### 4.8 文件轮转（可选）
 
 ```go
 // build tag: with_rotation
@@ -334,6 +396,8 @@ releaseHandler       ← 注入 release 信息
 contextHandler       ← 注入 context 字段（request_id 等）
   ↓
 otelHandler          ← 注入 trace_id/span_id（已有）
+  ↓
+maskHandler          ← 脱敏敏感数据（password, token 等）
   ↓
 slog.JSONHandler     ← 最终输出
 ```
@@ -484,6 +548,18 @@ log:
       enabled: true
       file: "user.log"
       level: "debug"
+
+  masking:
+    enabled: true
+    masked_fields:
+      - "password"
+      - "secret"
+      - "token"
+      - "api_key"
+      - "credit_card"
+      - "phone"
+      - "id_card"
+    mode: "partial"
 ```
 
 ### 7.2 代码初始化
@@ -621,6 +697,7 @@ golangci-lint run ./go-framework/kitex/log/...
 - [ ] go-common/log 支持分类、ReleaseInfo、Context 注入
 - [ ] 支持 lumberjack 文件轮转（可选）
 - [ ] 支持 oops 错误提取
+- [ ] 支持敏感数据脱敏（自动检测并脱敏 password、token 等）
 - [ ] Hertz/Kitex 适配器工作正常
 - [ ] 中间件更新使用新 API
 - [ ] 所有测试通过
