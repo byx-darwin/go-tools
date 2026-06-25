@@ -111,10 +111,9 @@ go-framework/hertz/
 // Response 统一响应体。
 // 支持 JSON 和 Protobuf 双格式序列化。
 type Response struct {
-    Code      int    `json:"code"       protobuf:"varint,1,opt,name=code"`
-    Msg       string `json:"msg"        protobuf:"bytes,2,opt,name=msg"`
-    Data      any    `json:"data,omitempty" protobuf:"bytes,3,opt,name=data"`
-    RequestID string `json:"request_id,omitempty" protobuf:"bytes,4,opt,name=request_id"`
+    Code int    `json:"code"       protobuf:"varint,1,opt,name=code"`
+    Msg  string `json:"msg"        protobuf:"bytes,2,opt,name=msg"`
+    Data any    `json:"data,omitempty" protobuf:"bytes,3,opt,name=data"`
 }
 ```
 
@@ -122,7 +121,7 @@ type Response struct {
 - `Code`: 业务码，0 = 成功
 - `Msg`: 用户可见消息（经 i18n 翻译后）
 - `Data`: 业务数据，可选
-- `RequestID`: 请求 ID，可选（与响应头一致）
+- Request ID 通过响应头 `X-Request-ID` 返回，不放响应体
 
 **注意**: `Data` 字段类型为 `any`，Protobuf 序列化时需要项目方自行定义具体 message 类型并转换。库提供 `Response` 作为 JSON 默认结构，Protobuf 场景下项目方可定义自己的结构体传入 `Reply()`。
 
@@ -652,8 +651,7 @@ Content-Type: application/json; charset=utf-8
 {
     "code": 0,
     "msg": "ok",
-    "data": { "id": 123, "name": "Alice" },
-    "request_id": "4f3a2b1c-8d9e-4f7a-bc1d-2e3f4a5b6c7d"
+    "data": { "id": 123, "name": "Alice" }
 }
 ```
 
@@ -665,8 +663,7 @@ Content-Type: application/json; charset=utf-8
 
 {
     "code": 10001,
-    "msg": "参数无效",
-    "request_id": "4f3a2b1c-8d9e-4f7a-bc1d-2e3f4a5b6c7d"
+    "msg": "参数无效"
 }
 ```
 
@@ -678,8 +675,7 @@ Content-Type: application/json; charset=utf-8
 
 {
     "code": 10001,
-    "msg": "参数无效 | internal: field 'email' format invalid",
-    "request_id": "4f3a2b1c-8d9e-4f7a-bc1d-2e3f4a5b6c7d"
+    "msg": "参数无效 | internal: field 'email' format invalid"
 }
 ```
 
@@ -800,4 +796,4 @@ gohertz.RespondFrom(ctx).ErrorWithCode(ctx, 400, 10001, "参数无效")
 | `getLang(ctx)` metainfo 提取 | `Responder.extractLang(ctx)` + `WithLangHeader` |
 | `i18n.Msg(lang, msg)` | `Translator.Translate(ctx, lang, msg)` |
 | `rpc_error.ParseBizStatusError(err)` | `ErrorRouter.Route(ctx, err)` + 默认 `RPCErrorRouter` |
-| `base.BaseReply{Code, Msg}` | `Response{Code, Msg, Data, RequestID}` |
+| `base.BaseReply{Code, Msg}` | `Response{Code, Msg, Data}` + 响应头 `X-Request-ID` |
