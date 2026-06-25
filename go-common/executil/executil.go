@@ -4,6 +4,8 @@ package executil
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"os/exec"
 	"time"
@@ -80,14 +82,14 @@ func (r *execRunner) Run(ctx context.Context, cmd *Cmd) *Result {
 	}
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			result.Err = &TimeoutError{Duration: cmd.Timeout}
+		} else if exitErr := new(exec.ExitError); errors.As(err, &exitErr) {
 			result.ExitCode = exitErr.ExitCode()
 			result.Err = &ExitError{
 				ExitCode: exitErr.ExitCode(),
 				Stderr:   truncate(stderrBuf.Bytes(), 1024),
 			}
-		} else if ctx.Err() == context.DeadlineExceeded {
-			result.Err = &TimeoutError{Duration: cmd.Timeout}
 		} else {
 			result.Err = &NotFoundError{Name: cmd.Name}
 		}
@@ -110,6 +112,20 @@ func truncate(b []byte, maxLen int) []byte {
 	return b[:maxLen]
 }
 
+// NotFoundError 命令不存在错误。
+type NotFoundError struct {
+	Name string
+	Hint string
+}
+
+func (e *NotFoundError) Error() string {
+	msg := "command not found: " + e.Name
+	if e.Hint != "" {
+		msg += " (" + e.Hint + ")"
+	}
+	return msg
+}
+
 // ExitError 命令退出码非零错误。
 type ExitError struct {
 	ExitCode int
@@ -117,23 +133,14 @@ type ExitError struct {
 }
 
 func (e *ExitError) Error() string {
-	return "exit code: " + string(e.Stderr)
+	return fmt.Sprintf("command exited with code %d", e.ExitCode)
 }
 
-// TimeoutError 超时错误。
+// TimeoutError 命令执行超时错误。
 type TimeoutError struct {
 	Duration time.Duration
 }
 
 func (e *TimeoutError) Error() string {
 	return "command timed out after " + e.Duration.String()
-}
-
-// NotFoundError 命令未找到错误。
-type NotFoundError struct {
-	Name string
-}
-
-func (e *NotFoundError) Error() string {
-	return "command not found: " + e.Name
 }
