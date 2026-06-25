@@ -1,11 +1,13 @@
 package astutil_test
 
 import (
+	"go/token"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/byx-darwin/go-tools/go-common/astutil"
+	"github.com/dave/dst"
 	"github.com/stretchr/testify/require"
 )
 
@@ -161,4 +163,127 @@ func TestFile_WriteTo_Error(t *testing.T) {
 	dir := t.TempDir()
 	err = file.WriteTo(dir) // 写入目录路径应失败
 	require.Error(t, err)
+}
+
+func TestFile_FindDecls_FuncDecl(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+func bar() {}
+type MyInt int
+`))
+	require.NoError(t, err)
+
+	decls := file.FindDecls((*dst.FuncDecl)(nil))
+	require.Len(t, decls, 2)
+	require.Equal(t, "foo", decls[0].(*dst.FuncDecl).Name.Name)
+	require.Equal(t, "bar", decls[1].(*dst.FuncDecl).Name.Name)
+}
+
+func TestFile_FindDecls_GenDecl(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+import "fmt"
+type MyInt int
+var x = 1
+const y = 2
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	decls := file.FindDecls((*dst.GenDecl)(nil))
+	require.Len(t, decls, 4) // import, type, var, const
+}
+
+func TestFile_FindDecls_NoMatch(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	decls := file.FindDecls((*dst.GenDecl)(nil))
+	require.Len(t, decls, 0)
+}
+
+func TestFile_FindGenDecls_Import(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+import "fmt"
+import "os"
+type MyInt int
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	decls := file.FindGenDecls(token.IMPORT)
+	require.Len(t, decls, 2) // 每个单独的 import 语句是一个 GenDecl
+	require.Len(t, decls[0].Specs, 1)
+	require.Len(t, decls[1].Specs, 1)
+}
+
+func TestFile_FindGenDecls_ImportGrouped(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+import (
+	"fmt"
+	"os"
+)
+type MyInt int
+`))
+	require.NoError(t, err)
+
+	decls := file.FindGenDecls(token.IMPORT)
+	require.Len(t, decls, 1)
+	require.Len(t, decls[0].Specs, 2)
+}
+
+func TestFile_FindGenDecls_Type(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+type Foo struct{}
+type Bar interface{}
+var x = 1
+`))
+	require.NoError(t, err)
+
+	decls := file.FindGenDecls(token.TYPE)
+	require.Len(t, decls, 2)
+}
+
+func TestFile_FindGenDecls_Var(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+var x = 1
+var y = 2
+type MyInt int
+`))
+	require.NoError(t, err)
+
+	decls := file.FindGenDecls(token.VAR)
+	require.Len(t, decls, 2)
+}
+
+func TestFile_FindGenDecls_Const(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+const a = 1
+const b = 2
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	decls := file.FindGenDecls(token.CONST)
+	require.Len(t, decls, 2)
+}
+
+func TestFile_FindGenDecls_NoMatch(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	decls := file.FindGenDecls(token.TYPE)
+	require.Len(t, decls, 0)
 }
