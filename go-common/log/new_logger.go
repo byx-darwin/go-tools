@@ -58,15 +58,6 @@ func createOutputHandler(w io.Writer, cfg Config) slog.Handler {
 	return slog.NewTextHandler(w, opts)
 }
 
-// createFileWriter 创建文件写入器。
-func createFileWriter(cfg FileConfig) io.Writer {
-	if cfg.Dir == "" || cfg.Filename == "" {
-		return os.Stdout
-	}
-	// TODO: 实现文件写入和 rotation
-	return os.Stdout
-}
-
 // parseNewLevel 解析日志级别字符串。
 func parseNewLevel(s string) slog.Level {
 	switch s {
