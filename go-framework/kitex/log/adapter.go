@@ -1,5 +1,5 @@
-// Package adapters 提供 slog.Logger 到框架日志接口的适配器。
-package adapters
+// Package kitexlog 提供 go-common/log.Logger 到 Kitex klog.FullLogger 的适配器。
+package kitexlog
 
 import (
 	"context"
@@ -12,11 +12,6 @@ import (
 )
 
 // KitexAdapter 将 go-common/log.Logger 适配为 kitex klog.FullLogger。
-//
-// 用法:
-//
-//	l := log.New(log.WithLevel("info"))
-//	klog.SetLogger(adapters.NewKitexAdapter(l))
 type KitexAdapter struct {
 	logger *log.Logger
 	level  klog.Level
@@ -28,7 +23,6 @@ func NewKitexAdapter(l *log.Logger) klog.FullLogger {
 	return &KitexAdapter{
 		logger: l,
 		level:  klog.LevelInfo,
-		writer: osStdout{},
 	}
 }
 
@@ -96,12 +90,12 @@ func (a *KitexAdapter) Fatalf(format string, v ...interface{}) {
 
 // CtxTracef implements klog.CtxLogger.
 func (a *KitexAdapter) CtxTracef(ctx context.Context, format string, v ...interface{}) {
-	a.logger.InfoContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.DebugContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // CtxDebugf implements klog.CtxLogger.
 func (a *KitexAdapter) CtxDebugf(ctx context.Context, format string, v ...interface{}) {
-	a.logger.InfoContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.DebugContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // CtxInfof implements klog.CtxLogger.
@@ -140,7 +134,3 @@ func (a *KitexAdapter) SetOutput(w io.Writer) { a.writer = w }
 func (a *KitexAdapter) log(level slog.Level, msg string) {
 	a.logger.Logger.LogAttrs(context.Background(), level, msg)
 }
-
-type osStdout struct{}
-
-func (osStdout) Write(p []byte) (int, error) { return len(p), nil }
