@@ -247,32 +247,3 @@ func TestResponder_WithTranslator(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, "已翻译-success_message", resp.Msg)
 }
-
-// ── 废弃 API 兼容测试 ──
-
-func TestDeprecated_OK(t *testing.T) {
-	engine := route.NewEngine(config.NewOptions([]config.Option{}))
-	engine.Use(NewResponder().Middleware())
-	engine.GET("/deprecated-ok", func(ctx context.Context, c *app.RequestContext) {
-		OK(c, map[string]string{"x": "y"})
-	})
-
-	w := ut.PerformRequest(engine, http.MethodGet, "/deprecated-ok", nil)
-
-	require.Equal(t, http.StatusOK, w.Code)
-
-	var resp Response
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, http.StatusOK, resp.Code)
-}
-
-func TestDeprecated_Err(t *testing.T) {
-	engine := route.NewEngine(config.NewOptions([]config.Option{}))
-	engine.Use(NewResponder().Middleware())
-	engine.GET("/deprecated-err", func(ctx context.Context, c *app.RequestContext) {
-		Err(c, errors.New("something broke"))
-	})
-
-	w := ut.PerformRequest(engine, http.MethodGet, "/deprecated-err", nil)
-	require.Equal(t, http.StatusInternalServerError, w.Code)
-}
