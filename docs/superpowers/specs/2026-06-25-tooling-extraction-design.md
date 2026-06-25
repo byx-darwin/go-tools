@@ -124,9 +124,9 @@ file.Apply(
     astutil.AddImport("fmt"),
     astutil.AddImport("context"),
     astutil.RemoveImport("os"),
-    astutil.EnsureFunction("init", bodyAST),
-    astutil.InsertAfter("//go:build", newCode),  // 基于标记插入
-    astutil.ReplaceNode(old, new),
+    astutil.EnsureFunction("init", bodyStmts),     // bodyStmts: []dst.Stmt
+    astutil.InsertAfter("//inject:here", newStmt), // newStmt: dst.Stmt，基于注释标记定位
+    astutil.ReplaceNode(oldNode, newNode),         // oldNode, newNode: dst.Node
 )
 
 // 输出：格式化源码
