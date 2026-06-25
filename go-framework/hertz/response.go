@@ -2,6 +2,7 @@ package hertz
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -177,6 +178,8 @@ func WithDefaultBizCode(successCode, failCode int) Option {
 
 // extractRequestID 提取请求 ID。
 // 优先级：OTel trace-id → X-Request-ID header → UUID 生成。
+//
+//nolint:unused // Task 6 (Middleware) 中使用
 func (r *Responder) extractRequestID(ctx context.Context, rc *app.RequestContext) string {
 	// 1. OTel trace-id（hex 格式）
 	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
@@ -214,4 +217,115 @@ func (r *Responder) writeResponse(ctx *app.RequestContext, httpCode int, obj any
 	default:
 		ctx.JSON(httpCode, obj)
 	}
+}
+
+// ── 响应方法 ──
+
+// reply 内部写响应方法。
+func (r *Responder) reply(ctx *app.RequestContext, httpCode, bizCode int, data any, msg string) {
+	resp := Response{Code: bizCode, Msg: msg, Data: data}
+	r.writeResponse(ctx, httpCode, resp)
+}
+
+// Success 成功响应。
+// HTTP 200，业务码为 successCode（默认 200），msg 为 "ok"。
+// data 为 nil 时响应体不含 data 字段。
+func (r *Responder) Success(ctx *app.RequestContext, data any) {
+	r.reply(ctx, http.StatusOK, r.successCode, data, "ok")
+}
+
+// SuccessWithMsg 带自定义消息的成功响应。
+// msg 会经过 Translator 翻译（若已配置）。
+// c 为请求的 context.Context，用于 i18n 翻译和链路追踪。
+func (r *Responder) SuccessWithMsg(c context.Context, ctx *app.RequestContext, data any, msg string) {
+	r.reply(ctx, http.StatusOK, r.successCode, data, r.translate(c, ctx, msg))
+}
+
+// Error 错误响应。
+// 根据错误类型自动路由：
+//  1. 若配置了 ErrorRouter 且识别错误 → 使用路由结果
+//  2. 否则 → HTTP 500 + failCode
+//
+// publicMsg 为用户可见消息（经 Translator 翻译）。
+// Debug 模式下，err.Error() 附加到 msg 末尾。
+// c 为请求的 context.Context，用于 ErrorRouter.Route 和 i18n 翻译。
+func (r *Responder) Error(c context.Context, ctx *app.RequestContext, err error, publicMsg string) {
+	httpCode, bizCode, finalMsg := r.routeError(c, ctx, err, publicMsg)
+	r.reply(ctx, httpCode, bizCode, nil, finalMsg)
+}
+
+// ErrorWithCode 指定业务码的错误响应。
+// 跳过 ErrorRouter，直接使用指定 bizCode。
+// c 为请求的 context.Context，用于 i18n 翻译。
+func (r *Responder) ErrorWithCode(c context.Context, ctx *app.RequestContext, httpCode, bizCode int, msg string) {
+	r.reply(ctx, httpCode, bizCode, nil, r.translate(c, ctx, msg))
+}
+
+// Reply 原始响应写入。
+// 直接写入指定 HTTP 状态码和对象，用于自定义响应结构。
+// 支持内容协商（JSON/Protobuf）。
+func (r *Responder) Reply(ctx *app.RequestContext, httpCode int, obj any) {
+	r.writeResponse(ctx, httpCode, obj)
+}
+
+// ── 错误路由 ──
+
+// routeError 解析错误，返回 HTTP 状态码、业务码和最终消息。
+// c 为请求的 context.Context，用于 ErrorRouter.Route。
+func (r *Responder) routeError(c context.Context, ctx *app.RequestContext, err error, publicMsg string) (httpCode, bizCode int, finalMsg string) {
+	// 1. 尝试自定义 ErrorRouter
+	if r.errorRouter != nil {
+		if route, ok := r.errorRouter.Route(c, err); ok {
+			msg := publicMsg
+			if route.Override != "" {
+				msg = route.Override
+			}
+			return route.HTTPCode, route.BizCode, r.applyDebugFilter(msg, err)
+		}
+	}
+	// 2. 兜底
+	return http.StatusInternalServerError, r.failCode, r.applyDebugFilter(r.translate(c, ctx, publicMsg), err)
+}
+
+// ── Debug 模式 ──
+
+// applyDebugFilter Debug 模式下附加内部错误详情。
+// 安全警告：Debug 模式绝不能在正式生产环境启用。
+// err.Error() 可能包含敏感信息（SQL 语句、堆栈路径等）。
+func (r *Responder) applyDebugFilter(msg string, err error) string {
+	if !r.debug || err == nil {
+		return msg
+	}
+	return fmt.Sprintf("%s | internal: %s", msg, err.Error())
+}
+
+// ── I18n ──
+
+// extractLang 从请求头提取语言偏好。
+func (r *Responder) extractLang(ctx *app.RequestContext) string {
+	if r.langHeader == "" {
+		return ""
+	}
+	lang := string(ctx.Request.Header.Peek(r.langHeader))
+	if lang == "" {
+		return "zh"
+	}
+	// 解析 "zh-CN,zh;q=0.9" → "zh"
+	if idx := strings.IndexAny(lang, ",;"); idx > 0 {
+		lang = lang[:idx]
+	}
+	if idx := strings.IndexByte(lang, '-'); idx > 0 {
+		lang = lang[:idx]
+	}
+	return lang
+}
+
+// translate 翻译消息（若已配置 Translator）。
+// c 为请求的 context.Context，用于 Translator.Translate。
+func (r *Responder) translate(c context.Context, ctx *app.RequestContext, msg string) string {
+	if r.translator == nil || msg == "" {
+		return msg
+	}
+	lang := r.extractLang(ctx)
+	return r.translator.Translate(c, lang, msg)
 }
