@@ -38,6 +38,37 @@ import "os"
 	require.Len(t, imports, 2)
 }
 
+func TestFile_AddImport(t *testing.T) {
+	file, _ := astutil.ParseSource([]byte(`package main
+`))
+	file.Apply(astutil.AddImport("fmt"))
+	imports := file.FindImports()
+	require.Len(t, imports, 1)
+	require.Contains(t, imports[0].Path.Value, "fmt")
+}
+
+func TestFile_AddImport_Idempotent(t *testing.T) {
+	file, _ := astutil.ParseSource([]byte(`package main
+
+import "fmt"
+`))
+	file.Apply(astutil.AddImport("fmt"))
+	imports := file.FindImports()
+	require.Len(t, imports, 1) // 不会重复添加
+}
+
+func TestFile_RemoveImport(t *testing.T) {
+	file, _ := astutil.ParseSource([]byte(`package main
+
+import "fmt"
+import "os"
+`))
+	file.Apply(astutil.RemoveImport("fmt"))
+	imports := file.FindImports()
+	require.Len(t, imports, 1)
+	require.Contains(t, imports[0].Path.Value, "os")
+}
+
 func TestParseFile(t *testing.T) {
 	// 创建一个临时文件
 	// 这里简化，实际测试需要创建真实文件
