@@ -2,6 +2,7 @@
 package executil_test
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -60,4 +61,30 @@ func TestRun_TimeoutError(t *testing.T) {
 	var te *executil.TimeoutError
 	require.ErrorAs(t, result.Err, &te)
 	require.Equal(t, 100*time.Millisecond, te.Duration)
+}
+
+func TestRun_StreamingOutput(t *testing.T) {
+	runner := executil.New()
+	var buf bytes.Buffer
+	result := runner.Run(context.Background(), &executil.Cmd{
+		Name: "sh",
+		Args: []string{"-c", "echo line1; echo line2"},
+		OnStdout: func(line []byte) {
+			buf.Write(line)
+		},
+	})
+	require.NoError(t, result.Err)
+	require.Contains(t, buf.String(), "line1")
+	require.Contains(t, buf.String(), "line2")
+}
+
+func TestRun_ContextCancellation(t *testing.T) {
+	runner := executil.New()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // 立即取消
+	result := runner.Run(ctx, &executil.Cmd{
+		Name: "sleep",
+		Args: []string{"10"},
+	})
+	require.Error(t, result.Err)
 }
