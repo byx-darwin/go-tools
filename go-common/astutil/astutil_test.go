@@ -69,6 +69,17 @@ import "os"
 	require.Contains(t, imports[0].Path.Value, "os")
 }
 
+func TestFile_Format(t *testing.T) {
+	file, _ := astutil.ParseSource([]byte(`package main
+import"fmt"
+func main(){fmt.Println("hello")}
+`))
+	out, err := file.Format()
+	require.NoError(t, err)
+	require.Contains(t, string(out), "package main")
+	require.Contains(t, string(out), `import "fmt"`)
+}
+
 func TestParseFile(t *testing.T) {
 	// 创建一个临时文件
 	// 这里简化，实际测试需要创建真实文件
