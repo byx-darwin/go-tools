@@ -3,9 +3,13 @@ package hertz
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	goerror "github.com/byx-darwin/go-tools/go-common/error"
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ── 响应体 ──
@@ -166,5 +170,48 @@ func WithDefaultBizCode(successCode, failCode int) Option {
 		if failCode != 0 {
 			r.failCode = failCode
 		}
+	}
+}
+
+// ── Request ID ──
+
+// extractRequestID 提取请求 ID。
+// 优先级：OTel trace-id → X-Request-ID header → UUID 生成。
+func (r *Responder) extractRequestID(ctx context.Context, rc *app.RequestContext) string {
+	// 1. OTel trace-id（hex 格式）
+	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+		return span.SpanContext().TraceID().String()
+	}
+	// 2. X-Request-ID 请求头
+	if r.reqIDHeader != "" {
+		if id := string(rc.Request.Header.Peek(r.reqIDHeader)); id != "" {
+			return id
+		}
+	}
+	// 3. 生成 UUID
+	if r.reqIDGen != nil {
+		return r.reqIDGen()
+	}
+	return ""
+}
+
+// ── 内容协商 ──
+
+// negotiateContentType 根据 Accept 头决定响应格式。
+func negotiateContentType(ctx *app.RequestContext) string {
+	accept := strings.ToLower(string(ctx.Request.Header.Peek(consts.HeaderAccept)))
+	if strings.Contains(accept, consts.MIMEPROTOBUF) {
+		return consts.MIMEPROTOBUF
+	}
+	return consts.MIMEApplicationJSONUTF8
+}
+
+// writeResponse 根据内容协商写入响应。
+func (r *Responder) writeResponse(ctx *app.RequestContext, httpCode int, obj any) {
+	switch negotiateContentType(ctx) {
+	case consts.MIMEPROTOBUF:
+		ctx.ProtoBuf(httpCode, obj)
+	default:
+		ctx.JSON(httpCode, obj)
 	}
 }
