@@ -7,6 +7,12 @@ import (
 	"github.com/dave/dst"
 )
 
+// Field 表示函数参数或返回值。
+type Field struct {
+	Names []string // 参数名列表，可以为空（如匿名返回值）。
+	Type  dst.Expr // 类型表达式。
+}
+
 // Op 表示一个 AST 修改操作。
 type Op func(*dst.File)
 
@@ -141,6 +147,61 @@ func containsMarker(decl dst.Decl, marker string) bool {
 		}
 	}
 	return false
+}
+
+// EnsureFunction 确保指定函数存在，不存在则创建。
+// 函数存在时不做任何操作，不存在时创建新的函数声明并添加到文件末尾。
+func EnsureFunction(name string, params, results []Field, body []dst.Stmt) Op {
+	return func(f *dst.File) {
+		// 查找函数是否已存在
+		for _, decl := range f.Decls {
+			if fn, ok := decl.(*dst.FuncDecl); ok && fn.Name.Name == name {
+				return
+			}
+		}
+
+		// 构建参数列表
+		var paramList []*dst.Field
+		for _, p := range params {
+			paramList = append(paramList, &dst.Field{
+				Names: toIdents(p.Names),
+				Type:  p.Type,
+			})
+		}
+
+		// 构建返回值列表
+		var resultList []*dst.Field
+		for _, r := range results {
+			resultList = append(resultList, &dst.Field{
+				Names: toIdents(r.Names),
+				Type:  r.Type,
+			})
+		}
+
+		// 创建函数声明
+		decl := &dst.FuncDecl{
+			Name: dst.NewIdent(name),
+			Type: &dst.FuncType{
+				Params:  &dst.FieldList{List: paramList},
+				Results: &dst.FieldList{List: resultList},
+			},
+			Body: &dst.BlockStmt{List: body},
+		}
+
+		f.Decls = append(f.Decls, decl)
+	}
+}
+
+// toIdents 将字符串列表转换为 Ident 列表。
+func toIdents(names []string) []*dst.Ident {
+	if len(names) == 0 {
+		return nil
+	}
+	idents := make([]*dst.Ident, len(names))
+	for i, name := range names {
+		idents[i] = dst.NewIdent(name)
+	}
+	return idents
 }
 
 // insertAt 在切片的指定位置插入元素。

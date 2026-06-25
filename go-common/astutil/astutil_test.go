@@ -435,3 +435,97 @@ func bar() {}
 	require.Equal(t, "baz", funcs[1].Name.Name)
 	require.Equal(t, "bar", funcs[2].Name.Name)
 }
+
+func TestFile_EnsureFunction_CreateNew(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	file.Apply(astutil.EnsureFunction("bar", nil, nil, nil))
+
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 2)
+	require.Equal(t, "foo", funcs[0].Name.Name)
+	require.Equal(t, "bar", funcs[1].Name.Name)
+}
+
+func TestFile_EnsureFunction_AlreadyExists(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+func bar() {}
+`))
+	require.NoError(t, err)
+
+	file.Apply(astutil.EnsureFunction("foo", nil, nil, nil))
+
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 2)
+	require.Equal(t, "foo", funcs[0].Name.Name)
+	require.Equal(t, "bar", funcs[1].Name.Name)
+}
+
+func TestFile_EnsureFunction_WithParams(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+`))
+	require.NoError(t, err)
+
+	file.Apply(astutil.EnsureFunction("greet", []astutil.Field{
+		{Names: []string{"name"}, Type: dst.NewIdent("string")},
+		{Names: []string{"age"}, Type: dst.NewIdent("int")},
+	}, nil, nil))
+
+	fn := file.FindFunction("greet")
+	require.NotNil(t, fn)
+	require.Len(t, fn.Type.Params.List, 2)
+	require.Equal(t, "name", fn.Type.Params.List[0].Names[0].Name)
+	require.Equal(t, "string", fn.Type.Params.List[0].Type.(*dst.Ident).Name)
+	require.Equal(t, "age", fn.Type.Params.List[1].Names[0].Name)
+	require.Equal(t, "int", fn.Type.Params.List[1].Type.(*dst.Ident).Name)
+}
+
+func TestFile_EnsureFunction_WithResults(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+`))
+	require.NoError(t, err)
+
+	file.Apply(astutil.EnsureFunction("add", []astutil.Field{
+		{Names: []string{"a", "b"}, Type: dst.NewIdent("int")},
+	}, []astutil.Field{
+		{Type: dst.NewIdent("int")},
+	}, nil))
+
+	fn := file.FindFunction("add")
+	require.NotNil(t, fn)
+	require.Len(t, fn.Type.Params.List, 1)
+	require.Len(t, fn.Type.Params.List[0].Names, 2)
+	require.Len(t, fn.Type.Results.List, 1)
+	require.Equal(t, "int", fn.Type.Results.List[0].Type.(*dst.Ident).Name)
+}
+
+func TestFile_EnsureFunction_WithBody(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+`))
+	require.NoError(t, err)
+
+	file.Apply(astutil.EnsureFunction("hello", nil, nil, []dst.Stmt{
+		&dst.ExprStmt{
+			X: &dst.CallExpr{
+				Fun: &dst.Ident{Name: "println"},
+				Args: []dst.Expr{
+					&dst.BasicLit{Kind: token.STRING, Value: `"hello"`},
+				},
+			},
+		},
+	}))
+
+	fn := file.FindFunction("hello")
+	require.NotNil(t, fn)
+	require.Len(t, fn.Body.List, 1)
+
+	out, err := file.Format()
+	require.NoError(t, err)
+	require.Contains(t, string(out), `println("hello")`)
+}
