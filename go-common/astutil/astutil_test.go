@@ -529,3 +529,134 @@ func TestFile_EnsureFunction_WithBody(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(out), `println("hello")`)
 }
+
+func TestFile_ReplaceNode_FuncDecl(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+func bar() {}
+`))
+	require.NoError(t, err)
+
+	oldFn := file.FindFunction("foo")
+	require.NotNil(t, oldFn)
+
+	newFn := &dst.FuncDecl{
+		Name: dst.NewIdent("baz"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	file.Apply(astutil.ReplaceNode(oldFn, newFn))
+
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 2)
+	require.Equal(t, "baz", funcs[0].Name.Name)
+	require.Equal(t, "bar", funcs[1].Name.Name)
+}
+
+func TestFile_ReplaceNode_TypeDecl(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+type Foo struct{}
+type Bar struct{}
+`))
+	require.NoError(t, err)
+
+	decls := file.FindGenDecls(token.TYPE)
+	require.Len(t, decls, 2)
+
+	newType := &dst.GenDecl{
+		Tok: token.TYPE,
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: dst.NewIdent("Baz"),
+				Type: &dst.StructType{},
+			},
+		},
+	}
+	file.Apply(astutil.ReplaceNode(decls[0], newType))
+
+	updated := file.FindGenDecls(token.TYPE)
+	require.Len(t, updated, 2)
+	require.Equal(t, "Baz", updated[0].Specs[0].(*dst.TypeSpec).Name.Name)
+	require.Equal(t, "Bar", updated[1].Specs[0].(*dst.TypeSpec).Name.Name)
+}
+
+func TestFile_ReplaceNode_ImportDecl(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+import "fmt"
+import "os"
+`))
+	require.NoError(t, err)
+
+	decls := file.FindGenDecls(token.IMPORT)
+	require.Len(t, decls, 2)
+
+	newImport := &dst.GenDecl{
+		Tok: token.IMPORT,
+		Specs: []dst.Spec{
+			&dst.ImportSpec{
+				Path: &dst.BasicLit{
+					Kind:  token.STRING,
+					Value: `"strings"`,
+				},
+			},
+		},
+	}
+	file.Apply(astutil.ReplaceNode(decls[0], newImport))
+
+	imports := file.FindImports()
+	require.Len(t, imports, 2)
+	require.Contains(t, imports[0].Path.Value, "strings")
+	require.Contains(t, imports[1].Path.Value, "os")
+}
+
+func TestFile_ReplaceNode_NotFound(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	// 构造一个不在文件中的节点
+	nonExistent := &dst.FuncDecl{
+		Name: dst.NewIdent("nonexistent"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	newFn := &dst.FuncDecl{
+		Name: dst.NewIdent("bar"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	file.Apply(astutil.ReplaceNode(nonExistent, newFn))
+
+	// 文件应保持不变
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 1)
+	require.Equal(t, "foo", funcs[0].Name.Name)
+}
+
+func TestFile_ReplaceNode_FormatOutput(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	oldFn := file.FindFunction("foo")
+	require.NotNil(t, oldFn)
+
+	newFn := &dst.FuncDecl{
+		Name: dst.NewIdent("bar"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	file.Apply(astutil.ReplaceNode(oldFn, newFn))
+
+	out, err := file.Format()
+	require.NoError(t, err)
+	require.Contains(t, string(out), "func bar()")
+	require.NotContains(t, string(out), "func foo()")
+}

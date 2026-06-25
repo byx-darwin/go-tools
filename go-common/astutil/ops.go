@@ -149,6 +149,20 @@ func containsMarker(decl dst.Decl, marker string) bool {
 	return false
 }
 
+// ReplaceNode 替换指定的 AST 节点。
+// 通过指针比较（oldNode == decl）在 f.Decls 中定位目标节点，
+// 找到后用 newNode 替换。如果找不到 oldNode，不执行替换（no-op）。
+func ReplaceNode(oldNode, newNode dst.Decl) Op {
+	return func(f *dst.File) {
+		for i, decl := range f.Decls {
+			if decl == oldNode {
+				f.Decls[i] = newNode
+				return
+			}
+		}
+	}
+}
+
 // EnsureFunction 确保指定函数存在，不存在则创建。
 // 函数存在时不做任何操作，不存在时创建新的函数声明并添加到文件末尾。
 func EnsureFunction(name string, params, results []Field, body []dst.Stmt) Op {
