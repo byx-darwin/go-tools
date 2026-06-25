@@ -66,3 +66,22 @@ func TestDefault_PrivateName(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "hello", out)
 }
+
+func TestRegistry_CustomFunction(t *testing.T) {
+	reg := templateutil.NewRegistry().
+		Register("double", func(s string) string { return s + s })
+
+	out, err := templateutil.RenderWith("{{ .Name | double }}", map[string]any{"Name": "hi"}, reg)
+	require.NoError(t, err)
+	require.Equal(t, "hihi", out)
+}
+
+func TestRegistry_DefaultAndCustom(t *testing.T) {
+	reg := templateutil.NewRegistry().
+		Default().
+		Register("exclaim", func(s string) string { return s + "!" })
+
+	out, err := templateutil.RenderWith("{{ .Name | ToLower | exclaim }}", map[string]any{"Name": "HELLO"}, reg)
+	require.NoError(t, err)
+	require.Equal(t, "hello!", out)
+}
