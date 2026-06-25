@@ -1,6 +1,10 @@
 package hertz
 
-import "context"
+import (
+	"context"
+
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
+)
 
 // ── 响应体 ──
 
@@ -36,4 +40,28 @@ type ErrorRouter interface {
 	// Route 分析错误，返回路由结果。
 	// 返回 ok=false 表示不识别此错误，走默认路由。
 	Route(ctx context.Context, err error) (ErrorRoute, bool)
+}
+
+// ── 默认错误路由器 ──
+
+// RPCErrorRouter 基于 go-common/error 的默认路由器。
+// 从 oops 错误中提取错误码（10001, 10002 等），
+// 使用 goerror.HTTPStatus() 映射 HTTP 状态码。
+type RPCErrorRouter struct{}
+
+// Route 分析 oops 错误，提取错误码和 HTTP 状态码。
+// 非 oops 错误返回 ok=false。
+func (r *RPCErrorRouter) Route(_ context.Context, err error) (ErrorRoute, bool) {
+	if err == nil {
+		return ErrorRoute{}, false
+	}
+	code, public := goerror.Extract(err)
+	if code == 0 {
+		return ErrorRoute{}, false
+	}
+	return ErrorRoute{
+		HTTPCode: goerror.HTTPStatus(err),
+		BizCode:  code,
+		Override: public,
+	}, true
 }
