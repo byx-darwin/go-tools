@@ -88,3 +88,23 @@ func TestRun_ContextCancellation(t *testing.T) {
 	})
 	require.Error(t, result.Err)
 }
+
+func TestNotFoundError_Error(t *testing.T) {
+	// Without Hint.
+	e := &executil.NotFoundError{Name: "missing-cmd"}
+	require.Equal(t, "command not found: missing-cmd", e.Error())
+
+	// With Hint.
+	e = &executil.NotFoundError{Name: "missing-cmd", Hint: "install with brew install missing-cmd"}
+	require.Equal(t, "command not found: missing-cmd (install with brew install missing-cmd)", e.Error())
+}
+
+func TestExitError_Error(t *testing.T) {
+	e := &executil.ExitError{ExitCode: 7, Stderr: []byte("boom\n")}
+	require.Equal(t, "command exited with code 7", e.Error())
+}
+
+func TestTimeoutError_Error(t *testing.T) {
+	e := &executil.TimeoutError{Duration: 500 * time.Millisecond}
+	require.Equal(t, "command timed out after 500ms", e.Error())
+}
