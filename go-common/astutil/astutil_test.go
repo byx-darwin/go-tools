@@ -287,3 +287,151 @@ func foo() {}
 	decls := file.FindGenDecls(token.TYPE)
 	require.Len(t, decls, 0)
 }
+
+func TestFile_InsertAfter_CommentMarker(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+// inject:here
+func foo() {}
+
+func bar() {}
+`))
+	require.NoError(t, err)
+
+	newFn := &dst.FuncDecl{
+		Name: dst.NewIdent("baz"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	file.Apply(astutil.InsertAfter("// inject:here", newFn))
+
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 3)
+	require.Equal(t, "foo", funcs[0].Name.Name)
+	require.Equal(t, "baz", funcs[1].Name.Name)
+	require.Equal(t, "bar", funcs[2].Name.Name)
+}
+
+func TestFile_InsertAfter_FuncDeclMarker(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+func bar() {}
+`))
+	require.NoError(t, err)
+
+	fooFn := file.FindFunction("foo")
+	require.NotNil(t, fooFn)
+
+	newFn := &dst.FuncDecl{
+		Name: dst.NewIdent("baz"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	file.Apply(astutil.InsertAfter(fooFn, newFn))
+
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 3)
+	require.Equal(t, "foo", funcs[0].Name.Name)
+	require.Equal(t, "baz", funcs[1].Name.Name)
+	require.Equal(t, "bar", funcs[2].Name.Name)
+}
+
+func TestFile_InsertAfter_TypeDeclMarker(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+type Foo struct{}
+func bar() {}
+`))
+	require.NoError(t, err)
+
+	foos := file.FindDecls((*dst.GenDecl)(nil))
+	require.Len(t, foos, 1)
+
+	newType := &dst.GenDecl{
+		Tok: token.TYPE,
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: dst.NewIdent("Baz"),
+				Type: &dst.StructType{},
+			},
+		},
+	}
+	file.Apply(astutil.InsertAfter(foos[0], newType))
+
+	decls := file.FindDecls((*dst.GenDecl)(nil))
+	require.Len(t, decls, 2)
+	require.Equal(t, "Foo", decls[0].(*dst.GenDecl).Specs[0].(*dst.TypeSpec).Name.Name)
+	require.Equal(t, "Baz", decls[1].(*dst.GenDecl).Specs[0].(*dst.TypeSpec).Name.Name)
+}
+
+func TestFile_InsertAfter_MarkerNotFound(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	newFn := &dst.FuncDecl{
+		Name: dst.NewIdent("bar"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	file.Apply(astutil.InsertAfter("// nonexistent:marker", newFn))
+
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 1)
+	require.Equal(t, "foo", funcs[0].Name.Name)
+}
+
+func TestFile_InsertAfter_MultipleNodes(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+`))
+	require.NoError(t, err)
+
+	fooFn := file.FindFunction("foo")
+	require.NotNil(t, fooFn)
+
+	barFn := &dst.FuncDecl{
+		Name: dst.NewIdent("bar"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	bazFn := &dst.FuncDecl{
+		Name: dst.NewIdent("baz"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	file.Apply(astutil.InsertAfter(fooFn, barFn, bazFn))
+
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 3)
+	require.Equal(t, "foo", funcs[0].Name.Name)
+	require.Equal(t, "bar", funcs[1].Name.Name)
+	require.Equal(t, "baz", funcs[2].Name.Name)
+}
+
+func TestFile_InsertAfter_CommentEndDecoration(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {} // inject:after
+
+func bar() {}
+`))
+	require.NoError(t, err)
+
+	newFn := &dst.FuncDecl{
+		Name: dst.NewIdent("baz"),
+		Type: &dst.FuncType{},
+		Body: &dst.BlockStmt{},
+	}
+	file.Apply(astutil.InsertAfter("// inject:after", newFn))
+
+	funcs := file.FindFunctions()
+	require.Len(t, funcs, 3)
+	require.Equal(t, "foo", funcs[0].Name.Name)
+	require.Equal(t, "baz", funcs[1].Name.Name)
+	require.Equal(t, "bar", funcs[2].Name.Name)
+}
