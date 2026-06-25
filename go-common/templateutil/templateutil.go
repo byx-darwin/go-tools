@@ -69,6 +69,8 @@ func (r *Registry) Default() *Registry {
 	r.Register("ToKebab", toKebab)
 	r.Register("ExportName", upperFirst)
 	r.Register("PrivateName", lowerFirst)
+	r.Register("Singular", Singular)
+	r.Register("Plural", Plural)
 	return r
 }
 
@@ -107,4 +109,155 @@ func toSnake(s string) string {
 
 func toKebab(s string) string {
 	return strings.ReplaceAll(toSnake(s), "_", "-")
+}
+
+// irregularPlural 不规则复数映射（单数→复数）。
+var irregularPlural = map[string]string{
+	"child":      "children",
+	"person":     "people",
+	"foot":       "feet",
+	"tooth":      "teeth",
+	"mouse":      "mice",
+	"goose":      "geese",
+	"man":        "men",
+	"woman":      "women",
+	"ox":         "oxen",
+	"datum":      "data",
+	"cactus":     "cacti",
+	"focus":      "foci",
+	"nucleus":    "nuclei",
+	"syllabus":   "syllabi",
+	"analysis":   "analyses", //nolint:misspell // analyses 是 analysis 的正确复数形式
+	"diagnosis":  "diagnoses",
+	"oasis":      "oases",
+	"thesis":     "theses",
+	"crisis":     "crises",
+	"phenomenon": "phenomena",
+	"criterion":  "criteria",
+	"index":      "indices",
+	"appendix":   "appendices",
+	"matrix":     "matrices",
+	"vertex":     "vertices",
+	"axis":       "axes",
+	"life":       "lives",
+	"wife":       "wives",
+	"knife":      "knives",
+	"leaf":       "leaves",
+	"wolf":       "wolves",
+	"half":       "halves",
+	"self":       "selves",
+	"shelf":      "shelves",
+	"thief":      "thieves",
+	"potato":     "potatoes",
+	"tomato":     "tomatoes",
+	"hero":       "heroes",
+	"echo":       "echoes",
+	"volcano":    "volcanoes",
+	"quiz":       "quizzes",
+}
+
+// irregularSingular 不规则单数映射（复数→单数）。
+var irregularSingular map[string]string
+
+func init() {
+	irregularSingular = make(map[string]string, len(irregularPlural))
+	for singular, plural := range irregularPlural {
+		irregularSingular[plural] = singular
+	}
+}
+
+// Plural 将英文单数转为复数。
+func Plural(s string) string {
+	if s == "" {
+		return s
+	}
+
+	lower := strings.ToLower(s)
+
+	// 不规则变化。
+	if plural, ok := irregularPlural[lower]; ok {
+		return plural
+	}
+
+	// 以 s, sh, ch, x, z 结尾加 es。
+	if strings.HasSuffix(lower, "s") ||
+		strings.HasSuffix(lower, "sh") ||
+		strings.HasSuffix(lower, "ch") ||
+		strings.HasSuffix(lower, "x") ||
+		strings.HasSuffix(lower, "z") {
+		return lower + "es"
+	}
+
+	// 辅音 + y → ies。
+	if strings.HasSuffix(lower, "y") && len(lower) > 1 {
+		prev := lower[len(lower)-2]
+		if prev != 'a' && prev != 'e' && prev != 'i' && prev != 'o' && prev != 'u' {
+			return lower[:len(lower)-1] + "ies"
+		}
+	}
+
+	// 以 f 结尾 → ves。
+	if strings.HasSuffix(lower, "f") {
+		return lower[:len(lower)-1] + "ves"
+	}
+
+	// 以 fe 结尾 → ves。
+	if strings.HasSuffix(lower, "fe") {
+		return lower[:len(lower)-2] + "ves"
+	}
+
+	// 默认加 s。
+	return lower + "s"
+}
+
+// Singular 将英文复数转为单数。
+func Singular(s string) string {
+	if s == "" {
+		return s
+	}
+
+	lower := strings.ToLower(s)
+
+	// 不规则变化。
+	if singular, ok := irregularSingular[lower]; ok {
+		return singular
+	}
+
+	// 以 ies 结尾 → y（cities→city）。
+	if strings.HasSuffix(lower, "ies") && len(lower) > 3 {
+		return lower[:len(lower)-3] + "y"
+	}
+
+	// 以 ves 结尾 → fe 或 f（knives→knife, wolves→wolf）。
+	if strings.HasSuffix(lower, "ves") && len(lower) > 3 {
+		base := lower[:len(lower)-3]
+		// 优先尝试 fe 形式。
+		if _, ok := irregularPlural[base+"fe"]; ok {
+			return base + "fe"
+		}
+		return base + "f"
+	}
+
+	// 以 ches, shes, xes, zes 结尾 → 去 es（churches→church, boxes→box, quizzes→quiz）。
+	if strings.HasSuffix(lower, "ches") || strings.HasSuffix(lower, "shes") ||
+		strings.HasSuffix(lower, "xes") || strings.HasSuffix(lower, "zes") {
+		return lower[:len(lower)-2]
+	}
+
+	// 以 ses 结尾 → 去 es（buses→bus）。
+	if strings.HasSuffix(lower, "ses") {
+		return lower[:len(lower)-2]
+	}
+
+	// 以 es 结尾 → 去 es。
+	if strings.HasSuffix(lower, "es") && len(lower) > 2 {
+		return lower[:len(lower)-2]
+	}
+
+	// 以 s 结尾 → 去 s。
+	if strings.HasSuffix(lower, "s") && len(lower) > 1 {
+		return lower[:len(lower)-1]
+	}
+
+	return lower
 }
