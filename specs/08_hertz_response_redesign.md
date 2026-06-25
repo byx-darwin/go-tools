@@ -174,33 +174,62 @@ type ErrorRouter interface {
 
 ### 3.4 默认 RPCErrorRouter
 
-基于 `kitex/rpcerror` 的默认实现：
+基于 `go-common/error` 的默认实现，直接复用现有错误码体系：
 
 ```go
-// RPCErrorRouter 基于 kitex/rpcerror 的默认路由器。
-// 映射规则：
-//   - ErrorTypeParamInvalid → 400 + 业务码
-//   - ErrorTypeAuthFailed   → 401 + 业务码
-//   - ErrorTypeNotFound     → 404 + 业务码
-//   - ErrorTypeSystemInternal → 500 + 业务码
-//   - 其他 → 500 + 业务码
-type RPCErrorRouter struct {
-    // CodeMap 自定义错误类型到业务码的映射。
-    // 未映射的类型使用默认业务码。
-    CodeMap map[rpcerror.ErrorType]int
+// RPCErrorRouter 基于 go-common/error 的默认路由器。
+// 从 oops 错误中提取错误码（10001, 10002 等），
+// 使用 goerror.HTTPStatus() 映射 HTTP 状态码。
+//
+// 错误码对齐 go-common/error 定义：
+//   - 10001 CodeParamInvalid → HTTP 400
+//   - 10002 CodeAuthFailed   → HTTP 401
+//   - 10010 CodeRPCUnavailable → HTTP 503
+//   - 10011 CodeRPCTimeout   → HTTP 504
+//   - 10000 CodeSystem       → HTTP 500
+//   - 其他 → 提取错误码，HTTP 500（兜底）
+type RPCErrorRouter struct{}
+```
+
+**工作原理**：
+
+```go
+func (r *RPCErrorRouter) Route(ctx context.Context, err error) (ErrorRoute, bool) {
+    code, public := goerror.Extract(err)
+    if code == 0 {
+        return ErrorRoute{}, false // 非 oops 错误，不识别
+    }
+    httpCode := goerror.HTTPStatus(err)
+    return ErrorRoute{
+        HTTPCode: httpCode,
+        BizCode:  code,    // 直接使用错误码（10001, 10002 等）
+        Override: public,  // 使用 oops 的 public 消息
+    }, true
 }
 ```
 
-默认映射表：
+**错误码与 HTTP 状态码映射**（来自 `go-common/error`）：
 
-| rpcerror.ErrorType | HTTP Code | 默认 BizCode |
-|---|---|---|
-| `ErrorTypeParamInvalid` | 400 | 400 |
-| `ErrorTypeAuthFailed` | 401 | 401 |
-| `ErrorTypeNotFound` | 404 | 404 |
-| `ErrorTypeSystemInternal` | 500 | 500 |
-| `ErrorTypeTimeout` | 504 | 504 |
-| 其他/未知 | 500 | 500 |
+| 错误码 | 常量名 | HTTP Code | 场景 |
+|--------|--------|-----------|------|
+| 10000 | `CodeSystem` | 500 | 系统内部错误（兜底） |
+| 10001 | `CodeParamInvalid` | 400 | 参数无效 |
+| 10002 | `CodeAuthFailed` | 401 | 鉴权失败 |
+| 10003 | `CodeConfigNotFound` | 500 | 配置未找到 |
+| 10004 | `CodeConfigInvalid` | 500 | 配置无效 |
+| 10010 | `CodeRPCUnavailable` | 503 | RPC 服务不可用 |
+| 10011 | `CodeRPCTimeout` | 504 | RPC 超时 |
+| 10012 | `CodeRPCDecodeError` | 500 | RPC 解码错误 |
+| 10013 | `CodeRPCEncodeError` | 500 | RPC 编码错误 |
+| 20001-20005 | Redis 错误 | 500/503 | Redis 连接/操作 |
+| 20101-20105 | Kafka 错误 | 500/503 | Kafka 连接/发送 |
+| 20201-20204 | DB 错误 | 500/503 | 数据库连接/查询 |
+| 40010-40012 | 数据错误 | 200 | 数据不存在/重复/冲突 |
+| 40110-40113 | 认证错误 | 200 | 登录失败/凭证问题 |
+| 40210-40212 | 限制错误 | 200 | 频率限制/配额用尽 |
+| 40310-40314 | 业务状态 | 200 | 账户禁用/余额不足 |
+
+**注意**：业务错误码（40000-59999）通常返回 HTTP 200，因为 RPC 调用成功，只是业务逻辑失败。
 
 ---
 
@@ -575,7 +604,6 @@ package main
 import (
     "github.com/bytedance/hertz/pkg/app/server"
     gohertz "github.com/byx-darwin/go-tools/go-framework/hertz"
-    "github.com/byx-darwin/go-tools/go-framework/kitex/rpcerror"
 )
 
 func main() {
@@ -583,13 +611,7 @@ func main() {
     responder := gohertz.NewResponder(
         gohertz.WithDebug(false),
         gohertz.WithTranslator(myI18nTranslator),
-        gohertz.WithErrorRouter(&gohertz.RPCErrorRouter{
-            CodeMap: map[rpcerror.ErrorType]int{
-                rpcerror.ErrorTypeParamInvalid: 10001,
-                rpcerror.ErrorTypeAuthFailed:   10002,
-                rpcerror.ErrorTypeNotFound:     10003,
-            },
-        }),
+        gohertz.WithErrorRouter(&gohertz.RPCErrorRouter{}), // 使用 go-common/error 错误码体系
         gohertz.WithRequestIDHeader("X-Request-ID"),
         gohertz.WithLangHeader("Accept-Language"),
     )
