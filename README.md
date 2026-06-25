@@ -16,7 +16,7 @@ go-framework       ← Hertz / Kitex framework adapters (Config / Server / Optio
 
 | Module | Purpose | Install |
 |--------|--------|---------|
-| [go-common](./go-common) | Utilities: crypto / cache / log / netutil / timeutil / httpclient / captcha / auth | `go get github.com/byx-darwin/go-tools/go-common` |
+| [go-common](./go-common) | Utilities: crypto / cache / log / netutil / timeutil / httpclient / captcha / auth / templateutil / executil / astutil | `go get github.com/byx-darwin/go-tools/go-common` |
 | [go-middleware](./go-middleware) | Middleware clients: redis / kafka / db / es / clickhouse / tls | `go get github.com/byx-darwin/go-tools/go-middleware` |
 | [go-framework](./go-framework) | Framework adapters: hertz / kitex / config / observability / accesslog / rpcerror | `go get github.com/byx-darwin/go-tools/go-framework` |
 
