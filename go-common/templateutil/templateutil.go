@@ -3,7 +3,9 @@ package templateutil
 
 import (
 	"bytes"
+	"strings"
 	"text/template"
+	"unicode"
 )
 
 // Registry 可插拔的函数注册器。
@@ -58,6 +60,51 @@ func RenderWith(tmpl string, data any, reg *Registry) (string, error) {
 
 // Default 返回内置默认函数集。
 func (r *Registry) Default() *Registry {
-	// TODO: 添加默认函数
+	r.Register("ToLower", strings.ToLower)
+	r.Register("ToUpper", strings.ToUpper)
+	r.Register("LowerFirst", lowerFirst)
+	r.Register("UpperFirst", upperFirst)
+	r.Register("ToCamel", toCamel)
+	r.Register("ToSnake", toSnake)
+	r.Register("ToKebab", toKebab)
+	r.Register("ExportName", upperFirst)
+	r.Register("PrivateName", lowerFirst)
 	return r
+}
+
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToLower(s[:1]) + s[1:]
+}
+
+func upperFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+func toCamel(s string) string {
+	parts := strings.Split(s, "_")
+	for i := 1; i < len(parts); i++ {
+		parts[i] = upperFirst(parts[i])
+	}
+	return strings.Join(parts, "")
+}
+
+func toSnake(s string) string {
+	var result []rune
+	for i, r := range s {
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			result = append(result, '_')
+		}
+		result = append(result, unicode.ToLower(r))
+	}
+	return string(result)
+}
+
+func toKebab(s string) string {
+	return strings.ReplaceAll(toSnake(s), "_", "-")
 }
