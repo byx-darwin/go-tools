@@ -109,9 +109,26 @@ func TestNewResponder_WithTranslator(t *testing.T) {
 }
 
 func TestNewResponder_WithDefaultBizCode(t *testing.T) {
-	r := NewResponder(WithDefaultBizCode(200, -1))
+	r := NewResponder(WithDefaultBizCode(intPtr(200), intPtr(-1)))
 	assert.Equal(t, 200, r.successCode)
 	assert.Equal(t, -1, r.failCode)
+}
+
+func TestNewResponder_WithDefaultBizCode_NilKeepsDefault(t *testing.T) {
+	r := NewResponder(WithDefaultBizCode(nil, nil))
+	assert.Equal(t, http.StatusOK, r.successCode)
+	assert.Equal(t, http.StatusInternalServerError, r.failCode)
+}
+
+func TestNewResponder_WithDefaultBizCode_ZeroAllowed(t *testing.T) {
+	r := NewResponder(WithDefaultBizCode(intPtr(0), intPtr(0)))
+	assert.Equal(t, 0, r.successCode)
+	assert.Equal(t, 0, r.failCode)
+}
+
+func TestNewResponder_WithDefaultLang(t *testing.T) {
+	r := NewResponder(WithDefaultLang("en"))
+	assert.Equal(t, "en", r.defaultLang)
 }
 
 func TestNewResponder_WithRequestIDGenerator(t *testing.T) {

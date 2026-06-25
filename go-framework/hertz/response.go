@@ -1,9 +1,11 @@
 package hertz
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	goerror "github.com/byx-darwin/go-tools/go-common/error"
@@ -14,6 +16,9 @@ import (
 )
 
 // ── 响应体 ──
+
+// intPtr 返回 int 值的指针，用于 WithDefaultBizCode 等 Option。
+func intPtr(v int) *int { return &v }
 
 // Response 统一响应体。
 // 支持 JSON 和 Protobuf 双格式序列化。
@@ -92,6 +97,7 @@ type Responder struct {
 	reqIDHeader string
 	reqIDGen    func() string
 	langHeader  string
+	defaultLang string // 未设置 Accept-Language 时的默认语言
 	successCode int
 	failCode    int
 }
@@ -134,9 +140,15 @@ func WithTranslator(t Translator) Option {
 }
 
 // WithErrorRouter 设置错误路由器。
-// 传入 nil 清除路由器。
+// 传入 nil 或 typed nil（如 (*MyRouter)(nil)）清除路由器。
 func WithErrorRouter(e ErrorRouter) Option {
-	return func(r *Responder) { r.errorRouter = e }
+	return func(r *Responder) {
+		if e == nil || reflect.ValueOf(e).IsNil() {
+			r.errorRouter = nil
+		} else {
+			r.errorRouter = e
+		}
+	}
 }
 
 // WithRequestIDHeader 设置 Request ID 响应头名称。
@@ -161,15 +173,22 @@ func WithLangHeader(name string) Option {
 	return func(r *Responder) { r.langHeader = name }
 }
 
+// WithDefaultLang 设置未发送 Accept-Language 头时的默认语言。
+// 默认空字符串，由 Translator 决定默认语言。
+func WithDefaultLang(lang string) Option {
+	return func(r *Responder) { r.defaultLang = lang }
+}
+
 // WithDefaultBizCode 设置默认成功/失败业务码。
 // 默认 successCode=200, failCode=500。
-func WithDefaultBizCode(successCode, failCode int) Option {
+// 传入 nil 保持对应默认值不变。
+func WithDefaultBizCode(successCode, failCode *int) Option {
 	return func(r *Responder) {
-		if successCode != 0 {
-			r.successCode = successCode
+		if successCode != nil {
+			r.successCode = *successCode
 		}
-		if failCode != 0 {
-			r.failCode = failCode
+		if failCode != nil {
+			r.failCode = *failCode
 		}
 	}
 }
@@ -200,8 +219,11 @@ func (r *Responder) extractRequestID(ctx context.Context, rc *app.RequestContext
 
 // negotiateContentType 根据 Accept 头决定响应格式。
 func negotiateContentType(ctx *app.RequestContext) string {
-	accept := strings.ToLower(string(ctx.Request.Header.Peek(consts.HeaderAccept)))
-	if strings.Contains(accept, consts.MIMEPROTOBUF) {
+	accept := ctx.Request.Header.Peek(consts.HeaderAccept)
+	if len(accept) == 0 {
+		return consts.MIMEApplicationJSONUTF8
+	}
+	if bytes.Contains(bytes.ToLower(accept), []byte(consts.MIMEPROTOBUF)) {
 		return consts.MIMEPROTOBUF
 	}
 	return consts.MIMEApplicationJSONUTF8
@@ -278,7 +300,7 @@ func (r *Responder) routeError(c context.Context, ctx *app.RequestContext, err e
 			if route.Override != "" {
 				msg = route.Override
 			}
-			return route.HTTPCode, route.BizCode, r.applyDebugFilter(msg, err)
+			return route.HTTPCode, route.BizCode, r.applyDebugFilter(r.translate(c, ctx, msg), err)
 		}
 	}
 	// 2. 兜底
@@ -306,7 +328,7 @@ func (r *Responder) extractLang(ctx *app.RequestContext) string {
 	}
 	lang := string(ctx.Request.Header.Peek(r.langHeader))
 	if lang == "" {
-		return "zh"
+		return r.defaultLang
 	}
 	// 解析 "zh-CN,zh;q=0.9" → "zh"
 	if idx := strings.IndexAny(lang, ",;"); idx > 0 {
@@ -320,11 +342,12 @@ func (r *Responder) extractLang(ctx *app.RequestContext) string {
 
 // translate 翻译消息（若已配置 Translator）。
 // c 为请求的 context.Context，用于 Translator.Translate。
+// 优先从 ctx 读取 Middleware 缓存的语言偏好，避免重复解析。
 func (r *Responder) translate(c context.Context, ctx *app.RequestContext, msg string) string {
 	if r.translator == nil || msg == "" {
 		return msg
 	}
-	lang := r.extractLang(ctx)
+	lang := LangFrom(ctx)
 	return r.translator.Translate(c, lang, msg)
 }
 
@@ -361,6 +384,14 @@ func (r *Responder) Middleware() app.HandlerFunc {
 		// 3. 注入 Responder
 		c.Set(string(ctxKeyResponder), r)
 
+		// 4. recover 保护：handler panic 时返回结构化错误响应
+		defer func() {
+			if rec := recover(); rec != nil {
+				err := fmt.Errorf("panic: %v", rec)
+				r.Error(ctx, c, err, "internal server error")
+			}
+		}()
+
 		c.Next(ctx)
 	}
 }
@@ -382,6 +413,15 @@ func RespondFrom(ctx *app.RequestContext) *Responder {
 // 若未通过 Middleware 提取，返回空字符串。
 func RequestIDFrom(ctx *app.RequestContext) string {
 	if v, ok := ctx.Value(string(ctxKeyRequestID)).(string); ok {
+		return v
+	}
+	return ""
+}
+
+// LangFrom 从请求上下文获取语言偏好。
+// 若未通过 Middleware 提取，返回空字符串。
+func LangFrom(ctx *app.RequestContext) string {
+	if v, ok := ctx.Value(string(ctxKeyLang)).(string); ok {
 		return v
 	}
 	return ""
