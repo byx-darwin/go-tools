@@ -4,6 +4,7 @@ package gen
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 // File 表示一个 Go 源文件。
@@ -40,4 +41,62 @@ func (f *File) Render() (string, error) {
 		buf.WriteString("\n\n")
 	}
 	return buf.String(), nil
+}
+
+// Struct 添加结构体。
+func (f *File) Struct(name string) *StructDecl {
+	sd := &StructDecl{file: f, name: name}
+	f.decls = append(f.decls, "") // 占位
+	return sd
+}
+
+// StructDecl 结构体声明构建器。
+type StructDecl struct {
+	file   *File
+	name   string
+	fields []structField
+}
+
+type structField struct {
+	name string
+	typ  string
+	tag  string
+}
+
+// Field 添加字段。
+func (sd *StructDecl) Field(name, typ string) *StructDecl {
+	sd.fields = append(sd.fields, structField{name: name, typ: typ})
+	sd.file.decls[len(sd.file.decls)-1] = sd.render()
+	return sd
+}
+
+// Tag 为最后一个字段添加 tag。
+func (sd *StructDecl) Tag(tag string) *StructDecl {
+	if len(sd.fields) > 0 {
+		sd.fields[len(sd.fields)-1].tag = tag
+		sd.file.decls[len(sd.file.decls)-1] = sd.render()
+	}
+	return sd
+}
+
+func (sd *StructDecl) render() string {
+	var b strings.Builder
+	b.Grow(128)
+	b.WriteString("type ")
+	b.WriteString(sd.name)
+	b.WriteString(" struct {\n")
+	for _, f := range sd.fields {
+		b.WriteByte('\t')
+		b.WriteString(f.name)
+		b.WriteByte(' ')
+		b.WriteString(f.typ)
+		if f.tag != "" {
+			b.WriteString(" `")
+			b.WriteString(f.tag)
+			b.WriteByte('`')
+		}
+		b.WriteByte('\n')
+	}
+	b.WriteByte('}')
+	return b.String()
 }

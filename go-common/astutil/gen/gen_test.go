@@ -36,3 +36,22 @@ func TestFile_FuncWithParams(t *testing.T) {
 	code, _ := f.Render()
 	require.Contains(t, code, "func handle(ctx context.Context)")
 }
+
+func TestFile_Struct(t *testing.T) {
+	f := gen.NewFile("mypackage")
+	f.Struct("Config").
+		Field("Name", "string").
+		Field("Timeout", "time.Duration")
+	code, _ := f.Render()
+	require.Contains(t, code, "type Config struct")
+	require.Contains(t, code, "Name string")
+	require.Contains(t, code, "Timeout time.Duration")
+}
+
+func TestFile_StructWithTag(t *testing.T) {
+	f := gen.NewFile("mypackage")
+	f.Struct("Config").
+		Field("Name", "string").Tag(`json:"name"`)
+	code, _ := f.Render()
+	require.Contains(t, code, `Name string `+"`"+`json:"name"`+"`")
+}
