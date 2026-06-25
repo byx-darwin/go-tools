@@ -37,8 +37,10 @@ const (
 	defaultMaxAge     = 30
 )
 
-// Config 日志配置（用于 YAML 反序列化）。
-type Config struct {
+// LegacyConfig 日志配置（旧版，用于向后兼容 YAML 反序列化）。
+//
+// Deprecated: 使用 Config 替代。
+type LegacyConfig struct {
 	// Level 日志级别: "debug", "info", "warn", "error"（默认 "info"）
 	Level string `json:"level" yaml:"level"`
 
@@ -134,7 +136,7 @@ func WithJSON(json bool) Option {
 // Logger 结构化日志记录器，封装 slog.Logger。
 type Logger struct {
 	*slog.Logger
-	config Config
+	config LegacyConfig
 	level  slog.Level
 	writer io.WriteCloser
 }
@@ -161,8 +163,10 @@ func New(opts ...Option) *Logger {
 	return buildLogger(cfg)
 }
 
-// NewFromConfig 从 Config 创建 Logger（用于 YAML 加载场景）。
-func NewFromConfig(c Config) *Logger {
+// NewFromLegacyConfig 从旧版 Config 创建 Logger（用于向后兼容）。
+//
+// Deprecated: 使用 NewFromConfig 替代。
+func NewFromLegacyConfig(c LegacyConfig) *Logger {
 	cfg := &loggerConfig{
 		level:      c.Level,
 		filePath:   c.FilePath,
@@ -219,7 +223,7 @@ func buildLogger(cfg *loggerConfig) *Logger {
 
 	return &Logger{
 		Logger: slog.New(handler),
-		config: Config{
+		config: LegacyConfig{
 			Level:      cfg.level,
 			FilePath:   cfg.filePath,
 			MaxSize:    cfg.maxSize,

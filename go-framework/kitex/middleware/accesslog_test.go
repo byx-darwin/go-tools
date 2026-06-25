@@ -10,7 +10,7 @@ import (
 )
 
 func TestAccessLog_Kitex(t *testing.T) {
-	logger := log.NewFromConfig(log.Config{Level: "error"})
+	logger := log.NewFromLegacyConfig(log.LegacyConfig{Level: "error"})
 	defer func() { _ = logger.Close() }()
 
 	mw := AccessLog(logger)
@@ -27,7 +27,7 @@ func TestAccessLog_Kitex(t *testing.T) {
 }
 
 func TestAccessLog_Kitex_Error(t *testing.T) {
-	logger := log.NewFromConfig(log.Config{Level: "error"})
+	logger := log.NewFromLegacyConfig(log.LegacyConfig{Level: "error"})
 	defer func() { _ = logger.Close() }()
 
 	mw := AccessLog(logger)
@@ -42,7 +42,7 @@ func TestAccessLog_Kitex_Error(t *testing.T) {
 
 func TestAccessLog_Kitex_TypeCompatibility(t *testing.T) {
 	// Verify Middleware type is compatible with kitex endpoint.Middleware
-	var mw Middleware = AccessLog(log.NewFromConfig(log.Config{}))
+	var mw Middleware = AccessLog(log.NewFromLegacyConfig(log.LegacyConfig{}))
 	assert.NotNil(t, mw)
 
 	// Verify Endpoint type

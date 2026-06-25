@@ -104,18 +104,18 @@ func TestNew_InvalidLevelDefaultsToInfo(t *testing.T) {
 	assert.NotContains(t, string(data), "should not appear")
 }
 
-// ── Config 模式测试（向后兼容） ──
+// ── LegacyConfig 模式测试（向后兼容） ──
 
-func TestNewFromConfig_Defaults(t *testing.T) {
-	l := NewFromConfig(Config{})
+func TestNewFromLegacyConfig_Defaults(t *testing.T) {
+	l := NewFromLegacyConfig(LegacyConfig{})
 	assert.NotNil(t, l)
 }
 
-func TestNewFromConfig_JSON(t *testing.T) {
+func TestNewFromLegacyConfig_JSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.log")
 
-	l := NewFromConfig(Config{Level: "info", FilePath: path, JSON: true})
+	l := NewFromLegacyConfig(LegacyConfig{Level: "info", FilePath: path, JSON: true})
 	defer func() { _ = l.Close() }()
 
 	l.Info("hello", "key", "value")
@@ -127,11 +127,11 @@ func TestNewFromConfig_JSON(t *testing.T) {
 	assert.Equal(t, "INFO", entry["level"])
 }
 
-func TestNewFromConfig_Text(t *testing.T) {
+func TestNewFromLegacyConfig_Text(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.log")
 
-	l := NewFromConfig(Config{Level: "debug", FilePath: path, JSON: false})
+	l := NewFromLegacyConfig(LegacyConfig{Level: "debug", FilePath: path, JSON: false})
 	defer func() { _ = l.Close() }()
 
 	l.Debug("debug message")
@@ -139,8 +139,8 @@ func TestNewFromConfig_Text(t *testing.T) {
 	assert.Contains(t, string(data), "debug message")
 }
 
-func TestNewFromConfig_Stdout(t *testing.T) {
-	l := NewFromConfig(Config{Level: "error"})
+func TestNewFromLegacyConfig_Stdout(t *testing.T) {
+	l := NewFromLegacyConfig(LegacyConfig{Level: "error"})
 	assert.NotNil(t, l)
 }
 
@@ -226,7 +226,7 @@ func TestParseLevel(t *testing.T) {
 }
 
 func TestConfig_DefaultsApplied(t *testing.T) {
-	l := NewFromConfig(Config{})
+	l := NewFromLegacyConfig(LegacyConfig{})
 	assert.Equal(t, 100, l.config.MaxSize)
 	assert.Equal(t, 7, l.config.MaxBackups)
 	assert.Equal(t, 30, l.config.MaxAge)
