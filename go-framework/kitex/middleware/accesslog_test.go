@@ -5,15 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/byx-darwin/go-tools/go-common/log"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAccessLog_Kitex(t *testing.T) {
-	logger := log.NewFromLegacyConfig(log.LegacyConfig{Level: "error"})
-	defer func() { _ = logger.Close() }()
-
-	mw := AccessLog(logger)
+	mw := AccessLog()
 	assert.NotNil(t, mw)
 
 	// Test middleware chain
@@ -27,10 +23,7 @@ func TestAccessLog_Kitex(t *testing.T) {
 }
 
 func TestAccessLog_Kitex_Error(t *testing.T) {
-	logger := log.NewFromLegacyConfig(log.LegacyConfig{Level: "error"})
-	defer func() { _ = logger.Close() }()
-
-	mw := AccessLog(logger)
+	mw := AccessLog()
 	endpoint := func(ctx context.Context, req, resp any) error {
 		return errors.New("rpc error")
 	}
@@ -42,7 +35,7 @@ func TestAccessLog_Kitex_Error(t *testing.T) {
 
 func TestAccessLog_Kitex_TypeCompatibility(t *testing.T) {
 	// Verify Middleware type is compatible with kitex endpoint.Middleware
-	var mw Middleware = AccessLog(log.NewFromLegacyConfig(log.LegacyConfig{}))
+	var mw Middleware = AccessLog()
 	assert.NotNil(t, mw)
 
 	// Verify Endpoint type

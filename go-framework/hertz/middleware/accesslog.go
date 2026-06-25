@@ -14,15 +14,15 @@ import (
 //
 // 用法:
 //
-//	l := log.New(log.WithLevel("info"))
-//	h.Use(middleware.AccessLog(l))
-func AccessLog(logger *log.Logger) app.HandlerFunc {
+//	h.Use(middleware.AccessLog())
+func AccessLog() app.HandlerFunc {
+	accessLog := log.L().WithCategory(log.CategoryAccess)
 	return func(ctx context.Context, c *app.RequestContext) {
 		start := time.Now()
 		c.Next(ctx)
 		latency := time.Since(start)
 
-		logger.InfoContext(ctx, "access",
+		accessLog.InfoContext(ctx, "request handled",
 			"method", string(c.Request.Method()),
 			"path", string(c.Request.Path()),
 			"status", c.Response.StatusCode(),
