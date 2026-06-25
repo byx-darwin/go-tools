@@ -103,11 +103,11 @@ func (f writerFunc) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func truncate(b []byte, max int) []byte {
-	if len(b) <= max {
+func truncate(b []byte, maxLen int) []byte {
+	if len(b) <= maxLen {
 		return b
 	}
-	return b[:max]
+	return b[:maxLen]
 }
 
 // ExitError 命令退出码非零错误。
