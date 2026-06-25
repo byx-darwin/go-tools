@@ -23,9 +23,30 @@ go-framework       ← Hertz / Kitex framework adapters (Config / Server / Optio
 ## Quick Start
 
 ```go
-// Logging
-logger := log.NewFromConfig(log.Config{Level: "info", FilePath: "/var/log/app.log"})
-logger.Info("server started", "port", 8080)
+// Logging — enhanced structured logging
+log.Init(log.Config{
+    Level:  "info",
+    Format: "json",
+    Mode:   "both",
+    File: log.FileConfig{
+        Dir:      "/var/log/app",
+        Filename: "app.log",
+        MaxSize:  100,
+    },
+    Masking: log.MaskConfig{
+        Enabled:      true,
+        MaskedFields: []string{"password", "token"},
+    },
+}, log.ReleaseInfo{
+    ServiceName: "user-service",
+    Version:     "v1.0.0",
+    Environment: "production",
+})
+defer log.Close()
+
+// Use with categories
+accessLog := log.L().WithCategory(log.CategoryAccess)
+accessLog.InfoContext(ctx, "request handled", "method", "GET", "path", "/api/users")
 
 // Cache
 c := cache.New[string, int](cache.LRU, 100).Build()
