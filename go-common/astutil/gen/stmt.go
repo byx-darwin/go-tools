@@ -1,7 +1,10 @@
 // go-common/astutil/gen/stmt.go
 package gen
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Param 创建参数。
 func Param(name, typ string) string {
@@ -44,33 +47,43 @@ func (fd *FuncDecl) Body(stmts ...string) *FuncDecl {
 }
 
 func (fd *FuncDecl) render() string {
-	sig := fmt.Sprintf("func %s(", fd.name)
+	var b strings.Builder
+	b.Grow(256)
+
+	b.WriteString("func ")
+	b.WriteString(fd.name)
+	b.WriteByte('(')
+
 	for i, p := range fd.params {
 		if i > 0 {
-			sig += ", "
+			b.WriteString(", ")
 		}
-		sig += p
+		b.WriteString(p)
 	}
-	sig += ")"
+	b.WriteByte(')')
+
 	if len(fd.results) > 0 {
-		sig += " ("
+		b.WriteString(" (")
 		for i, r := range fd.results {
 			if i > 0 {
-				sig += ", "
+				b.WriteString(", ")
 			}
-			sig += r
+			b.WriteString(r)
 		}
-		sig += ")"
+		b.WriteByte(')')
 	}
-	body := ""
+
 	if len(fd.body) > 0 {
-		body = "\n"
+		b.WriteByte('\n')
 		for _, stmt := range fd.body {
-			body += "\t" + stmt + "\n"
+			b.WriteByte('\t')
+			b.WriteString(stmt)
+			b.WriteByte('\n')
 		}
-		body += "}"
+		b.WriteByte('}')
 	} else {
-		body = " {}"
+		b.WriteString(" {}")
 	}
-	return sig + " " + body
+
+	return b.String()
 }
