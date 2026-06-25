@@ -411,14 +411,14 @@ func Reply(ctx *app.RequestContext, httpCode int, obj any) {
 
 // ── 废弃 API（保留一个版本周期，请迁移至新 API）──
 
-// Deprecated: 使用 NewResponder + Responder.Success 替代。
 // OK 成功响应（使用默认 Responder）。
+// Deprecated: 使用 NewResponder + Responder.Success 替代。
 func OK(c *app.RequestContext, data any) {
 	defaultResponder.Success(c, data)
 }
 
-// Deprecated: 使用 NewResponder + Responder.Error 替代。
 // Err 错误响应（使用默认 Responder），不区分 Debug 模式。
+// Deprecated: 使用 NewResponder + Responder.Error 替代。
 func Err(c *app.RequestContext, err error) {
 	msg := ""
 	if err != nil {
@@ -427,14 +427,14 @@ func Err(c *app.RequestContext, err error) {
 	defaultResponder.ErrorWithCode(context.Background(), c, http.StatusInternalServerError, http.StatusInternalServerError, msg)
 }
 
-// Deprecated: 使用 NewResponder + Responder.ErrorWithCode 替代。
 // ErrWithCode 指定 HTTP 状态码和业务码的错误响应。
+// Deprecated: 使用 NewResponder + Responder.ErrorWithCode 替代。
 func ErrWithCode(c *app.RequestContext, httpCode, bizCode int, msg string) {
 	defaultResponder.ErrorWithCode(context.Background(), c, httpCode, bizCode, msg)
 }
 
-// Deprecated: 使用 NewResponder + Responder.Reply 替代。
 // Result 写入统一 JSON 响应。
+// Deprecated: 使用 NewResponder + Responder.Reply 替代。
 func Result(c *app.RequestContext, httpCode, code int, data any, msg string) {
 	defaultResponder.reply(c, httpCode, code, data, msg)
 }
