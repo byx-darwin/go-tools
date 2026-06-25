@@ -1,41 +1,39 @@
 package hertz
 
-import (
-	"github.com/cloudwego/hertz/pkg/app"
-	"github.com/cloudwego/hertz/pkg/common/utils"
-)
+import "context"
 
-// Response 统一 JSON 响应体
+// ── 响应体 ──
+
+// Response 统一响应体。
+// 支持 JSON 和 Protobuf 双格式序列化。
 type Response struct {
-	Code int    `json:"code"`
-	Msg  string `json:"msg"`
-	Data any    `json:"data,omitempty"`
+	Code int    `json:"code" protobuf:"varint,1,opt,name=code"`
+	Msg  string `json:"msg"  protobuf:"bytes,2,opt,name=msg"`
+	Data any    `json:"data,omitempty" protobuf:"bytes,3,opt,name=data"`
 }
 
-// Result 写入统一 JSON 响应
-func Result(c *app.RequestContext, httpCode, code int, data any, msg string) {
-	if data == nil {
-		c.JSON(httpCode, utils.H{"code": code, "msg": msg})
-	} else {
-		c.JSON(httpCode, Response{code, msg, data})
-	}
+// ── I18n 接口 ──
+
+// Translator 国际化翻译器接口。
+// 项目方实现此接口接入自己的 i18n 系统。
+type Translator interface {
+	// Translate 翻译消息 key 为指定语言文本。
+	Translate(ctx context.Context, lang, key string) string
 }
 
-// OK 成功响应（200 OK）
-func OK(c *app.RequestContext, data any) {
-	Result(c, 200, 0, data, "ok")
+// ── 错误路由接口 ──
+
+// ErrorRoute 错误路由结果。
+type ErrorRoute struct {
+	HTTPCode int    // HTTP 状态码（如 200, 400, 500）
+	BizCode  int    // 业务码（响应体中的 code 字段）
+	Override string // 覆盖消息（非空时替代 publicMsg）
 }
 
-// Err 错误响应（500 Internal Server Error）
-func Err(c *app.RequestContext, err error) {
-	msg := ""
-	if err != nil {
-		msg = err.Error()
-	}
-	Result(c, 500, 500, nil, msg)
-}
-
-// ErrWithCode 指定 HTTP 状态码的错误响应
-func ErrWithCode(c *app.RequestContext, httpCode, bizCode int, msg string) {
-	Result(c, httpCode, bizCode, nil, msg)
+// ErrorRouter RPC 错误路由器接口。
+// 将 RPC 错误映射为 HTTP 响应参数。
+type ErrorRouter interface {
+	// Route 分析错误，返回路由结果。
+	// 返回 ok=false 表示不识别此错误，走默认路由。
+	Route(ctx context.Context, err error) (ErrorRoute, bool)
 }
