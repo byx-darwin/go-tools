@@ -1,6 +1,8 @@
 package astutil_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/byx-darwin/go-tools/go-common/astutil"
@@ -89,4 +91,74 @@ func main() {}
 `))
 	require.NoError(t, err)
 	require.NotNil(t, file)
+}
+
+func TestParseSource_Error(t *testing.T) {
+	_, err := astutil.ParseSource([]byte(`this is not valid go code {{{`))
+	require.Error(t, err)
+}
+
+func TestFile_FindFunction_NotFound(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func foo() {}
+`))
+	require.NoError(t, err)
+	fn := file.FindFunction("nonexistent")
+	require.Nil(t, fn)
+}
+
+func TestFile_AddImport_WithExistingImports(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+import "fmt"
+`))
+	require.NoError(t, err)
+	file.Apply(astutil.AddImport("os"))
+	imports := file.FindImports()
+	require.Len(t, imports, 2)
+}
+
+func TestParseFile_FromFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.go")
+	err := os.WriteFile(path, []byte(`package main
+
+func hello() {}
+`), 0o644)
+	require.NoError(t, err)
+
+	file, err := astutil.ParseFile(path)
+	require.NoError(t, err)
+	require.NotNil(t, file)
+	fn := file.FindFunction("hello")
+	require.NotNil(t, fn)
+}
+
+func TestFile_WriteTo(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+
+func main() {}
+`))
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "output.go")
+	err = file.WriteTo(path)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, string(data), "package main")
+	require.Contains(t, string(data), "func main()")
+}
+
+func TestFile_WriteTo_Error(t *testing.T) {
+	file, err := astutil.ParseSource([]byte(`package main
+`))
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	err = file.WriteTo(dir) // 写入目录路径应失败
+	require.Error(t, err)
 }
