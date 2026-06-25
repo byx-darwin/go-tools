@@ -115,12 +115,12 @@ func (a *KitexAdapter) CtxWarnf(ctx context.Context, format string, v ...interfa
 
 // CtxErrorf implements klog.CtxLogger.
 func (a *KitexAdapter) CtxErrorf(ctx context.Context, format string, v ...interface{}) {
-	a.logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.Logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // CtxFatalf implements klog.CtxLogger.
 func (a *KitexAdapter) CtxFatalf(ctx context.Context, format string, v ...interface{}) {
-	a.logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.Logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // ── Control interface ──

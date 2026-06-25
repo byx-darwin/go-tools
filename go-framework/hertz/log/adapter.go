@@ -115,12 +115,12 @@ func (a *HertzAdapter) CtxWarnf(ctx context.Context, format string, v ...interfa
 
 // CtxErrorf implements hlog.CtxLogger.
 func (a *HertzAdapter) CtxErrorf(ctx context.Context, format string, v ...interface{}) {
-	a.logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.Logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // CtxFatalf implements hlog.CtxLogger.
 func (a *HertzAdapter) CtxFatalf(ctx context.Context, format string, v ...interface{}) {
-	a.logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.Logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // ── Control interface ──

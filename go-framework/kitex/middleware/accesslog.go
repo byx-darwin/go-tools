@@ -39,7 +39,7 @@ func AccessLog() Middleware {
 			latency := time.Since(start)
 
 			if err != nil {
-				rpcLog.ErrorContext(ctx, "rpc request failed",
+				rpcLog.ErrorContext(ctx, "rpc request failed", err,
 					"error", err.Error(),
 					"latency_ms", latency.Milliseconds(),
 				)

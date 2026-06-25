@@ -3,6 +3,7 @@
 package log
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ func createFileWriter(cfg FileConfig) io.Writer {
 	_ = os.MkdirAll(cfg.Dir, 0o755)
 	f, err := os.OpenFile(filepath.Join(cfg.Dir, cfg.Filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[log] warning: failed to open log file %s/%s: %v; falling back to stdout\n", cfg.Dir, cfg.Filename, err)
 		return os.Stdout
 	}
 	return f

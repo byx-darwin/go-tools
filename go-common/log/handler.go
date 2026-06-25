@@ -158,8 +158,17 @@ func (h *multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *multiHandler) Handle(ctx context.Context, r slog.Record) error {
-	for _, handler := range h.handlers {
-		if err := handler.Handle(ctx, r); err != nil {
+	for i, handler := range h.handlers {
+		rec := r
+		if i > 0 {
+			// 为后续 handler 克隆 record，避免 handler 修改 attrs 导致竞态
+			rec = slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
+			r.Attrs(func(a slog.Attr) bool {
+				rec.AddAttrs(a)
+				return true
+			})
+		}
+		if err := handler.Handle(ctx, rec); err != nil {
 			return err
 		}
 	}

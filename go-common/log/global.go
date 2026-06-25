@@ -27,12 +27,16 @@ func L() *Logger {
 		return l
 	}
 
+	defaultMu.Lock()
+	defer defaultMu.Unlock()
+	if defaultLogger != nil { // double-check
+		return defaultLogger
+	}
+
 	// 返回默认 Logger（stdout, info level, json format）
 	defaultCfg := NewConfig()
 	l, _ = NewLogger(defaultCfg, ReleaseInfo{})
-	defaultMu.Lock()
 	defaultLogger = l
-	defaultMu.Unlock()
 	return l
 }
 
