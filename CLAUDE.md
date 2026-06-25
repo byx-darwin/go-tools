@@ -56,6 +56,7 @@ See `specs/00_overview.md` for full error code table.
 | `specs/05_migration_guide.md` | Migration guide: go-tools v1 → v2 |
 | `specs/06_kitex_observability_migration.md` | obs-opentelemetry (Kitex) migration ✅ completed |
 | `specs/07_hertz_observability_migration.md` | obs-opentelemetry (Hertz) migration ✅ completed |
+| `specs/08_hertz_response_redesign.md` | Hertz Response 重构设计（Responder 对象 + 中间件模式） |
 
 ## Development Commands
 
