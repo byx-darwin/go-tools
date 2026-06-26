@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/byx-darwin/go-tools/example/handler"
+	examplemw "github.com/byx-darwin/go-tools/example/middleware"
 	"github.com/byx-darwin/go-tools/go-auth/device"
 	"github.com/byx-darwin/go-tools/go-auth/session"
 	"github.com/byx-darwin/go-tools/go-common/log"
@@ -92,14 +93,22 @@ func main() {
 	h.Shutdown(context.Background())
 }
 
-// Deps 运行时依赖，聚合 session store / device store 等。
+// Deps 运行时依赖，聚合 session store / device store / 配置 等。
 type Deps struct {
+	// Config 全局配置引用。
+	Config *AppConfig
+
+	// SessionStore Session 存储（内存或 Redis 实现）。
 	SessionStore session.Store
-	DeviceStore  device.Store
+
+	// DeviceStore Device 存储（内存或 Redis 实现）。
+	DeviceStore device.Store
 }
 
 func initDeps(cfg *AppConfig) *Deps {
-	deps := &Deps{}
+	deps := &Deps{
+		Config: cfg,
+	}
 
 	// 根据 store_mode 选择内存或 Redis 实现。
 	switch cfg.StoreMode {
@@ -130,7 +139,7 @@ func initDeps(cfg *AppConfig) *Deps {
 // createHertzServer 创建 Hertz HTTP 服务。
 //
 // 路由和中间件在后续任务中注册；当前仅接入 OTel 链路追踪。
-func createHertzServer(cfg *AppConfig, _ *Deps, provider *observability.Provider) *server.Hertz {
+func createHertzServer(cfg *AppConfig, deps *Deps, provider *observability.Provider) *server.Hertz {
 	opts := []hertzconfig.Option{
 		server.WithHostPorts(cfg.Server.HTTPAddr),
 	}
@@ -145,11 +154,22 @@ func createHertzServer(cfg *AppConfig, _ *Deps, provider *observability.Provider
 		h = server.New(opts...)
 	}
 
+	// 注册全局中间件（AccessLog、Cors）。
+	mwDeps := &examplemw.Deps{
+		SessionStore: deps.SessionStore,
+		DeviceStore:  deps.DeviceStore,
+		JWTSecret:    []byte(cfg.JWT.Secret),
+	}
+	examplemw.RegisterMiddleware(h, mwDeps)
+
 	// 注册 go-common 示例路由
 	registerCommonRoutes(h)
 
 	// 注册 go-auth 示例路由（JWT / Session / Device）
 	registerAuthRoutes(h)
+
+	// 注册受保护的路由组。
+	examplemw.RegisterProtectedRoutes(h, mwDeps)
 
 	return h
 }
