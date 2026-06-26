@@ -168,6 +168,9 @@ func createHertzServer(cfg *AppConfig, deps *Deps, provider *observability.Provi
 	// 注册 go-auth 示例路由（JWT / Session / Device）
 	registerAuthRoutes(h)
 
+	// 注册 go-middleware 示例路由（Redis / Kafka / DB / ES / ClickHouse）
+	registerMiddlewareRoutes(h)
+
 	// 注册受保护的路由组。
 	examplemw.RegisterProtectedRoutes(h, mwDeps)
 
@@ -195,6 +198,15 @@ func registerAuthRoutes(h *server.Hertz) {
 	handler.RegisterJWTRoutes(h)
 	handler.RegisterSessionRoutes(h)
 	handler.RegisterDeviceRoutes(h)
+}
+
+// registerMiddlewareRoutes 注册 go-middleware 包的示例路由（Redis / Kafka / DB / ES / ClickHouse）。
+func registerMiddlewareRoutes(h *server.Hertz) {
+	handler.RegisterRedisRoutes(h)
+	handler.RegisterKafkaRoutes(h)
+	handler.RegisterDBRoutes(h)
+	handler.RegisterESRoutes(h)
+	handler.RegisterClickHouseRoutes(h)
 }
 
 // startKitexServer 占位 goroutine，Task 20 实现完整 RPC 服务。
