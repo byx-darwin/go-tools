@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/byx-darwin/go-tools/go-common/log"
 	"github.com/byx-darwin/go-tools/go-framework/config"
 	hertzConfig "github.com/byx-darwin/go-tools/go-framework/config/hertz"
@@ -13,7 +15,6 @@ import (
 	"github.com/byx-darwin/go-tools/go-middleware/es"
 	"github.com/byx-darwin/go-tools/go-middleware/kafka"
 	"github.com/byx-darwin/go-tools/go-middleware/redis"
-	"gopkg.in/yaml.v3"
 )
 
 // AppConfig 应用全局配置，聚合 go-tools 各库的配置。
@@ -105,13 +106,14 @@ type PolarisConfig struct {
 
 // LoadConfig 从 YAML 文件加载配置并展开环境变量。
 //
-// 环境变量展开使用 os.ExpandEnv，支持 ${VAR} 和 ${VAR:-default} 语法。
+// 环境变量展开使用 os.ExpandEnv，支持 $VAR 和 ${VAR} 语法。
+// 注意：${VAR:-default} 语法不受支持，默认值需在 YAML 文件中直接设置。
 func LoadConfig(path string) (*AppConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
 	}
-	// 展开环境变量（如 ${OTEL_ENDPOINT}、${REDIS_ADDR:-localhost:6379}）
+	// 展开环境变量（如 ${OTEL_ENDPOINT}），仅支持 $VAR 和 ${VAR} 语法
 	expanded := os.ExpandEnv(string(data))
 	var cfg AppConfig
 	if err := yaml.Unmarshal([]byte(expanded), &cfg); err != nil {

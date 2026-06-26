@@ -23,22 +23,22 @@ jwt:
 store_mode: "memory"  # memory 或 redis
 
 redis:
-  addrs: ["${REDIS_ADDR:-localhost:6379}"]
+  addrs: ["localhost:6379"]
   db: 0
   password: ""
 
 kafka:
-  brokers: ["${KAFKA_BROKERS:-localhost:9092}"]
+  brokers: ["localhost:9092"]
   topic: "go-tools-demo"
 
 db:
-  dsn: "${MYSQL_DSN:-root:root@tcp(localhost:3306)/demo}"
+  dsn: "root:root@tcp(localhost:3306)/demo"
 
 elasticsearch:
-  addresses: ["${ES_ADDRESSES:-http://localhost:9200}"]
+  addresses: ["http://localhost:9200"]
 
 clickhouse:
-  dsn: "${CH_DSN:-clickhouse://default:@localhost:9000/demo}"
+  dsn: "clickhouse://default:@localhost:9000/demo"
 
 captcha:
   key_long: 6
