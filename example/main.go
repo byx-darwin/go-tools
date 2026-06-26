@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/byx-darwin/go-tools/example/handler"
 	"github.com/byx-darwin/go-tools/go-common/log"
 	hertzlog "github.com/byx-darwin/go-tools/go-framework/hertz/log"
 	"github.com/byx-darwin/go-tools/go-framework/hertz/observability"
@@ -102,14 +103,37 @@ func createHertzServer(cfg *AppConfig, _ *Deps, provider *observability.Provider
 	opts := []hertzconfig.Option{
 		server.WithHostPorts(cfg.Server.HTTPAddr),
 	}
+
+	var h *server.Hertz
 	if provider != nil {
 		tracer, _ := provider.ServerTracer()
 		opts = append(opts, server.WithTracer(tracer))
-		h := server.New(opts...)
+		h = server.New(opts...)
 		h.Use(observability.TracerServerMiddleware(cfg.Observability))
-		return h
+	} else {
+		h = server.New(opts...)
 	}
-	return server.New(opts...)
+
+	// 注册 go-common 示例路由
+	registerCommonRoutes(h)
+
+	return h
+}
+
+// registerCommonRoutes 注册所有 go-common 包的示例路由。
+func registerCommonRoutes(h *server.Hertz) {
+	handler.RegisterCryptoRoutes(h)
+	handler.RegisterCacheRoutes(h)
+	handler.RegisterErrorRoutes(h)
+	handler.RegisterNetutilRoutes(h)
+	handler.RegisterTimeutilRoutes(h)
+	handler.RegisterCaptchaRoutes(h)
+	handler.RegisterLogRoutes(h)
+	handler.RegisterHTTPClientRoutes(h)
+	handler.RegisterTemplateRoutes(h)
+	handler.RegisterExecutilRoutes(h)
+	handler.RegisterAstutilRoutes(h)
+	handler.RegisterAkskRoutes(h)
 }
 
 // startKitexServer 占位 goroutine，Task 20 实现完整 RPC 服务。
