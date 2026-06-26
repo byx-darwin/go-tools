@@ -8,11 +8,14 @@ import (
 	"syscall"
 
 	"github.com/byx-darwin/go-tools/example/handler"
+	"github.com/byx-darwin/go-tools/go-auth/device"
+	"github.com/byx-darwin/go-tools/go-auth/session"
 	"github.com/byx-darwin/go-tools/go-common/log"
 	hertzlog "github.com/byx-darwin/go-tools/go-framework/hertz/log"
 	"github.com/byx-darwin/go-tools/go-framework/hertz/observability"
 	kitexlog "github.com/byx-darwin/go-tools/go-framework/kitex/log"
 	kitexobs "github.com/byx-darwin/go-tools/go-framework/kitex/observability"
+	mwauth "github.com/byx-darwin/go-tools/go-middleware/auth"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
 	hertzconfig "github.com/cloudwego/hertz/pkg/common/config"
@@ -89,11 +92,39 @@ func main() {
 	h.Shutdown(context.Background())
 }
 
-// Deps 运行时依赖，后续任务填充（session store / device store / middleware clients）。
-type Deps struct{}
+// Deps 运行时依赖，聚合 session store / device store 等。
+type Deps struct {
+	SessionStore session.Store
+	DeviceStore  device.Store
+}
 
-func initDeps(_ *AppConfig) *Deps {
-	return &Deps{}
+func initDeps(cfg *AppConfig) *Deps {
+	deps := &Deps{}
+
+	// 根据 store_mode 选择内存或 Redis 实现。
+	switch cfg.StoreMode {
+	case "redis":
+		// Redis 实现需要 Redis 客户端，此处仅做示例演示，暂用内存。
+		log.L().Warn("redis store not implemented, falling back to memory")
+		fallthrough
+	default:
+		deps.SessionStore = mwauth.NewMemorySessionStore()
+		deps.DeviceStore = mwauth.NewMemoryDeviceStore()
+	}
+
+	// 注入到 handler 包（供 auth handlers 使用）。
+	handler.SetSessionStore(deps.SessionStore)
+	handler.SetDeviceStore(deps.DeviceStore)
+
+	// 注入 JWT 配置。
+	handler.SetJWTConfig(
+		cfg.JWT.Secret,
+		cfg.JWT.Issuer,
+		cfg.JWT.AccessExpiration.Duration,
+		cfg.JWT.RefreshExpiration.Duration,
+	)
+
+	return deps
 }
 
 // createHertzServer 创建 Hertz HTTP 服务。
@@ -117,6 +148,9 @@ func createHertzServer(cfg *AppConfig, _ *Deps, provider *observability.Provider
 	// 注册 go-common 示例路由
 	registerCommonRoutes(h)
 
+	// 注册 go-auth 示例路由（JWT / Session / Device）
+	registerAuthRoutes(h)
+
 	return h
 }
 
@@ -134,6 +168,13 @@ func registerCommonRoutes(h *server.Hertz) {
 	handler.RegisterExecutilRoutes(h)
 	handler.RegisterAstutilRoutes(h)
 	handler.RegisterAkskRoutes(h)
+}
+
+// registerAuthRoutes 注册 go-auth 包的示例路由（JWT / Session / Device）。
+func registerAuthRoutes(h *server.Hertz) {
+	handler.RegisterJWTRoutes(h)
+	handler.RegisterSessionRoutes(h)
+	handler.RegisterDeviceRoutes(h)
 }
 
 // startKitexServer 占位 goroutine，Task 20 实现完整 RPC 服务。

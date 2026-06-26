@@ -3,6 +3,7 @@ module github.com/byx-darwin/go-tools/example
 go 1.25.8
 
 require (
+	github.com/byx-darwin/go-tools/go-auth v0.0.0
 	github.com/byx-darwin/go-tools/go-common v0.0.0
 	github.com/byx-darwin/go-tools/go-framework v0.0.0-00010101000000-000000000000
 	github.com/byx-darwin/go-tools/go-middleware v0.0.0-00010101000000-000000000000
