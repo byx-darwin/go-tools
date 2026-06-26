@@ -8,7 +8,7 @@
 //
 // 导入 kitex 后可直接赋值：
 //
-//	var mw endpoint.Middleware = middleware.AccessLog(logger)
+//	var mw endpoint.Middleware = middleware.AccessLog()
 package middleware
 
 import (
@@ -29,8 +29,9 @@ type Middleware func(Endpoint) Endpoint
 // 用法:
 //
 //	import "github.com/cloudwego/kitex/pkg/endpoint"
-//	var mw endpoint.Middleware = endpoint.Middleware(middleware.AccessLog(logger))
-func AccessLog(logger *log.Logger) Middleware {
+//	var mw endpoint.Middleware = endpoint.Middleware(middleware.AccessLog())
+func AccessLog() Middleware {
+	rpcLog := log.L().WithCategory(log.CategoryRPC)
 	return func(next Endpoint) Endpoint {
 		return func(ctx context.Context, req, resp interface{}) error {
 			start := time.Now()
@@ -38,12 +39,12 @@ func AccessLog(logger *log.Logger) Middleware {
 			latency := time.Since(start)
 
 			if err != nil {
-				logger.ErrorContext(ctx, "rpc_access",
-					"latency_ms", latency.Milliseconds(),
+				rpcLog.ErrorContext(ctx, "rpc request failed", err,
 					"error", err.Error(),
+					"latency_ms", latency.Milliseconds(),
 				)
 			} else {
-				logger.InfoContext(ctx, "rpc_access",
+				rpcLog.InfoContext(ctx, "rpc request handled",
 					"latency_ms", latency.Milliseconds(),
 				)
 			}

@@ -1,5 +1,5 @@
-// Package adapters 提供 slog.Logger 到框架日志接口的适配器。
-package adapters
+// Package hertzlog 提供 go-common/log.Logger 到 Hertz hlog.FullLogger 的适配器。
+package hertzlog
 
 import (
 	"context"
@@ -12,11 +12,6 @@ import (
 )
 
 // HertzAdapter 将 go-common/log.Logger 适配为 hertz hlog.FullLogger。
-//
-// 用法:
-//
-//	l := log.New(log.WithLevel("info"))
-//	hlog.SetLogger(adapters.NewHertzAdapter(l))
 type HertzAdapter struct {
 	logger *log.Logger
 	level  hlog.Level
@@ -95,12 +90,12 @@ func (a *HertzAdapter) Fatalf(format string, v ...interface{}) {
 
 // CtxTracef implements hlog.CtxLogger.
 func (a *HertzAdapter) CtxTracef(ctx context.Context, format string, v ...interface{}) {
-	a.logger.InfoContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.DebugContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // CtxDebugf implements hlog.CtxLogger.
 func (a *HertzAdapter) CtxDebugf(ctx context.Context, format string, v ...interface{}) {
-	a.logger.InfoContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.DebugContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // CtxInfof implements hlog.CtxLogger.
@@ -120,12 +115,12 @@ func (a *HertzAdapter) CtxWarnf(ctx context.Context, format string, v ...interfa
 
 // CtxErrorf implements hlog.CtxLogger.
 func (a *HertzAdapter) CtxErrorf(ctx context.Context, format string, v ...interface{}) {
-	a.logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.Logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // CtxFatalf implements hlog.CtxLogger.
 func (a *HertzAdapter) CtxFatalf(ctx context.Context, format string, v ...interface{}) {
-	a.logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
+	a.logger.Logger.ErrorContext(ctx, fmt.Sprintf(format, v...))
 }
 
 // ── Control interface ──
