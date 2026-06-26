@@ -103,7 +103,7 @@ func TestDeviceAuth_Success(t *testing.T) {
 
 	engine := newDeviceTestEngine()
 	engine.Use(JWTAuth[deviceTestClaims](secret))
-	engine.Use(DeviceAuth(store, 5, extract))
+	engine.Use(DeviceAuth(store, extract))
 	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
 		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	})
@@ -127,7 +127,7 @@ func TestDeviceAuth_DeviceNotFound(t *testing.T) {
 
 	engine := newDeviceTestEngine()
 	engine.Use(JWTAuth[deviceTestClaims](secret))
-	engine.Use(DeviceAuth(store, 5, extract))
+	engine.Use(DeviceAuth(store, extract))
 	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
 		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	})
@@ -152,7 +152,7 @@ func TestDeviceAuth_JTIMismatch(t *testing.T) {
 
 	engine := newDeviceTestEngine()
 	engine.Use(JWTAuth[deviceTestClaims](secret))
-	engine.Use(DeviceAuth(store, 5, extract))
+	engine.Use(DeviceAuth(store, extract))
 	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
 		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	})
@@ -172,7 +172,7 @@ func TestDeviceAuth_NoClaimsInContext(t *testing.T) {
 	}
 
 	engine := newDeviceTestEngine()
-	engine.Use(DeviceAuth(store, 5, extract))
+	engine.Use(DeviceAuth(store, extract))
 	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
 		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	})
@@ -194,7 +194,7 @@ func TestDeviceAuth_ExtractReturnsEmptyFields(t *testing.T) {
 
 	engine := newDeviceTestEngine()
 	engine.Use(JWTAuth[deviceTestClaims](secret))
-	engine.Use(DeviceAuth(store, 5, extract))
+	engine.Use(DeviceAuth(store, extract))
 	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
 		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
 	})

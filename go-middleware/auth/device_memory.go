@@ -54,9 +54,7 @@ func (s *MemoryDeviceStore) AddDevice(_ context.Context, userUUID, deviceID, jti
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if maxDevices <= 0 {
-		maxDevices = s.cfg.maxDevices
-	}
+	// maxDevices <= 0 means no limit.
 
 	key := deviceKey{UserUUID: userUUID, DeviceID: deviceID}
 

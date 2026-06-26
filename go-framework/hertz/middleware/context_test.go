@@ -2,9 +2,12 @@ package middleware
 
 import (
 	"testing"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/byx-darwin/go-tools/go-auth/session"
 )
 
 func TestSetGetClaims(t *testing.T) {
@@ -32,14 +35,9 @@ func TestSetGetSession(t *testing.T) {
 	assert.False(t, ok)
 	assert.Nil(t, got)
 
-	s := &fakeSession{ID: "s1", UserUUID: "u1"}
+	s := &session.Session{ID: "s1", UserUUID: "u1", ExpiresAt: time.Now().Add(time.Hour)}
 	SetSession(c, s)
 	got, ok = GetSession(c)
 	assert.True(t, ok)
 	assert.Equal(t, s, got)
-}
-
-type fakeSession struct {
-	ID       string
-	UserUUID string
 }

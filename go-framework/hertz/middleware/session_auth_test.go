@@ -66,8 +66,7 @@ func TestSessionAuth_SuccessFromHeader(t *testing.T) {
 	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
 		got, ok := GetSession(c)
 		assert.True(t, ok)
-		sess := got.(*session.Session)
-		c.JSON(http.StatusOK, map[string]string{"user": sess.UserUUID})
+		c.JSON(http.StatusOK, map[string]string{"user": got.UserUUID})
 	})
 
 	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
@@ -91,8 +90,7 @@ func TestSessionAuth_SuccessFromCookie(t *testing.T) {
 	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
 		got, ok := GetSession(c)
 		assert.True(t, ok)
-		sess := got.(*session.Session)
-		c.JSON(http.StatusOK, map[string]string{"user": sess.UserUUID})
+		c.JSON(http.StatusOK, map[string]string{"user": got.UserUUID})
 	})
 
 	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
@@ -114,8 +112,7 @@ func TestSessionAuth_HeaderPriorityOverCookie(t *testing.T) {
 	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
 		got, ok := GetSession(c)
 		assert.True(t, ok)
-		sess := got.(*session.Session)
-		c.JSON(http.StatusOK, map[string]string{"user": sess.UserUUID})
+		c.JSON(http.StatusOK, map[string]string{"user": got.UserUUID})
 	})
 
 	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},

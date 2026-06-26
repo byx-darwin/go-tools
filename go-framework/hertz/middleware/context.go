@@ -6,6 +6,8 @@ package middleware
 
 import (
 	"github.com/cloudwego/hertz/pkg/app"
+
+	"github.com/byx-darwin/go-tools/go-auth/session"
 )
 
 // authCtxKey 认证上下文 key 类型。
@@ -34,12 +36,17 @@ func GetClaims[T any](c *app.RequestContext) (*T, bool) {
 }
 
 // SetSession 将 Session 注入 RequestContext。
-func SetSession(c *app.RequestContext, s any) {
+func SetSession(c *app.RequestContext, s *session.Session) {
 	c.Set(string(ctxKeySession), s)
 }
 
 // GetSession 从 RequestContext 提取 Session。
-// 返回 session 值和是否存在的布尔值。
-func GetSession(c *app.RequestContext) (any, bool) {
-	return c.Get(string(ctxKeySession))
+// 返回 session 指针和是否存在的布尔值。
+func GetSession(c *app.RequestContext) (*session.Session, bool) {
+	v, ok := c.Get(string(ctxKeySession))
+	if !ok {
+		return nil, false
+	}
+	s, ok := v.(*session.Session)
+	return s, ok
 }

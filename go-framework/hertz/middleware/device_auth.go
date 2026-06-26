@@ -25,8 +25,8 @@ type DeviceClaims func(claims any) (userUUID, deviceID, jti string)
 //	    c := claims.(*UserClaims)
 //	    return c.Subject, c.DeviceID, c.JTI
 //	}
-//	engine.Use(middleware.DeviceAuth(deviceStore, 5, extract))
-func DeviceAuth(store device.Store, maxDevices int, extract DeviceClaims) app.HandlerFunc {
+//	engine.Use(middleware.DeviceAuth(deviceStore, extract))
+func DeviceAuth(store device.Store, extract DeviceClaims) app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		claims, ok := c.Get(string(ctxKeyClaims))
 		if !ok || extract == nil {

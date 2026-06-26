@@ -137,8 +137,7 @@ func extractEmbeddedRegisteredClaims(claims gojwt.Claims) *gojwt.RegisteredClaim
 		if !field.CanAddr() {
 			return nil
 		}
-		//nolint:govet // field.Addr().UnsafePointer() 用于类型断言是安全的。
-		return (*gojwt.RegisteredClaims)(field.Addr().UnsafePointer())
+		return field.Addr().Interface().(*gojwt.RegisteredClaims)
 	}
 
 	return nil

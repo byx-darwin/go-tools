@@ -284,7 +284,7 @@ func TestMemoryDeviceStore_AddDevice_KickWithZeroMax(t *testing.T) {
 	ctx := context.Background()
 	s := NewMemoryDeviceStore()
 
-	// maxDevices=0 时回退到 cfg.maxDevices（默认 5）。
+	// maxDevices=0 means no limit — all devices should be kept.
 	for i := 0; i < 10; i++ {
 		_, err := s.AddDevice(ctx, "user-1", "dev-"+string(rune('a'+i)), "jti-"+string(rune('a'+i)), 0)
 		require.NoError(t, err)
@@ -292,5 +292,5 @@ func TestMemoryDeviceStore_AddDevice_KickWithZeroMax(t *testing.T) {
 
 	devices, err := s.ListDevices(ctx, "user-1")
 	require.NoError(t, err)
-	assert.Len(t, devices, 5)
+	assert.Len(t, devices, 10)
 }
