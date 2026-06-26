@@ -4,6 +4,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 	"sync"
@@ -246,9 +247,7 @@ func flattenMap(m map[string]any, prefix string) map[string]any {
 			fullKey = prefix + "." + k
 		}
 		if sub, ok := v.(map[string]any); ok {
-			for fk, fv := range flattenMap(sub, fullKey) {
-				result[fk] = fv
-			}
+			maps.Copy(result, flattenMap(sub, fullKey))
 		} else {
 			result[fullKey] = v
 		}
