@@ -170,15 +170,6 @@ func allCases() []TestCase {
 			Category:  "go-auth",
 			DependsOn: "auth/session/create",
 		},
-		{
-			Name:      "auth/session/delete",
-			Method:    "DELETE",
-			Path:      "/auth/session",
-			Headers:   map[string]string{"X-Session-Id": "${session_id}"},
-			Assert:    and(statusCode(200), dataFieldHas("deleted")),
-			Category:  "go-auth",
-			DependsOn: "auth/session/create",
-		},
 
 		// ── go-auth: Device ──
 		{
@@ -189,7 +180,10 @@ func allCases() []TestCase {
 			Assert:   and(statusCode(200), dataFieldHas("device_id", "jti")),
 			Category: "go-auth",
 			AfterRun: func(_ int, body []byte) error {
-				return extractToken(body, "device_id", "device_id")
+				if err := extractToken(body, "device_id", "device_id"); err != nil {
+					return err
+				}
+				return extractToken(body, "jti", "device_jti")
 			},
 		},
 		{
@@ -200,16 +194,22 @@ func allCases() []TestCase {
 			Category:  "go-auth",
 			DependsOn: "auth/device/register",
 		},
+
+		// ── JWT Sign Device（为设备认证生成 JWT）──
 		{
-			Name:      "auth/device/remove",
-			Method:    "DELETE",
-			Path:      "/auth/device?user_id=test-user-001&device_id=device-001",
-			Assert:    and(statusCode(200), dataFieldHas("deleted")),
+			Name:      "auth/jwt/sign-device",
+			Method:    "POST",
+			Path:      "/auth/jwt/sign-device",
+			Body:      `{"user_id":"test-user-001","device_id":"${device_id}","jti":"${device_jti}"}`,
+			Assert:    and(statusCode(200), dataFieldHas("access_token")),
 			Category:  "go-auth",
 			DependsOn: "auth/device/register",
+			AfterRun: func(_ int, body []byte) error {
+				return extractToken(body, "access_token", "device_access_token")
+			},
 		},
 
-		// ── Protected Routes ──
+		// ── Protected Routes（必须在 delete/remove 测试之前运行）──
 		{
 			Name:     "protected/jwt/no-token",
 			Method:   "GET",
@@ -239,10 +239,29 @@ func allCases() []TestCase {
 			Name:      "protected/device/valid",
 			Method:    "GET",
 			Path:      "/protected/device",
-			Headers:   map[string]string{"Authorization": "Bearer ${access_token}"},
+			Headers:   map[string]string{"Authorization": "Bearer ${device_access_token}"},
 			Assert:    and(statusCode(200), dataFieldHas("user_uuid", "device_id")),
 			Category:  "auth-protected",
-			DependsOn: "auth/jwt/sign",
+			DependsOn: "auth/jwt/sign-device",
+		},
+
+		// ── Session / Device Delete（在 protected 测试之后运行）──
+		{
+			Name:      "auth/session/delete",
+			Method:    "DELETE",
+			Path:      "/auth/session",
+			Headers:   map[string]string{"X-Session-Id": "${session_id}"},
+			Assert:    and(statusCode(200), dataFieldHas("deleted")),
+			Category:  "go-auth",
+			DependsOn: "auth/session/create",
+		},
+		{
+			Name:      "auth/device/remove",
+			Method:    "DELETE",
+			Path:      "/auth/device?user_id=test-user-001&device_id=device-001",
+			Assert:    and(statusCode(200), dataFieldHas("deleted")),
+			Category:  "go-auth",
+			DependsOn: "auth/device/register",
 		},
 
 		// ── Middleware (skip in local mode) ──

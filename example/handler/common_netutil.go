@@ -19,8 +19,8 @@ func netutilHandler(_ context.Context, c *app.RequestContext) {
 	isAvailable := netutil.IsNetworkAvailable()
 
 	result := map[string]any{
-		"internal_ip":      internalIP,
-		"ip_error":         errToString(err),
+		"internal_ip":       internalIP,
+		"ip_error":          errToString(err),
 		"network_available": isAvailable,
 	}
 

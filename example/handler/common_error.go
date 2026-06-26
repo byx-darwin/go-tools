@@ -31,14 +31,14 @@ func errorHandler(_ context.Context, c *app.RequestContext) {
 	// 分类判断。
 	results := map[string]any{
 		"predefined": map[string]any{
-			"code":       code1,
-			"public_msg": public1,
+			"code":        code1,
+			"public_msg":  public1,
 			"http_status": httpStatus1,
-			"is_client":  goerror.IsClientError(code1),
+			"is_client":   goerror.IsClientError(code1),
 		},
 		"custom": map[string]any{
-			"code":       code2,
-			"public_msg": public2,
+			"code":        code2,
+			"public_msg":  public2,
 			"http_status": httpStatus2,
 			"is_business": goerror.IsBusinessErrorCode(code2),
 		},

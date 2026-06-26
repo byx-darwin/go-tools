@@ -128,8 +128,8 @@ func configPolarisHandler(ctx context.Context, c *app.RequestContext) {
 
 	// Polaris 已启用时返回配置信息（实际调用需要 Polaris SDK 环境）。
 	hertzresp.Success(c, map[string]any{
-		"status":    "enabled",
-		"namespace": snap["polaris.namespace"],
+		"status":     "enabled",
+		"namespace":  snap["polaris.namespace"],
 		"file_group": snap["polaris.file_group"],
 		"file_name":  snap["polaris.file_name"],
 		"message":    "Polaris is enabled. Remote config loading requires a running Polaris server.",

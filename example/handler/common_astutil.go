@@ -56,9 +56,9 @@ func World() {
 	formatted, _ := file.Format()
 
 	results := map[string]any{
-		"functions":   funcNames,
-		"imports":     importPaths,
-		"hello_found": helloExists,
+		"functions":       funcNames,
+		"imports":         importPaths,
+		"hello_found":     helloExists,
 		"formatted_lines": len(formatted),
 	}
 

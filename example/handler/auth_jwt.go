@@ -23,10 +23,10 @@ type AppClaims struct {
 
 // JWT 配置（由 main 通过 SetJWTConfig 注入）。
 var (
-	jwtSecret           []byte
-	jwtIssuer           string
-	jwtAccessExpiry     time.Duration
-	jwtRefreshExpiry    time.Duration
+	jwtSecret        []byte
+	jwtIssuer        string
+	jwtAccessExpiry  time.Duration
+	jwtRefreshExpiry time.Duration
 )
 
 // SetJWTConfig 注入 JWT 配置（在 main 中调用）。
@@ -40,6 +40,7 @@ func SetJWTConfig(secret, issuer string, accessExpiry, refreshExpiry time.Durati
 // RegisterJWTRoutes 注册 JWT 示例路由。
 func RegisterJWTRoutes(h *server.Hertz) {
 	h.POST("/auth/jwt/sign", jwtSignHandler)
+	h.POST("/auth/jwt/sign-device", jwtSignDeviceHandler)
 	h.POST("/auth/jwt/verify", jwtVerifyHandler)
 	h.POST("/auth/jwt/refresh", jwtRefreshHandler)
 }
@@ -108,10 +109,10 @@ func jwtVerifyHandler(ctx context.Context, c *app.RequestContext) {
 	}
 
 	hertzresp.Success(c, map[string]any{
-		"valid":     true,
-		"user_uuid": claims.UserUUID,
-		"subject":   claims.Subject,
-		"issuer":    claims.Issuer,
+		"valid":      true,
+		"user_uuid":  claims.UserUUID,
+		"subject":    claims.Subject,
+		"issuer":     claims.Issuer,
 		"expires_at": claims.ExpiresAt,
 	})
 }
@@ -141,5 +142,48 @@ func jwtRefreshHandler(ctx context.Context, c *app.RequestContext) {
 
 	hertzresp.Success(c, map[string]any{
 		"access_token": newToken,
+	})
+}
+
+// jwtSignDeviceHandler 签发包含设备信息的 JWT（用于设备认证场景）。
+//
+// 请求体：{"user_id": "xxx", "device_id": "yyy", "jti": "zzz"}
+// 响应：access_token，claims 中包含 device_id 和 jti。
+func jwtSignDeviceHandler(ctx context.Context, c *app.RequestContext) {
+	var req struct {
+		UserID   string `json:"user_id" vd:"len($)>0"`
+		DeviceID string `json:"device_id" vd:"len($)>0"`
+		JTI      string `json:"jti" vd:"len($)>0"`
+	}
+	if err := c.BindAndValidate(&req); err != nil {
+		hertzresp.Error(ctx, c, err, "invalid request")
+		return
+	}
+
+	claims := DeviceAppClaims{
+		AppClaims: AppClaims{
+			UserUUID: req.UserID,
+		},
+		DeviceID: req.DeviceID,
+	}
+	claims.ID = req.JTI
+
+	token, err := jwt.Sign(claims, jwtSecret,
+		jwt.WithIssuer(jwtIssuer),
+		jwt.WithExpiration(jwtAccessExpiry),
+	)
+	if err != nil {
+		hertzresp.Error(ctx, c, err, "sign device token failed")
+		return
+	}
+
+	hertzresp.Success(c, map[string]any{
+		"access_token": token,
+		"claims": map[string]any{
+			"user_uuid": req.UserID,
+			"device_id": req.DeviceID,
+			"jti":       req.JTI,
+			"issuer":    jwtIssuer,
+		},
 	})
 }

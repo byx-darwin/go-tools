@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/byx-darwin/go-tools/go-middleware/kafka"
 	hertzresp "github.com/byx-darwin/go-tools/go-framework/hertz"
+	"github.com/byx-darwin/go-tools/go-middleware/kafka"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
 )

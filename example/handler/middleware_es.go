@@ -4,10 +4,10 @@ import (
 	"context"
 	"io"
 
-	elasticsearchv8 "github.com/elastic/go-elasticsearch/v8"
 	hertzresp "github.com/byx-darwin/go-tools/go-framework/hertz"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	elasticsearchv8 "github.com/elastic/go-elasticsearch/v8"
 )
 
 // esClient Elasticsearch 客户端实例（由 main 通过 SetESClient 注入）。
