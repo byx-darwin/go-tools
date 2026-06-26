@@ -9,6 +9,7 @@ import (
 	hertzresp "github.com/byx-darwin/go-tools/go-framework/hertz"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/valyala/fasthttp"
 )
 
 // RegisterHTTPClientRoutes 注册 httpclient 示例路由。
@@ -28,13 +29,15 @@ func httpclientHandler(_ context.Context, c *app.RequestContext) {
 	if err != nil {
 		result["send_error"] = err.Error()
 	} else {
+		// 使用完后释放 fasthttp 响应到对象池。
+		if resp != nil {
+			defer fasthttp.ReleaseResponse(resp)
+		}
 		bodyLen := len(resp.Body())
 		result["send"] = map[string]any{
 			"status_code": statusCode,
 			"body_length": bodyLen,
 		}
-		// 使用完后释放响应。
-		resp.Reset()
 	}
 
 	// SendWithRetry 演示（不实际发送，仅展示 API）。

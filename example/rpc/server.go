@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"net"
+	"strconv"
 
 	"github.com/byx-darwin/go-tools/example/kitex_generated/demo/demoservice"
 	"github.com/byx-darwin/go-tools/go-common/log"
@@ -51,12 +52,10 @@ func StartServer(ctx context.Context, addr string, obsProvider *kitexobs.Provide
 
 // extractPort 从 addr 字符串提取端口号（如 ":8888" → 8888）。
 func extractPort(addr string) int {
-	// 简单解析：跳过前导 ":" 并转为 int。
-	port := 0
-	for _, c := range addr {
-		if c >= '0' && c <= '9' {
-			port = port*10 + int(c-'0')
-		}
+	_, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return 0
 	}
+	port, _ := strconv.Atoi(portStr)
 	return port
 }

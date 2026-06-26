@@ -2,21 +2,46 @@ services:
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   mysql:
     image: mysql:8
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: demo
     ports: ["3306:3306"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:3.9.0
     ports: ["9092:9092"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9092"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   elasticsearch:
     image: elasticsearch:8.12.0
     environment:
       discovery.type: single-node
       xpack.security.enabled: "false"
     ports: ["9200:9200"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   clickhouse:
-    image: clickhouse/clickhouse-server:latest
+    image: clickhouse/clickhouse-server:24.12
     ports: ["9000:9000"]
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

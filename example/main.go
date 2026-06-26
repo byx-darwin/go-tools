@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -158,14 +160,14 @@ func initDeps(cfg *AppConfig) *Deps {
 
 // initRPCClient 延迟初始化 Kitex RPC 客户端（等待服务启动后连接）。
 func initRPCClient(ctx context.Context, cfg *AppConfig, deps *Deps, kitexObs *kitexobs.Provider) {
-	// 等待 Kitex 服务启动（简单延迟）。
-	select {
-	case <-ctx.Done():
+	rpcAddr := "localhost" + cfg.Server.RPCAddr
+
+	// 轮询 RPC 端口直到可连接或超时（10 秒）。
+	if !waitForPort(rpcAddr, 10*time.Second) {
+		log.L().Warn("kitex server not reachable within timeout, RPC routes will return 503", "addr", rpcAddr)
 		return
-	default:
 	}
 
-	rpcAddr := "localhost" + cfg.Server.RPCAddr
 	client, err := rpc.NewDemoClient(rpcAddr, kitexObs)
 	if err != nil {
 		log.L().Warn("kitex client init failed, RPC routes will return 503", "error", err)
@@ -175,6 +177,20 @@ func initRPCClient(ctx context.Context, cfg *AppConfig, deps *Deps, kitexObs *ki
 	deps.RPCClient = client
 	handler.SetRPCClient(client)
 	log.L().Info("kitex client initialized", "addr", rpcAddr)
+}
+
+// waitForPort 轮询 TCP 端口直到可连接或超时。
+func waitForPort(addr string, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			return true
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return false
 }
 
 // createHertzServer 创建 Hertz HTTP 服务。

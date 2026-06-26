@@ -103,7 +103,9 @@ var baseURL = "http://localhost:8080"
 func main() {
 	mode := flag.String("mode", "local", "test mode: local or docker")
 	report := flag.Bool("report", false, "generate markdown report at test/report.md")
+	dir := flag.String("dir", "", "example project directory (default: auto-detect via runtime.Caller)")
 	flag.Parse()
+	_ = dir // 在 exampleDir() 中通过 flag.Lookup 访问
 
 	fmt.Println("╔══════════════════════════════════════════╗")
 	fmt.Println("║   go-tools example test runner           ║")
@@ -204,8 +206,20 @@ func waitForHealth(timeout time.Duration) error {
 }
 
 // exampleDir 返回 example/ 目录的绝对路径。
+//
+// 优先级：-dir flag > EXAMPLE_DIR 环境变量 > runtime.Caller 推导。
 func exampleDir() string {
-	// test/runner.go 位于 example/test/，上级即 example/。
+	// 1. -dir flag（在 main 中解析）。
+	if dirFlag := flag.Lookup("dir"); dirFlag != nil {
+		if d := dirFlag.Value.String(); d != "" {
+			return d
+		}
+	}
+	// 2. EXAMPLE_DIR 环境变量。
+	if d := os.Getenv("EXAMPLE_DIR"); d != "" {
+		return d
+	}
+	// 3. 通过 runtime.Caller 推导（test/runner.go 位于 example/test/，上级即 example/）。
 	_, filename, _, ok := runtime.Caller(0)
 	if ok {
 		// 获取 test/ 所在目录。

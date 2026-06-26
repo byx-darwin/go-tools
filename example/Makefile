@@ -13,12 +13,11 @@ report:
 	go run ./test/ -mode=local -report
 
 docker-up:
-	docker compose up -d
+	docker compose up -d --wait
 
 docker-down:
 	docker compose down
 
 full-test: docker-up
-	@sleep 10
 	go run ./test/ -mode=docker -report
 	docker compose down

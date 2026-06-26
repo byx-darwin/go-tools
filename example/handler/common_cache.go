@@ -20,7 +20,8 @@ func cacheHandler(_ context.Context, c *app.RequestContext) {
 
 	// Set / Get。
 	cch.Set("counter", 42)
-	val, ok, _ := cch.Get("counter")
+	val, ok, err := cch.Get("counter")
+	_ = err // 缓存读取错误是可恢复的，继续使用零值。
 
 	// Delete。
 	cch.Set("temp", 99)

@@ -1,3 +1,6 @@
+# WARNING: This file contains example credentials. Replace jwt.secret,
+# db source password, and AK/SK values before any non-local deployment.
+
 server:
   http_addr: ":8080"
   rpc_addr: ":8888"
@@ -28,11 +31,11 @@ redis:
   password: ""
 
 kafka:
-  brokers: ["localhost:9092"]
+  broker: ["localhost:9092"]
   topic: "go-tools-demo"
 
 db:
-  dsn: "root:root@tcp(localhost:3306)/demo"
+  source: "root:root@tcp(localhost:3306)/demo"
 
 elasticsearch:
   addresses: ["http://localhost:9200"]

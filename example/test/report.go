@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -52,10 +53,6 @@ func printTerminalReport(results []TestResult) {
 
 	// 未分类的。
 	other := filterByCategory(results, "")
-	for _, cat := range categories {
-		// 跳过已输出的分类。
-		_ = cat
-	}
 	if len(other) > 0 {
 		fmt.Printf("  %sother%s\n", colorCyan, colorReset)
 		for _, r := range other {
@@ -206,7 +203,7 @@ func writeMarkdownReport(results []TestResult) error {
 		}
 	}
 
-	return os.WriteFile("test/report.md", []byte(b.String()), 0o644) //nolint:gosec // test report file
+	return os.WriteFile(filepath.Join(exampleDir(), "test", "report.md"), []byte(b.String()), 0o644) //nolint:gosec // test report file
 }
 
 // statusIcon 返回状态对应的 Markdown 图标。
