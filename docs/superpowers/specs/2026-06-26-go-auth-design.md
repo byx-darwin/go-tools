@@ -39,8 +39,8 @@ go-framework       ← 框架适配（Hertz JWT 中间件，依赖 go-common + g
 |------|------|------|
 | API 服务 | JWT | 无状态，前后端分离标准方案 |
 | APP 端 | JWT + 设备会话管理 | 支持立即踢出、限制 N 个设备 |
-| 内部 Web 后台 | JWT（与 API 统一） | 前后端分离，不引入 Session/Cookie |
-| Session | 预留接口，暂不实现 | 未来如需服务端渲染等场景可扩展 |
+| 内部 Web 后台 | JWT（与 API 统一） | 前后端分离，不引入 Cookie |
+| Session | 接口 + Redis/内存实现 | 支持服务端渲染等场景 |
 
 ### 2.3 JWT 设计
 
@@ -206,6 +206,18 @@ const (
 ```go
 package auth
 
+// RedisSessionStore Redis Session 存储。
+type RedisSessionStore struct { ... }
+
+// NewRedisSessionStore 创建 Redis Session 存储。
+func NewRedisSessionStore(client redis.UniversalClient, opts ...Option) *RedisSessionStore
+
+// MemorySessionStore 内存 Session 存储（开发/测试用）。
+type MemorySessionStore struct { ... }
+
+// NewMemorySessionStore 创建内存 Session 存储。
+func NewMemorySessionStore(opts ...Option) *MemorySessionStore
+
 // RedisDeviceStore Redis 设备会话存储。
 type RedisDeviceStore struct { ... }
 
@@ -220,6 +232,16 @@ func NewMemoryDeviceStore(opts ...Option) *MemoryDeviceStore
 ```
 
 **Redis 数据结构：**
+
+Session 存储：
+```
+Key:    session:{session_id}
+Type:   String (JSON)
+Value:  {"id":"xxx","user_uuid":"yyy","data":{},"expires_at":"2026-06-27T00:00:00Z"}
+TTL:    30 days
+```
+
+设备会话存储：
 ```
 Key:    device:{user_uuid}
 Type:   Hash
@@ -235,6 +257,10 @@ package middleware
 // JWTAuth JWT 认证中间件。
 // 从 Authorization 头解析 Bearer Token，验证签名，将 claims 注入 context。
 func JWTAuth[T any](secret []byte, opts ...Option) app.HandlerFunc
+
+// SessionAuth Session 认证中间件。
+// 从 Cookie 或 Header 解析 Session ID，加载 Session，注入 context。
+func SessionAuth(store session.Store, opts ...Option) app.HandlerFunc
 
 // DeviceAuth 设备会话检查中间件。
 // 需配合 JWTAuth 使用，检查设备 jti 是否有效。
@@ -298,6 +324,5 @@ go-auth: 40000-40099（认证相关错误）
 
 ## 6. 后续扩展
 
-- **Session Store Redis 实现**：如需服务端渲染等场景，在 go-middleware 中实现
 - **OAuth2 / OIDC**：在 go-auth 中扩展 OAuth2 客户端和服务端支持
 - **多因素认证（MFA）**：在 go-auth 中扩展 TOTP 等支持
