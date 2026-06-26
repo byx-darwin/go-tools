@@ -2,11 +2,11 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/byx-darwin/go-tools/go-auth/session"
 	"github.com/samber/hot"
+	"github.com/samber/oops"
 )
 
 // compile-time interface check.
@@ -38,7 +38,7 @@ func NewMemorySessionStore(opts ...Option) *MemorySessionStore {
 func (s *MemorySessionStore) Get(_ context.Context, sessionID string) (*session.Session, error) {
 	sess, ok, err := s.cache.Get(sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("session get: %w", err)
+		return nil, oops.Wrapf(err, "session get")
 	}
 	if !ok {
 		return nil, nil
@@ -62,7 +62,7 @@ func (s *MemorySessionStore) Delete(_ context.Context, sessionID string) error {
 func (s *MemorySessionStore) Exists(_ context.Context, sessionID string) (bool, error) {
 	_, ok, err := s.cache.Get(sessionID)
 	if err != nil {
-		return false, fmt.Errorf("session exists: %w", err)
+		return false, oops.Wrapf(err, "session exists")
 	}
 	return ok, nil
 }

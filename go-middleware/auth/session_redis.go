@@ -3,11 +3,11 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/byx-darwin/go-tools/go-auth/session"
 	"github.com/redis/go-redis/v9"
+	"github.com/samber/oops"
 )
 
 // compile-time interface check.
@@ -57,12 +57,12 @@ func (s *RedisSessionStore) Get(ctx context.Context, sessionID string) (*session
 		if err == redis.Nil {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("session get: %w", err)
+		return nil, oops.Wrapf(err, "session get")
 	}
 
 	var sd sessionData
 	if err = json.Unmarshal(data, &sd); err != nil {
-		return nil, fmt.Errorf("session unmarshal: %w", err)
+		return nil, oops.Wrapf(err, "session unmarshal")
 	}
 
 	return &session.Session{
@@ -84,11 +84,11 @@ func (s *RedisSessionStore) Save(ctx context.Context, sess *session.Session) err
 
 	data, err := json.Marshal(sd)
 	if err != nil {
-		return fmt.Errorf("session marshal: %w", err)
+		return oops.Wrapf(err, "session marshal")
 	}
 
 	if err = s.client.Set(ctx, s.sessionKey(sess.ID), data, s.ttl).Err(); err != nil {
-		return fmt.Errorf("session save: %w", err)
+		return oops.Wrapf(err, "session save")
 	}
 
 	return nil
@@ -97,7 +97,7 @@ func (s *RedisSessionStore) Save(ctx context.Context, sess *session.Session) err
 // Delete 删除指定 sessionID 的会话。
 func (s *RedisSessionStore) Delete(ctx context.Context, sessionID string) error {
 	if err := s.client.Del(ctx, s.sessionKey(sessionID)).Err(); err != nil {
-		return fmt.Errorf("session delete: %w", err)
+		return oops.Wrapf(err, "session delete")
 	}
 	return nil
 }
@@ -106,7 +106,7 @@ func (s *RedisSessionStore) Delete(ctx context.Context, sessionID string) error 
 func (s *RedisSessionStore) Exists(ctx context.Context, sessionID string) (bool, error) {
 	n, err := s.client.Exists(ctx, s.sessionKey(sessionID)).Result()
 	if err != nil {
-		return false, fmt.Errorf("session exists: %w", err)
+		return false, oops.Wrapf(err, "session exists")
 	}
 	return n > 0, nil
 }

@@ -3,12 +3,12 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"time"
 
 	"github.com/byx-darwin/go-tools/go-auth/device"
 	"github.com/redis/go-redis/v9"
+	"github.com/samber/oops"
 )
 
 // compile-time interface check.
@@ -61,9 +61,9 @@ func (s *RedisDeviceStore) AddDevice(ctx context.Context, userUUID, deviceID, jt
 	key := s.deviceKey(userUUID)
 
 	// 先获取现有设备列表。
-	devices, err := s.listDevicesFromHash(ctx, key)
+	devices, err := s.listDevicesFromHash(ctx, key, userUUID)
 	if err != nil {
-		return nil, fmt.Errorf("device add: %w", err)
+		return nil, oops.Wrapf(err, "device add")
 	}
 
 	// 如果设备已存在，先移除再重新添加（刷新 JTI 和 TTL）。
@@ -100,16 +100,16 @@ func (s *RedisDeviceStore) AddDevice(ctx context.Context, userUUID, deviceID, jt
 	}
 	data, err := json.Marshal(entry)
 	if err != nil {
-		return nil, fmt.Errorf("device marshal: %w", err)
+		return nil, oops.Wrapf(err, "device marshal")
 	}
 
 	if err = s.client.HSet(ctx, key, deviceID, data).Err(); err != nil {
-		return nil, fmt.Errorf("device add: %w", err)
+		return nil, oops.Wrapf(err, "device add")
 	}
 
 	// 刷新整个 Hash 的 TTL。
 	if err = s.client.Expire(ctx, key, s.ttl).Err(); err != nil {
-		return nil, fmt.Errorf("device expire: %w", err)
+		return nil, oops.Wrapf(err, "device expire")
 	}
 
 	return kicked, nil
@@ -126,12 +126,12 @@ func (s *RedisDeviceStore) CheckDevice(ctx context.Context, userUUID, deviceID, 
 		if err == redis.Nil {
 			return false, nil
 		}
-		return false, fmt.Errorf("device check: %w", err)
+		return false, oops.Wrapf(err, "device check")
 	}
 
 	var entry deviceEntry
 	if err = json.Unmarshal(data, &entry); err != nil {
-		return false, fmt.Errorf("device unmarshal: %w", err)
+		return false, oops.Wrapf(err, "device unmarshal")
 	}
 
 	return entry.JTI == jti, nil
@@ -142,7 +142,7 @@ func (s *RedisDeviceStore) RemoveDevice(ctx context.Context, userUUID, deviceID 
 	key := s.deviceKey(userUUID)
 
 	if err := s.client.HDel(ctx, key, deviceID).Err(); err != nil {
-		return fmt.Errorf("device remove: %w", err)
+		return oops.Wrapf(err, "device remove")
 	}
 
 	return nil
@@ -153,7 +153,7 @@ func (s *RedisDeviceStore) RemoveAllDevices(ctx context.Context, userUUID string
 	key := s.deviceKey(userUUID)
 
 	if err := s.client.Del(ctx, key).Err(); err != nil {
-		return fmt.Errorf("device remove all: %w", err)
+		return oops.Wrapf(err, "device remove all")
 	}
 
 	return nil
@@ -163,9 +163,9 @@ func (s *RedisDeviceStore) RemoveAllDevices(ctx context.Context, userUUID string
 func (s *RedisDeviceStore) ListDevices(ctx context.Context, userUUID string) ([]device.Device, error) {
 	key := s.deviceKey(userUUID)
 
-	devices, err := s.listDevicesFromHash(ctx, key)
+	devices, err := s.listDevicesFromHash(ctx, key, userUUID)
 	if err != nil {
-		return nil, fmt.Errorf("device list: %w", err)
+		return nil, oops.Wrapf(err, "device list")
 	}
 
 	if len(devices) == 0 {
@@ -176,7 +176,7 @@ func (s *RedisDeviceStore) ListDevices(ctx context.Context, userUUID string) ([]
 }
 
 // listDevicesFromHash 从 Redis Hash 中获取用户的所有设备（内部方法）。
-func (s *RedisDeviceStore) listDevicesFromHash(ctx context.Context, key string) ([]device.Device, error) {
+func (s *RedisDeviceStore) listDevicesFromHash(ctx context.Context, key, userUUID string) ([]device.Device, error) {
 	result, err := s.client.HGetAll(ctx, key).Result()
 	if err != nil {
 		return nil, err
@@ -190,11 +190,12 @@ func (s *RedisDeviceStore) listDevicesFromHash(ctx context.Context, key string) 
 	for deviceID, raw := range result {
 		var entry deviceEntry
 		if err = json.Unmarshal([]byte(raw), &entry); err != nil {
-			return nil, fmt.Errorf("device unmarshal field %s: %w", deviceID, err)
+			return nil, oops.Wrapf(err, "device unmarshal field %s", deviceID)
 		}
 		devices = append(devices, device.Device{
 			DeviceID:  deviceID,
 			JTI:       entry.JTI,
+			UserUUID:  userUUID,
 			CreatedAt: entry.CreatedAt,
 		})
 	}

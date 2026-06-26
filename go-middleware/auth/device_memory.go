@@ -2,13 +2,13 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/byx-darwin/go-tools/go-auth/device"
 	"github.com/samber/hot"
+	"github.com/samber/oops"
 )
 
 // compile-time interface check.
@@ -54,6 +54,10 @@ func (s *MemoryDeviceStore) AddDevice(_ context.Context, userUUID, deviceID, jti
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if maxDevices <= 0 {
+		maxDevices = s.cfg.maxDevices
+	}
+
 	key := deviceKey{UserUUID: userUUID, DeviceID: deviceID}
 
 	// 如果设备已存在，先删除再重新添加（刷新 JTI 和 TTL）。
@@ -91,7 +95,7 @@ func (s *MemoryDeviceStore) CheckDevice(_ context.Context, userUUID, deviceID, j
 	key := deviceKey{UserUUID: userUUID, DeviceID: deviceID}
 	dev, ok, err := s.cache.Get(key)
 	if err != nil {
-		return false, fmt.Errorf("device check: %w", err)
+		return false, oops.Wrapf(err, "device check")
 	}
 	if !ok {
 		return false, nil
