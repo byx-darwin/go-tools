@@ -4,24 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**go-tools** is a Go workspace (`go.work`) containing three independently versioned libraries for Hertz (HTTP) and Kitex (RPC) microservice development. It serves as the foundation for [ncgo](https://github.com/byx-darwin/ncgo) scaffold-generated projects.
+**go-tools** is a Go workspace (`go.work`) containing four independently versioned libraries for Hertz (HTTP) and Kitex (RPC) microservice development. It serves as the foundation for [ncgo](https://github.com/byx-darwin/ncgo) scaffold-generated projects.
 
 The 5-module → 3-library split (2026-06-23) is **complete**. ncgo generated projects now import from these libraries instead of embedding duplicated code.
 
 ### Structure
 
 ```text
-go-common          ← 最底层，零框架依赖 (crypto, cache, httpclient, log, timeutil, netutil, captcha, auth, error)
+go-common          ← 最底层，零框架依赖 (crypto, cache, httpclient, log, timeutil, netutil, captcha, error)
     ↑
-go-middleware       ← 中间件客户端 (redis, kafka, db, es, clickhouse, tls)
+go-auth            ← 认证工具 (JWT, Session/Device 接口, 错误码)
+    ↑
+go-middleware       ← 中间件客户端 (redis, kafka, db, es, clickhouse, tls, auth)
     ↑
 go-framework        ← 框架适配 (hertz, kitex, config)
 ```
 
 | Module | Import Path | Purpose |
 |--------|------------|---------|
-| `go-common` | `github.com/byx-darwin/go-tools/go-common` | Pure utilities: crypto, cache, log, error, timeutil, netutil, httpclient, captcha, auth |
-| `go-middleware` | `github.com/byx-darwin/go-tools/go-middleware` | Middleware clients: redis, kafka, db, es, clickhouse, tls |
+| `go-common` | `github.com/byx-darwin/go-tools/go-common` | Pure utilities: crypto, cache, log, error, timeutil, netutil, httpclient, captcha |
+| `go-auth` | `github.com/byx-darwin/go-tools/go-auth` | Auth utilities: JWT Sign/Verify/Refresh, Session/Device interfaces |
+| `go-middleware` | `github.com/byx-darwin/go-tools/go-middleware` | Middleware clients: redis, kafka, db, es, clickhouse, tls, auth |
 | `go-framework` | `github.com/byx-darwin/go-tools/go-framework` | Framework adapters: hertz, kitex, config |
 
 ## Key Decisions (Confirmed 2026-06-23)
@@ -39,7 +42,8 @@ go-framework        ← 框架适配 (hertz, kitex, config)
 ```
 go-framework: 10000-10499  (system, param, auth, config, RPC middleware)
 go-middleware: 20000-20699 (redis, kafka, db, es, clickhouse, observability)
-Project custom: 40000-59999 (business modules, external dependencies)
+go-auth:       40000-40099 (token, session, device auth errors)
+Project custom: 40100-59999 (business modules, external dependencies)
 ```
 
 See `specs/00_overview.md` for full error code table.
