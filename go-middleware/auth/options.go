@@ -1,8 +1,10 @@
-// Package auth 提供认证存储的内存实现，用于开发和测试环境。
+// Package auth 提供认证存储的内存和 Redis 实现。
 //
 // MemorySessionStore 基于 samber/hot 缓存实现 session.Store 接口，
 // MemoryDeviceStore 基于 sync.RWMutex + samber/hot 缓存实现 device.Store 接口。
-// 两者均支持 TTL 自动过期和 Functional Options 配置。
+// RedisSessionStore 基于 Redis String(JSON) 实现 session.Store 接口，
+// RedisDeviceStore 基于 Redis Hash 实现 device.Store 接口。
+// 所有实现均支持 TTL 自动过期和 Functional Options 配置。
 package auth
 
 import "time"
@@ -12,6 +14,7 @@ const (
 	defaultDeviceTTL  = 30 * 24 * time.Hour
 	defaultMaxDevices = 5
 	defaultCacheSize  = 1024
+	defaultKeyPrefix  = ""
 )
 
 // config 存储配置（内部使用）。
@@ -20,6 +23,7 @@ type config struct {
 	deviceTTL  time.Duration
 	maxDevices int
 	cacheSize  int
+	keyPrefix  string
 }
 
 // Option 定义配置选项函数。
@@ -61,6 +65,15 @@ func WithCacheSize(n int) Option {
 	}
 }
 
+// WithKeyPrefix 设置 Redis key 前缀。空前缀使用默认值。
+func WithKeyPrefix(prefix string) Option {
+	return func(c *config) {
+		if prefix != "" {
+			c.keyPrefix = prefix
+		}
+	}
+}
+
 // applyDefaults 创建默认配置并应用选项。
 func applyDefaults(opts []Option) config {
 	cfg := config{
@@ -68,6 +81,7 @@ func applyDefaults(opts []Option) config {
 		deviceTTL:  defaultDeviceTTL,
 		maxDevices: defaultMaxDevices,
 		cacheSize:  defaultCacheSize,
+		keyPrefix:  defaultKeyPrefix,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
