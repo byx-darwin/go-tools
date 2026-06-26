@@ -1,0 +1,93 @@
+server:
+  http_addr: ":8080"
+  rpc_addr: ":8888"
+
+log:
+  level: "info"
+  format: "json"
+  mode: "both"
+  file:
+    dir: "./logs"
+    filename: "example.log"
+    max_size: 100
+  masking:
+    enabled: true
+    masked_fields: ["password", "token", "secret"]
+
+jwt:
+  secret: "example-secret-key"
+  issuer: "go-tools-example"
+  access_expiration: 30s
+  refresh_expiration: 24h
+
+store_mode: "memory"  # memory 或 redis
+
+redis:
+  addrs: ["${REDIS_ADDR:-localhost:6379}"]
+  db: 0
+  password: ""
+
+kafka:
+  brokers: ["${KAFKA_BROKERS:-localhost:9092}"]
+  topic: "go-tools-demo"
+
+db:
+  dsn: "${MYSQL_DSN:-root:root@tcp(localhost:3306)/demo}"
+
+elasticsearch:
+  addresses: ["${ES_ADDRESSES:-http://localhost:9200}"]
+
+clickhouse:
+  dsn: "${CH_DSN:-clickhouse://default:@localhost:9000/demo}"
+
+captcha:
+  key_long: 6
+  img_width: 240
+  img_height: 80
+  cache_length: 1024
+  cache_expires_time: 120s
+
+hertz:
+  registry:
+    enable: false
+    space: "default"
+    name: "example-service"
+  http:
+    network: "tcp"
+    port: ":8080"
+    exit_wait_time: 10s
+    idle_timeout: 60s
+    is_cors: true
+    is_recovery: true
+  auth:
+    enable: true
+    ak: "example-ak"
+    sk: "example-sk"
+    tea_key: "0123456789abcdef"
+
+kitex:
+  rpc:
+    port: ":8888"
+    network: "tcp"
+  limit:
+    enable: false
+    max_connections: 1000
+    max_qps: 500
+  timeout:
+    read_write_timeout: 5s
+    exit_wait_timeout: 10s
+
+observability:
+  enabled: true
+  endpoint: "${OTEL_ENDPOINT}"
+  app_key: "${OTEL_APP_KEY}"
+  service_name: "go-tools-example"
+  sample_rate: 1.0
+  enable_metrics: true
+  metrics_interval: 15s
+
+polaris:
+  enabled: false
+  namespace: "go-tools-example"
+  file_group: "example"
+  file_name: "config.yaml"

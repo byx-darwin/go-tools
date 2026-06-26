@@ -1,0 +1,22 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: demo
+    ports: ["3306:3306"]
+  kafka:
+    image: apache/kafka:latest
+    ports: ["9092:9092"]
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+    ports: ["9200:9200"]
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports: ["9000:9000"]
