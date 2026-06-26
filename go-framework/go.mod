@@ -4,9 +4,11 @@ go 1.25.8
 
 require (
 	github.com/bytedance/gopkg v0.1.4
-	github.com/byx-darwin/go-tools/go-common v0.0.0-00010101000000-000000000000
+	github.com/byx-darwin/go-tools/go-auth v0.0.0-00010101000000-000000000000
+	github.com/byx-darwin/go-tools/go-common v0.0.0
 	github.com/cloudwego/hertz v0.10.5
 	github.com/cloudwego/kitex v0.16.2
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/polarismesh/polaris-go v1.7.1-rc3
 	github.com/samber/oops v1.22.0
@@ -23,7 +25,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/byx-darwin/go-tools/go-common => ../go-common
+replace (
+	github.com/byx-darwin/go-tools/go-auth => ../go-auth
+	github.com/byx-darwin/go-tools/go-common => ../go-common
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -91,5 +96,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260618152121-87f3d3e198d3 // indirect
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
