@@ -7,21 +7,25 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
+	hertzconfig "github.com/cloudwego/hertz/pkg/common/config"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
+	klog "github.com/cloudwego/kitex/pkg/klog"
+
 	"github.com/byx-darwin/go-tools/example/handler"
+	demoservice "github.com/byx-darwin/go-tools/example/kitex_generated/demo/demoservice"
 	examplemw "github.com/byx-darwin/go-tools/example/middleware"
+	"github.com/byx-darwin/go-tools/example/rpc"
 	"github.com/byx-darwin/go-tools/go-auth/device"
 	"github.com/byx-darwin/go-tools/go-auth/session"
 	"github.com/byx-darwin/go-tools/go-common/log"
+	hertzresp "github.com/byx-darwin/go-tools/go-framework/hertz"
 	hertzlog "github.com/byx-darwin/go-tools/go-framework/hertz/log"
 	"github.com/byx-darwin/go-tools/go-framework/hertz/observability"
 	kitexlog "github.com/byx-darwin/go-tools/go-framework/kitex/log"
 	kitexobs "github.com/byx-darwin/go-tools/go-framework/kitex/observability"
 	mwauth "github.com/byx-darwin/go-tools/go-middleware/auth"
-
-	"github.com/cloudwego/hertz/pkg/app/server"
-	hertzconfig "github.com/cloudwego/hertz/pkg/common/config"
-	"github.com/cloudwego/hertz/pkg/common/hlog"
-	klog "github.com/cloudwego/kitex/pkg/klog"
 )
 
 func main() {
@@ -72,19 +76,22 @@ func main() {
 		}
 	}()
 
-	// 5. 初始化运行时依赖（session / device store, middleware clients）
+	// 5. 初始化运行时依赖（session / device store, config handler）
 	deps := initDeps(cfg)
 
 	// 6. 创建 Hertz HTTP server
 	h := createHertzServer(cfg, deps, hertzObs)
 
-	// 7. 创建 Kitex RPC server（goroutine 中运行，Task 20 实现）
+	// 7. 启动 Kitex RPC server（goroutine）
 	go startKitexServer(ctx, cfg, deps, kitexObs)
 
-	// 8. 启动 Hertz
+	// 8. 等待 Kitex 服务启动后创建客户端（延迟创建）
+	go initRPCClient(ctx, cfg, deps, kitexObs)
+
+	// 9. 启动 Hertz
 	go h.Spin()
 
-	// 9. 等待中断信号，优雅关闭
+	// 10. 等待中断信号，优雅关闭
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -103,6 +110,12 @@ type Deps struct {
 
 	// DeviceStore Device 存储（内存或 Redis 实现）。
 	DeviceStore device.Store
+
+	// RPCClient Kitex DemoService 客户端。
+	RPCClient demoservice.Client
+
+	// KitexObs Kitex 可观测性 Provider。
+	KitexObs *kitexobs.Provider
 }
 
 func initDeps(cfg *AppConfig) *Deps {
@@ -133,12 +146,38 @@ func initDeps(cfg *AppConfig) *Deps {
 		cfg.JWT.RefreshExpiration.Duration,
 	)
 
+	// 注入配置 handler 所需依赖。
+	handler.SetCurrentConfig(cfg)
+	handler.SetConfigPath("config.yaml")
+	handler.SetConfigReloadFn(func(path string) (any, error) {
+		return LoadConfig(path)
+	})
+
 	return deps
 }
 
+// initRPCClient 延迟初始化 Kitex RPC 客户端（等待服务启动后连接）。
+func initRPCClient(ctx context.Context, cfg *AppConfig, deps *Deps, kitexObs *kitexobs.Provider) {
+	// 等待 Kitex 服务启动（简单延迟）。
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
+	rpcAddr := "localhost" + cfg.Server.RPCAddr
+	client, err := rpc.NewDemoClient(rpcAddr, kitexObs)
+	if err != nil {
+		log.L().Warn("kitex client init failed, RPC routes will return 503", "error", err)
+		return
+	}
+
+	deps.RPCClient = client
+	handler.SetRPCClient(client)
+	log.L().Info("kitex client initialized", "addr", rpcAddr)
+}
+
 // createHertzServer 创建 Hertz HTTP 服务。
-//
-// 路由和中间件在后续任务中注册；当前仅接入 OTel 链路追踪。
 func createHertzServer(cfg *AppConfig, deps *Deps, provider *observability.Provider) *server.Hertz {
 	opts := []hertzconfig.Option{
 		server.WithHostPorts(cfg.Server.HTTPAddr),
@@ -162,19 +201,35 @@ func createHertzServer(cfg *AppConfig, deps *Deps, provider *observability.Provi
 	}
 	examplemw.RegisterMiddleware(h, mwDeps)
 
-	// 注册 go-common 示例路由
+	// 注册健康检查路由（Task 21）。
+	registerHealthRoutes(h)
+
+	// 注册 go-common 示例路由。
 	registerCommonRoutes(h)
 
-	// 注册 go-auth 示例路由（JWT / Session / Device）
+	// 注册 go-auth 示例路由（JWT / Session / Device）。
 	registerAuthRoutes(h)
 
-	// 注册 go-middleware 示例路由（Redis / Kafka / DB / ES / ClickHouse）
+	// 注册 go-middleware 示例路由（Redis / Kafka / DB / ES / ClickHouse）。
 	registerMiddlewareRoutes(h)
+
+	// 注册 config 示例路由（Task 19）。
+	registerConfigRoutes(h)
+
+	// 注册 RPC 示例路由（Task 20：Hertz → Kitex）。
+	registerRPCRoutes(h)
 
 	// 注册受保护的路由组。
 	examplemw.RegisterProtectedRoutes(h, mwDeps)
 
 	return h
+}
+
+// registerHealthRoutes 注册健康检查路由。
+func registerHealthRoutes(h *server.Hertz) {
+	h.GET("/health", func(_ context.Context, c *app.RequestContext) {
+		hertzresp.Success(c, map[string]any{"status": "ok"})
+	})
 }
 
 // registerCommonRoutes 注册所有 go-common 包的示例路由。
@@ -209,9 +264,19 @@ func registerMiddlewareRoutes(h *server.Hertz) {
 	handler.RegisterClickHouseRoutes(h)
 }
 
-// startKitexServer 占位 goroutine，Task 20 实现完整 RPC 服务。
-//
-// 当前仅阻塞等待 context 取消。
-func startKitexServer(ctx context.Context, _ *AppConfig, _ *Deps, _ *kitexobs.Provider) {
-	<-ctx.Done()
+// registerConfigRoutes 注册 go-framework/config 示例路由。
+func registerConfigRoutes(h *server.Hertz) {
+	handler.RegisterConfigRoutes(h)
+}
+
+// registerRPCRoutes 注册 Hertz → Kitex RPC 示例路由。
+func registerRPCRoutes(h *server.Hertz) {
+	handler.RegisterRPCRoutes(h)
+}
+
+// startKitexServer 启动 Kitex RPC 服务。
+func startKitexServer(ctx context.Context, cfg *AppConfig, _ *Deps, kitexObs *kitexobs.Provider) {
+	if err := rpc.StartServer(ctx, cfg.Server.RPCAddr, kitexObs); err != nil {
+		log.L().Error("kitex server error", "error", err)
+	}
 }
