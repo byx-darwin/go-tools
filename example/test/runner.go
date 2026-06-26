@@ -8,7 +8,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -388,36 +387,6 @@ func jsonHas(fields ...string) Assertion {
 	}
 }
 
-// bodyContains 断言响应体包含指定字符串。
-func bodyContains(s string) Assertion {
-	return func(_ int, body []byte) error {
-		if !bytes.Contains(body, []byte(s)) {
-			return fmt.Errorf("body does not contain %q", s)
-		}
-		return nil
-	}
-}
-
-// responseCode 断言 JSON 响应中的 code 字段。
-func responseCode(code int) Assertion {
-	return func(_ int, body []byte) error {
-		var m map[string]any
-		if err := json.Unmarshal(body, &m); err != nil {
-			return fmt.Errorf("json parse: %w", err)
-		}
-		got, ok := m["code"]
-		if !ok {
-			return fmt.Errorf("missing field \"code\"")
-		}
-		// JSON numbers are float64.
-		gotCode := int(got.(float64))
-		if gotCode != code {
-			return fmt.Errorf("response code: want %d, got %d", code, gotCode)
-		}
-		return nil
-	}
-}
-
 // and 组合多个断言。
 func and(assertions ...Assertion) Assertion {
 	return func(sc int, body []byte) error {
@@ -445,26 +414,6 @@ func dataFieldHas(fields ...string) Assertion {
 			if _, ok := data[f]; !ok {
 				return fmt.Errorf("data missing field %q", f)
 			}
-		}
-		return nil
-	}
-}
-
-// dataContains 断言 JSON 响应 data 字段包含指定字符串。
-func dataContains(s string) Assertion {
-	return func(_ int, body []byte) error {
-		var m map[string]any
-		if err := json.Unmarshal(body, &m); err != nil {
-			return fmt.Errorf("json parse: %w", err)
-		}
-		data, ok := m["data"].(map[string]any)
-		if !ok {
-			return fmt.Errorf("missing or invalid \"data\" field")
-		}
-		// 转回 JSON 字符串检查。
-		dataJSON, _ := json.Marshal(data)
-		if !bytes.Contains(dataJSON, []byte(s)) {
-			return fmt.Errorf("data does not contain %q", s)
 		}
 		return nil
 	}

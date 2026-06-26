@@ -140,17 +140,17 @@ func writeMarkdownReport(results []TestResult) error {
 	var b strings.Builder
 
 	b.WriteString("# Test Report\n\n")
-	b.WriteString(fmt.Sprintf("**Generated:** %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
+	fmt.Fprintf(&b, "**Generated:** %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 
 	// 汇总表。
 	b.WriteString("## Summary\n\n")
 	b.WriteString("| Metric | Value |\n")
 	b.WriteString("|--------|-------|\n")
-	b.WriteString(fmt.Sprintf("| Total | %d |\n", total))
-	b.WriteString(fmt.Sprintf("| ✅ Passed | %d |\n", passed))
-	b.WriteString(fmt.Sprintf("| ❌ Failed | %d |\n", failed))
-	b.WriteString(fmt.Sprintf("| ⏭ Skipped | %d |\n", skipped))
-	b.WriteString(fmt.Sprintf("| Duration | %v |\n\n", totalDuration.Round(time.Millisecond)))
+	fmt.Fprintf(&b, "| Total | %d |\n", total)
+	fmt.Fprintf(&b, "| ✅ Passed | %d |\n", passed)
+	fmt.Fprintf(&b, "| ❌ Failed | %d |\n", failed)
+	fmt.Fprintf(&b, "| ⏭ Skipped | %d |\n", skipped)
+	fmt.Fprintf(&b, "| Duration | %v |\n\n", totalDuration.Round(time.Millisecond))
 
 	// 按分类列出详情。
 	categories := []struct {
@@ -173,7 +173,7 @@ func writeMarkdownReport(results []TestResult) error {
 		if len(catResults) == 0 {
 			continue
 		}
-		b.WriteString(fmt.Sprintf("### %s\n\n", cat.name))
+		fmt.Fprintf(&b, "### %s\n\n", cat.name)
 		b.WriteString("| Status | Test | Duration | Details |\n")
 		b.WriteString("|--------|------|----------|--------|\n")
 		for _, r := range catResults {
@@ -182,8 +182,8 @@ func writeMarkdownReport(results []TestResult) error {
 			if r.Error != "" {
 				detail = escapeMarkdown(r.Error)
 			}
-			b.WriteString(fmt.Sprintf("| %s | %s | %v | %s |\n",
-				status, r.Name, r.Duration.Round(time.Millisecond), detail))
+			fmt.Fprintf(&b, "| %s | %s | %v | %s |\n",
+				status, r.Name, r.Duration.Round(time.Millisecond), detail)
 		}
 		b.WriteString("\n")
 	}
@@ -195,13 +195,13 @@ func writeMarkdownReport(results []TestResult) error {
 			if r.Status != "fail" {
 				continue
 			}
-			b.WriteString(fmt.Sprintf("### ❌ %s\n\n", r.Name))
-			b.WriteString(fmt.Sprintf("**Error:** %s\n\n", r.Error))
+			fmt.Fprintf(&b, "### ❌ %s\n\n", r.Name)
+			fmt.Fprintf(&b, "**Error:** %s\n\n", r.Error)
 			if r.Expected != "" {
-				b.WriteString(fmt.Sprintf("**Expected:** `%s`\n\n", r.Expected))
+				fmt.Fprintf(&b, "**Expected:** `%s`\n\n", r.Expected)
 			}
 			if r.Actual != "" {
-				b.WriteString(fmt.Sprintf("**Actual:** `%s`\n\n", r.Actual))
+				fmt.Fprintf(&b, "**Actual:** `%s`\n\n", r.Actual)
 			}
 		}
 	}
