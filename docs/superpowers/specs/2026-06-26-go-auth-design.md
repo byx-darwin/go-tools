@@ -79,9 +79,12 @@ claims, err := jwt.Verify[UserClaims](token, secret)
 ```
 Key:    device:{user_uuid}
 Type:   Hash
-Fields: {device_id → jti}
+Fields: {device_id → JSON(jti, created_at)}
+Example: {"deviceA": {"jti": "abc123", "created_at": "2026-06-26T10:00:00Z"}}
 TTL:    30 days
 ```
+
+踢出策略：按 `created_at` 升序排序，踢出最早创建的设备，直到设备数 ≤ maxDevices。
 
 ## 3. 模块设计
 
@@ -220,7 +223,7 @@ func NewMemoryDeviceStore(opts ...Option) *MemoryDeviceStore
 ```
 Key:    device:{user_uuid}
 Type:   Hash
-Fields: {device_id → jti}
+Fields: {device_id → JSON(jti, created_at)}
 TTL:    30 days
 ```
 
