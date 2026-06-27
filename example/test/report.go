@@ -96,13 +96,21 @@ func printTerminalReport(results []TestResult) {
 	}
 }
 
+// fmtDuration 格式化耗时：<1ms 显示微秒，≥1ms 显示毫秒。
+func fmtDuration(d time.Duration) string {
+	if d < time.Millisecond {
+		return fmt.Sprintf("%dµs", d.Microseconds())
+	}
+	return d.Round(time.Microsecond).String()
+}
+
 // printOneResult 输出单个测试结果行。
 func printOneResult(r TestResult) {
 	switch r.Status {
 	case "pass":
-		fmt.Printf("    %s✓%s %s %s(%v)%s\n", colorGreen, colorReset, r.Name, colorGray, r.Duration.Round(time.Millisecond), colorReset)
+		fmt.Printf("    %s✓%s %s %s(%s)%s\n", colorGreen, colorReset, r.Name, colorGray, fmtDuration(r.Duration), colorReset)
 	case "fail":
-		fmt.Printf("    %s✗%s %s %s(%v)%s\n", colorRed, colorReset, r.Name, colorGray, r.Duration.Round(time.Millisecond), colorReset)
+		fmt.Printf("    %s✗%s %s %s(%s)%s\n", colorRed, colorReset, r.Name, colorGray, fmtDuration(r.Duration), colorReset)
 		fmt.Printf("      %s↳ %s%s\n", colorRed, r.Error, colorReset)
 	case "skip":
 		fmt.Printf("    %s◦%s %s %s(skip: %s)%s\n", colorYellow, colorReset, r.Name, colorGray, r.Error, colorReset)
@@ -179,8 +187,8 @@ func writeMarkdownReport(results []TestResult) error {
 			if r.Error != "" {
 				detail = escapeMarkdown(r.Error)
 			}
-			fmt.Fprintf(&b, "| %s | %s | %v | %s |\n",
-				status, r.Name, r.Duration.Round(time.Millisecond), detail)
+			fmt.Fprintf(&b, "| %s | %s | %s | %s |\n",
+				status, r.Name, fmtDuration(r.Duration), detail)
 		}
 		b.WriteString("\n")
 	}
