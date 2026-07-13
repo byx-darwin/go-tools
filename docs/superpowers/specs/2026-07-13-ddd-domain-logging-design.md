@@ -274,3 +274,8 @@ go-common/log/
 - ❌ `Config.Categories` 的自动预创建子 Logger（后续可独立实现）
 - ❌ 结构化领域对象（`type Domain struct`）— 字符串即可
 - ❌ DomainEvent 机制 — 直接通过接口记录
+- ❌ 源码位置精确追踪 — slog 无公开 call depth API，便捷函数和适配器的 `source` 指向框架代码而非业务代码。通过 `category` + `domain` + `trace_id` 组合定位已足够。
+
+## 已知限制
+
+**源码位置（AddSource）**：当开启 `AddSource` 时，通过便捷函数（`log.App(ctx).InfoContext`）或领域适配器（`logger.Decision`）输出的日志，`source` 字段会指向框架代码（`layer.go` 或 `domain.go`）而非业务调用点。这是 slog 当前 API 的限制（无公开的 caller skip 机制），不影响日志检索和排查。
