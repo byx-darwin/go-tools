@@ -8,6 +8,48 @@
 2. **开发体验** — 各层有专属日志入口，不用手动拼 category
 3. **oops 对齐** — 日志的 `domain` 与 oops 错误的 `In(domain)` 对齐，统一领域上下文
 
+## 约束
+
+### 向后兼容
+- 不修改现有 `Logger`、`WithCategory()`、`L()` 等公开 API 的行为
+- 新增功能为纯增量，不破坏已有代码
+
+### 模块边界
+- 所有新增代码仅在 `go-common/log` 包内
+- 不引入新的外部依赖（oops 已在项目中使用）
+
+### 质量要求
+- 所有新增导出类型和函数必须有 godoc 注释
+- 必须通过 `golangci-lint` 检查（revive, errcheck, gocritic 等）
+- 单元测试覆盖率 ≥ 80%
+
+## 错误处理与边界情况
+
+### DomainLogger.Error() 非 oops 错误
+当传入的 `err` 不是 oops 错误时：
+- `ErrorAttrs(err)` 返回空切片
+- 日志只包含 `error` 字段（原始错误信息），不包含 `error.code` 等 oops 字段
+- 行为与现有 `Logger.ErrorContext()` 一致
+
+### 空 domain 名称
+`NewDomainLogger("")` 应该：
+- 不 panic
+- `domain` 字段为空字符串或省略
+- 建议：文档中说明应传入有意义的 domain 名称
+
+### nil error
+`DomainLogger.Error(msg, nil)` 应该：
+- 仍然输出 Error 级别日志
+- `error` 字段为空或省略
+- 不 panic
+
+## 并发安全
+
+- `NewDomainLogger(domain)` 返回的 `DomainLogger` 是并发安全的
+- 内部持有的 `*Logger` 由全局 `L()` 返回，本身并发安全
+- `domainHandler` 是不可变结构（创建后字段不变），天然并发安全
+- 分层便捷函数 `App()`、`DB()` 等每次调用返回新的 `*Logger`，无共享状态
+
 ## 设计决策
 
 ### 决策 1：领域层采用接口注入（端口模式）
