@@ -39,12 +39,14 @@ jobs:
       - name: go test
         run: go test ./${{ matrix.module }}/... -count=1 -race -coverprofile=${{ matrix.module }}-coverage.out
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: v2.2.0
-          working-directory: ${{ matrix.module }}
-          args: --timeout=5m
+      # golangci-lint 暂不可用 — 等待 Go 1.25 兼容版本
+      # https://github.com/golangci/golangci-lint/issues
+      # - name: golangci-lint
+      #   uses: golangci/golangci-lint-action@v7
+      #   with:
+      #     version: v2.2.0
+      #     working-directory: ${{ matrix.module }}
+      #     args: --timeout=5m
 
       - name: upload coverage
         if: success() || failure()
