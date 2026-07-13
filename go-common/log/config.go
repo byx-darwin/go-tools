@@ -17,8 +17,13 @@ type Config struct {
 	// File 文件日志配置。
 	File FileConfig `yaml:"file" json:"file"`
 
-	// Categories 分类日志配置。
-	// TODO: NewLogger 尚未读取此字段；当前仅支持通过 Logger.WithCategory 动态创建子 Logger。
+	// Categories 分类日志配置（按分类输出到不同文件）。
+	//
+	// 当前状态：NewLogger 仅在初始化时检测此字段并输出 warning，不自动创建子 Logger。
+	// 运行时通过 Logger.WithCategory 动态创建分类子 Logger。
+	//
+	// 后续计划：支持在 NewLogger 阶段根据 Categories 配置自动预创建子 Logger，
+	// 以支持按分类写入独立日志文件、覆盖全局 Level。
 	Categories map[string]CategoryConfig `yaml:"categories" json:"categories"`
 
 	// Masking 敏感数据脱敏配置。
