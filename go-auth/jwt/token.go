@@ -2,11 +2,11 @@ package jwt
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"time"
 
 	gojwt "github.com/golang-jwt/jwt/v5"
+	"github.com/samber/oops"
 
 	autherror "github.com/byx-darwin/go-tools/go-auth/error"
 )
@@ -21,7 +21,9 @@ func Sign[T any](claims T, secret []byte, opts ...Option) (string, error) {
 	// 使用指针以便修改 RegisteredClaims（设置过期时间、签发者）。
 	jwtClaims, ok := any(&claims).(gojwt.Claims)
 	if !ok {
-		return "", fmt.Errorf("jwt.Sign: claims type %T does not implement jwt.Claims", claims)
+		return "", oops.With("jwt.Sign").
+			Code(autherror.CodeJWTSignFailed).
+			Errorf("claims type %T does not implement jwt.Claims", claims)
 	}
 
 	setClaimsDefaults(jwtClaims, cfg)
@@ -29,7 +31,9 @@ func Sign[T any](claims T, secret []byte, opts ...Option) (string, error) {
 	token := gojwt.NewWithClaims(cfg.signingMethod, jwtClaims)
 	signed, err := token.SignedString(secret)
 	if err != nil {
-		return "", fmt.Errorf("jwt.Sign: failed to sign token: %w", err)
+		return "", oops.With("jwt.Sign").
+			Code(autherror.CodeJWTSignFailed).
+			Wrap(err)
 	}
 
 	return signed, nil
@@ -43,7 +47,9 @@ func Verify[T any](tokenStr string, secret []byte) (*T, error) {
 	// 通过 any 进行运行时接口检查。
 	claims, ok := any(&zero).(gojwt.Claims)
 	if !ok {
-		return nil, fmt.Errorf("jwt.Verify: claims type %T does not implement jwt.Claims", zero)
+		return nil, oops.With("jwt.Verify").
+			Code(autherror.CodeJWTVerifyFailed).
+			Errorf("claims type %T does not implement jwt.Claims", zero)
 	}
 
 	token, err := gojwt.ParseWithClaims(tokenStr, claims, func(_ *gojwt.Token) (any, error) {
@@ -58,7 +64,9 @@ func Verify[T any](tokenStr string, secret []byte) (*T, error) {
 		return result, nil
 	}
 
-	return nil, autherror.ErrTokenInvalid.Wrap(fmt.Errorf("jwt.Verify: invalid claims type"))
+	return nil, oops.With("jwt.Verify").
+		Code(autherror.CodeJWTVerifyFailed).
+		Errorf("invalid claims type")
 }
 
 // Refresh 刷新 JWT（延长过期时间，保留原有 Claims 数据）。
@@ -68,7 +76,9 @@ func Refresh[T any](tokenStr string, secret []byte, opts ...Option) (string, err
 	// 先验证原 Token，提取 Claims。
 	claims, err := Verify[T](tokenStr, secret)
 	if err != nil {
-		return "", fmt.Errorf("jwt.Refresh: %w", err)
+		return "", oops.With("jwt.Refresh").
+			Code(autherror.CodeJWTRefreshFailed).
+			Wrap(err)
 	}
 
 	// 使用原 Claims 重新签发，应用新选项。
