@@ -72,7 +72,8 @@ func (a *domainLoggerAdapter) Error(msg string, err error, args ...any) {
 	handler := NewDomainHandler(a.logger.Handler(), a.domain, logType)
 	logger := slog.New(handler)
 
-	allArgs := args
+	allArgs := make([]any, 0, len(args)+4)
+	allArgs = append(allArgs, args...)
 	if err != nil {
 		allArgs = append(allArgs, "error", err.Error())
 		allArgs = append(allArgs, ErrorAttrs(err)...)

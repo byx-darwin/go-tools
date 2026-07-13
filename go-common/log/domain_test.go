@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/samber/oops"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -86,6 +87,28 @@ func TestDomainLogger_Error_WithRegularError(t *testing.T) {
 	assert.Equal(t, "payment", result["domain"])
 	assert.Equal(t, "error", result["log_type"])
 	assert.Equal(t, "timeout", result["error"])
+}
+
+func TestDomainLogger_Error_WithOopsError(t *testing.T) {
+	var buf bytes.Buffer
+	handler := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+	logger := &Logger{Logger: slog.New(handler), level: slog.LevelDebug}
+	SetDefault(logger)
+	defer SetDefault(nil)
+
+	dl := NewDomainLogger("payment")
+	oopsErr := oops.Code("TEST_ERROR").In("test").Wrap(errors.New("something"))
+	dl.Error("oops 错误测试", oopsErr)
+
+	var result map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+
+	assert.Equal(t, "ERROR", result["level"])
+	assert.Equal(t, "payment", result["domain"])
+	assert.Equal(t, "error", result["log_type"])
+	assert.Equal(t, "something", result["error"])
+	assert.Equal(t, "TEST_ERROR", result["error.code"])
+	assert.Equal(t, "test", result["error.domain"])
 }
 
 func TestDomainLogger_Error_WithNilError(t *testing.T) {
