@@ -115,27 +115,41 @@ type domainHandler struct {
 
 ### 4. 分层便捷函数
 
+返回 `*Logger`（保持封装），调用方通过 `InfoContext(ctx, ...)` 等方法传入 ctx。
+
 ```go
-// App 返回应用层 Logger（自动注入 category="app" 和 ctx 上下文）。
-func App(ctx context.Context) *slog.Logger {
-    return L().WithCategory("app").Logger.With(slog.Group("", slog.Any("ctx", ctx)))
+// App 返回应用层 Logger（自动注入 category="app"）。
+func App(ctx context.Context) *Logger {
+    return L().WithCategory(CategoryApp)
 }
 
 // DB 返回基础设施层 Logger（category="db"）。
-func DB(ctx context.Context) *slog.Logger
+func DB(ctx context.Context) *Logger {
+    return L().WithCategory(CategoryDB)
+}
 
 // Access 返回展示层 Logger（category="access"）。
-func Access(ctx context.Context) *slog.Logger
+func Access(ctx context.Context) *Logger {
+    return L().WithCategory(CategoryAccess)
+}
 
 // RPC 返回 RPC 层 Logger（category="rpc"）。
-func RPC(ctx context.Context) *slog.Logger
+func RPC(ctx context.Context) *Logger {
+    return L().WithCategory(CategoryRPC)
+}
 
 // MQ 返回消息队列层 Logger（category="mq"）。
-func MQ(ctx context.Context) *slog.Logger
+func MQ(ctx context.Context) *Logger {
+    return L().WithCategory(CategoryMQ)
+}
 
 // Cache 返回缓存层 Logger（category="cache"）。
-func Cache(ctx context.Context) *slog.Logger
+func Cache(ctx context.Context) *Logger {
+    return L().WithCategory(CategoryCache)
+}
 ```
+
+**说明：** ctx 参数保留用于未来扩展（如自动注入 ctx 中的自定义字段），当前实现直接返回带 category 的 Logger。调用方使用 `InfoContext(ctx, msg, args...)` 传入 ctx 以自动关联 trace_id。
 
 ### 5. 与 hlog/klog 的级别映射
 
@@ -207,15 +221,15 @@ func (s *OrderService) CreateOrder(ctx context.Context, cmd CreateOrderCmd) erro
 ```go
 // application/order_handler.go
 func (h *OrderHandler) HandleCreate(ctx context.Context, req *CreateRequest) error {
-    log.App(ctx).Info("创建订单请求", "user_id", req.UserID)
+    log.App(ctx).InfoContext(ctx, "创建订单请求", "user_id", req.UserID)
 
     err := h.service.CreateOrder(ctx, domain.CreateOrderCmd{...})
     if err != nil {
-        log.App(ctx).Error("创建订单失败", "error", err)
+        log.App(ctx).ErrorContext(ctx, "创建订单失败", "error", err)
         return err
     }
 
-    log.App(ctx).Info("创建订单成功")
+    log.App(ctx).InfoContext(ctx, "创建订单成功")
     return nil
 }
 ```
@@ -225,7 +239,7 @@ func (h *OrderHandler) HandleCreate(ctx context.Context, req *CreateRequest) err
 ```go
 // infrastructure/order_repo.go
 func (r *OrderRepo) Save(ctx context.Context, order *Order) error {
-    log.DB(ctx).Debug("保存订单", "order_id", order.ID)
+    log.DB(ctx).DebugContext(ctx, "保存订单", "order_id", order.ID)
     // 执行 SQL...
     return nil
 }
