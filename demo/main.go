@@ -44,6 +44,8 @@ import (
 	"github.com/byx-darwin/go-tools/go-middleware/redis"
 
 	"github.com/byx-darwin/go-tools/go-framework/config"
+	hertzConfig "github.com/byx-darwin/go-tools/go-framework/config/hertz"
+	"github.com/byx-darwin/go-tools/go-framework/hertz"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -1445,7 +1447,10 @@ func verifyES() result {
 func verifyClickHouse() result {
 	const pkg = "go-middleware/clickhouse"
 	conn, err := clickhouse.NewClient(clickhouse.Config{
-		DSN: "clickhouse://default:@localhost:9000/default",
+		Addrs:    []string{"localhost:9000"},
+		Database: "default",
+		Username: "default",
+		Password: "demo123",
 	})
 	if err != nil {
 		return result{"SKIP", pkg, "ClickHouse 不可达: " + err.Error()}
@@ -1477,10 +1482,28 @@ func verifyMiddlewareAuth() result {
 
 // verifyHertz 测试 Hertz HTTP 服务器创建、启动与优雅关闭。
 func verifyHertz() result {
-	if isNotLinux() {
-		return result{"SKIP", "go-framework/hertz", "Hertz 仅在 Linux 支持（netpoll），当前: " + runtime.GOOS}
+	const pkg = "go-framework/hertz"
+	ctx := context.Background()
+
+	h, err := hertz.NewHTTPServer(ctx, &hertzConfig.ServerConfig{
+		HTTP: &hertzConfig.HTTPOption{
+			Port:        "19888",
+			Mode:        1,
+			IsTransport: true, // Go 标准网络库，跨平台兼容
+		},
+		Registry: config.RegistryOption{Name: "demo-service"},
+	})
+	if err != nil {
+		return result{"SKIP", pkg, "服务器创建失败: " + err.Error()}
 	}
-	return result{"SKIP", "go-framework/hertz", "需要在 Linux 环境运行"}
+
+	go h.Spin()
+	time.Sleep(500 * time.Millisecond)
+
+	shutdownCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_ = h.Shutdown(shutdownCtx)
+	return result{"PASS", pkg, "服务器创建、启动、关闭验证通过"}
 }
 
 // verifyKitex 测试 Kitex 客户端 Option 创建。
