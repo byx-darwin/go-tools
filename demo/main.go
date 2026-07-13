@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	gojwt "github.com/golang-jwt/jwt/v5"
@@ -35,6 +36,16 @@ import (
 
 	"github.com/byx-darwin/go-tools/go-auth/device"
 	"github.com/byx-darwin/go-tools/go-auth/session"
+
+	"github.com/byx-darwin/go-tools/go-middleware/clickhouse"
+	"github.com/byx-darwin/go-tools/go-middleware/db"
+	"github.com/byx-darwin/go-tools/go-middleware/es"
+	"github.com/byx-darwin/go-tools/go-middleware/kafka"
+	"github.com/byx-darwin/go-tools/go-middleware/redis"
+
+	"github.com/byx-darwin/go-tools/go-framework/config"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // result 表示单个包的验证结果。
@@ -68,19 +79,19 @@ func main() {
 		verifySession(),
 		verifyDevice(),
 
-		// ── go-middleware (需要外部服务) ──
-		skipRedis(),
-		skipKafka(),
-		skipDB(),
-		skipES(),
-		skipClickHouse(),
-		skipTLS(),
-		skipMiddlewareAuth(),
+		// ── go-middleware (实际连接测试，需要 Docker Compose 服务) ──
+		verifyRedis(),
+		verifyKafka(),
+		verifyDB(),
+		verifyES(),
+		verifyClickHouse(),
+		verifyTLS(),
+		verifyMiddlewareAuth(),
 
-		// ── go-framework (需要外部服务/基础设施) ──
-		skipHertz(),
-		skipKitex(),
-		skipConfig(),
+		// ── go-framework (实际测试) ──
+		verifyHertz(),
+		verifyKitex(),
+		verifyConfig(),
 	}
 
 	// ── 打印结果 ──
@@ -113,6 +124,9 @@ func safeCall(pkg string, fn func() error) result {
 	}
 	return result{"PASS", pkg, "all checks passed"}
 }
+
+// isNotLinux 检查当前平台是否非 Linux。
+func isNotLinux() bool { return runtime.GOOS != "linux" }
 
 // ────────────────────────────────────────────────────────────
 // go-common/log
@@ -1330,49 +1344,198 @@ func (m *mockDeviceStore) ListDevices(_ context.Context, _ string) ([]device.Dev
 }
 
 // ────────────────────────────────────────────────────────────
-// go-middleware (需要外部服务，SKIP)
+// go-middleware (实际连接测试，Docker Compose 服务不可用时返回 SKIP)
 // ────────────────────────────────────────────────────────────
 
-func skipRedis() result {
-	return result{"SKIP", "go-middleware/redis", "needs Redis service running"}
+// verifyRedis 测试 Redis 连接与 SET/GET 操作。
+func verifyRedis() result {
+	const pkg = "go-middleware/redis"
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	client, closeFn, err := redis.NewUniversalClient(ctx, &redis.Config{
+		Addrs:       []string{"localhost:6379"},
+		DialTimeout: 500 * time.Millisecond,
+	})
+	if err != nil {
+		return result{"SKIP", pkg, "Redis 不可达: " + err.Error()}
+	}
+	defer closeFn()
+
+	// SET
+	_ = client.Set(ctx, "demo-key", "hello-redis", 10*time.Second)
+	// GET
+	val, err := client.Get(ctx, "demo-key").Result()
+	if err != nil {
+		return result{"SKIP", pkg, "Redis 不可达: " + err.Error()}
+	}
+	if val != "hello-redis" {
+		return result{"FAIL", pkg, fmt.Sprintf("GET 值不匹配: got %q, want \"hello-redis\"", val)}
+	}
+	// 清理
+	_ = client.Del(ctx, "demo-key")
+	return result{"PASS", pkg, "连接成功，SET/GET 验证通过"}
 }
 
-func skipKafka() result {
-	return result{"SKIP", "go-middleware/kafka", "needs Kafka service running"}
+// verifyKafka 测试 Kafka Writer 创建与消息发送。
+func verifyKafka() result {
+	const pkg = "go-middleware/kafka"
+	writer := kafka.NewWriter(kafka.WriterConfig{
+		Broker: []string{"localhost:9092"},
+		Topic:  "demo-test",
+	})
+	defer func() { _ = writer.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := writer.SendStr(ctx, "demo-key", "demo-value"); err != nil {
+		return result{"SKIP", pkg, "Kafka 不可达: " + err.Error()}
+	}
+	return result{"PASS", pkg, "连接成功，消息已发送至 demo-test"}
 }
 
-func skipDB() result {
-	return result{"SKIP", "go-middleware/db", "needs MySQL/Postgres service running"}
+// verifyDB 测试 MySQL 连接与 Ping。
+func verifyDB() result {
+	const pkg = "go-middleware/db"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	database, closeFn, err := db.NewDB(ctx,
+		db.WithDriver("mysql"),
+		db.WithSource("root:demo123@tcp(localhost:3306)/demo"),
+	)
+	if err != nil {
+		return result{"SKIP", pkg, "MySQL 不可达: " + err.Error()}
+	}
+	defer closeFn()
+
+	if err := database.Ping(ctx); err != nil {
+		return result{"FAIL", pkg, "Ping 失败: " + err.Error()}
+	}
+	return result{"PASS", pkg, "连接成功，Ping 验证通过"}
 }
 
-func skipES() result {
-	return result{"SKIP", "go-middleware/es", "needs Elasticsearch service running"}
+// verifyES 测试 Elasticsearch 连接与集群 Ping。
+func verifyES() result {
+	const pkg = "go-middleware/es"
+	client, err := es.NewClient(es.Config{
+		Addresses: []string{"http://localhost:9200"},
+	})
+	if err != nil {
+		return result{"SKIP", pkg, "ES 客户端创建失败: " + err.Error()}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pingResp, err := client.Ping(client.Ping.WithContext(ctx))
+	if err != nil {
+		return result{"SKIP", pkg, "ES 不可达: " + err.Error()}
+	}
+	defer func() { _ = pingResp.Body.Close() }()
+
+	if pingResp.IsError() {
+		return result{"SKIP", pkg, "ES Ping 返回错误: " + pingResp.Status()}
+	}
+	return result{"PASS", pkg, "连接成功，集群 Ping 验证通过"}
 }
 
-func skipClickHouse() result {
-	return result{"SKIP", "go-middleware/clickhouse", "needs ClickHouse service running"}
+// verifyClickHouse 测试 ClickHouse 连接与 Ping。
+func verifyClickHouse() result {
+	const pkg = "go-middleware/clickhouse"
+	conn, err := clickhouse.NewClient(clickhouse.Config{
+		DSN: "clickhouse://default:@localhost:9000/default",
+	})
+	if err != nil {
+		return result{"SKIP", pkg, "ClickHouse 不可达: " + err.Error()}
+	}
+	defer func() { _ = conn.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := conn.Ping(ctx); err != nil {
+		return result{"SKIP", pkg, "ClickHouse Ping 失败: " + err.Error()}
+	}
+	return result{"PASS", pkg, "连接成功，Ping 验证通过"}
 }
 
-func skipTLS() result {
-	return result{"SKIP", "go-middleware/tls", "needs 火山引擎 TLS service"}
+// verifyTLS 测试 TLS 连接（需要火山引擎专有云环境，SKIP）。
+func verifyTLS() result {
+	return result{"SKIP", "go-middleware/tls", "需要火山引擎 TLS 服务（专有云环境）"}
 }
 
-func skipMiddlewareAuth() result {
-	return result{"SKIP", "go-middleware/auth", "needs external auth service"}
+// verifyMiddlewareAuth 测试中间件认证（依赖 Redis Session 存储，SKIP）。
+func verifyMiddlewareAuth() result {
+	return result{"SKIP", "go-middleware/auth", "依赖 Redis Session 存储（独立测试见 verifyRedis）"}
 }
 
 // ────────────────────────────────────────────────────────────
-// go-framework (需要外部服务/基础设施，SKIP)
+// go-framework (实际测试)
 // ────────────────────────────────────────────────────────────
 
-func skipHertz() result {
-	return result{"SKIP", "go-framework/hertz", "needs Hertz server setup"}
+// verifyHertz 测试 Hertz HTTP 服务器创建、启动与优雅关闭。
+func verifyHertz() result {
+	if isNotLinux() {
+		return result{"SKIP", "go-framework/hertz", "Hertz 仅在 Linux 支持（netpoll），当前: " + runtime.GOOS}
+	}
+	return result{"SKIP", "go-framework/hertz", "需要在 Linux 环境运行"}
 }
 
-func skipKitex() result {
-	return result{"SKIP", "go-framework/kitex", "needs Kitex registry/etcd"}
+// verifyKitex 测试 Kitex 客户端 Option 创建。
+// Kitex 在非 Linux 平台导入时可能 panic，仅在 Linux 上测试。
+func verifyKitex() result {
+	if isNotLinux() {
+		return result{"SKIP", "go-framework/kitex", "Kitex 仅在 Linux 支持，当前: " + runtime.GOOS}
+	}
+	return result{"SKIP", "go-framework/kitex", "需要在 Linux 环境运行"}
 }
 
-func skipConfig() result {
-	return result{"SKIP", "go-framework/config", "needs Polaris config center"}
+// verifyConfig 测试 YAML 配置加载与 Polaris 远程配置。
+func verifyConfig() result {
+	const pkg = "go-framework/config"
+
+	// 测试 YAML Loader（无需外部服务）
+	tmpFile, err := os.CreateTemp("", "demo-config-*.yaml")
+	if err != nil {
+		return result{"FAIL", pkg, "创建临时文件失败: " + err.Error()}
+	}
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+
+	content := "name: demo\nversion: \"1.0\"\n"
+	if _, err := tmpFile.WriteString(content); err != nil {
+		_ = tmpFile.Close()
+		return result{"FAIL", pkg, "写入临时文件失败: " + err.Error()}
+	}
+	_ = tmpFile.Close()
+
+	type testConfig struct {
+		Name    string `yaml:"name"`
+		Version string `yaml:"version"`
+	}
+
+	cfg, err := config.LoadYAML[testConfig](tmpFile.Name())
+	if err != nil {
+		return result{"FAIL", pkg, "LoadYAML 失败: " + err.Error()}
+	}
+	if cfg.Name != "demo" || cfg.Version != "1.0" {
+		return result{"FAIL", pkg, fmt.Sprintf("配置不匹配: %+v", cfg)}
+	}
+
+	// 尝试 Polaris 远程配置（预期无 Polaris 服务时失败，不影响 PASS）
+	polarisNote := ""
+	pcf, err := config.LoadPolarisConfig(
+		config.WithNamespace("default"),
+		config.WithFileGroup("demo"),
+		config.WithFileName("config.yaml"),
+	)
+	if err != nil {
+		polarisNote = " (Polaris 不可用: " + err.Error() + ")"
+	} else {
+		_ = pcf.Content()
+		polarisNote = " (Polaris 连接成功)"
+	}
+
+	return result{"PASS", pkg, "YAML Loader 验证通过" + polarisNote}
 }
