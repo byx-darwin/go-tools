@@ -20,6 +20,9 @@ func TestCodeConstants(t *testing.T) {
 		{"CodeDeviceKicked", CodeDeviceKicked},
 		{"CodeSessionInvalid", CodeSessionInvalid},
 		{"CodeSessionExpired", CodeSessionExpired},
+		{"CodeJWTSignFailed", CodeJWTSignFailed},
+		{"CodeJWTVerifyFailed", CodeJWTVerifyFailed},
+		{"CodeJWTRefreshFailed", CodeJWTRefreshFailed},
 	}
 
 	for _, tt := range tests {
@@ -44,6 +47,9 @@ func TestPredefinedErrors(t *testing.T) {
 		{"ErrDeviceKicked", ErrDeviceKicked, CodeDeviceKicked, "device_kicked"},
 		{"ErrSessionInvalid", ErrSessionInvalid, CodeSessionInvalid, "session_invalid"},
 		{"ErrSessionExpired", ErrSessionExpired, CodeSessionExpired, "session_expired"},
+		{"ErrJWTSignFailed", ErrJWTSignFailed, CodeJWTSignFailed, "jwt_sign_failed"},
+		{"ErrJWTVerifyFailed", ErrJWTVerifyFailed, CodeJWTVerifyFailed, "jwt_verify_failed"},
+		{"ErrJWTRefreshFailed", ErrJWTRefreshFailed, CodeJWTRefreshFailed, "jwt_refresh_failed"},
 	}
 
 	for _, tt := range tests {
