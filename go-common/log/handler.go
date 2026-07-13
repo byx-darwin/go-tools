@@ -190,3 +190,37 @@ func (h *multiHandler) WithGroup(name string) slog.Handler {
 	}
 	return &multiHandler{handlers: handlers}
 }
+
+// domainHandler 在日志中注入 domain 和 log_type 字段。
+type domainHandler struct {
+	next    slog.Handler
+	domain  string
+	logType string
+}
+
+// NewDomainHandler 创建 domain handler。
+func NewDomainHandler(next slog.Handler, domain, logType string) slog.Handler {
+	return &domainHandler{next: next, domain: domain, logType: logType}
+}
+
+func (h *domainHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.next.Enabled(ctx, level)
+}
+
+func (h *domainHandler) Handle(ctx context.Context, r slog.Record) error {
+	if h.domain != "" {
+		r.AddAttrs(slog.String("domain", h.domain))
+	}
+	if h.logType != "" {
+		r.AddAttrs(slog.String("log_type", h.logType))
+	}
+	return h.next.Handle(ctx, r)
+}
+
+func (h *domainHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &domainHandler{next: h.next.WithAttrs(attrs), domain: h.domain, logType: h.logType}
+}
+
+func (h *domainHandler) WithGroup(name string) slog.Handler {
+	return &domainHandler{next: h.next.WithGroup(name), domain: h.domain, logType: h.logType}
+}
