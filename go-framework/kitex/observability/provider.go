@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 	"github.com/byx-darwin/go-tools/go-framework/config"
 	runtimemetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/contrib/propagators/b3"
@@ -55,7 +56,7 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 		otlptracegrpc.WithInsecure(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("observability: create trace exporter: %w", err)
+		return nil, goerror.ErrObsTraceExport.Wrap(err)
 	}
 
 	sampler := sdktrace.TraceIDRatioBased(1.0)
@@ -86,7 +87,7 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 			otlpmetricgrpc.WithInsecure(),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("observability: create metric exporter: %w", err)
+			return nil, goerror.ErrObsMetricExport.Wrap(err)
 		}
 
 		interval := cfg.MetricsInterval
@@ -104,7 +105,7 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 
 		// Go runtime metrics（goroutines, GC, memory 等）
 		if err := runtimemetrics.Start(runtimemetrics.WithMeterProvider(mp)); err != nil {
-			return nil, fmt.Errorf("observability: start runtime metrics: %w", err)
+			return nil, goerror.ErrObsRuntimeMetrics.Wrap(err)
 		}
 
 		// 包装 shutdown 以同时关闭 metrics
