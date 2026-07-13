@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
 	gojwt "github.com/golang-jwt/jwt/v5"
@@ -127,10 +126,6 @@ func safeCall(pkg string, fn func() error) result {
 	return result{"PASS", pkg, "all checks passed"}
 }
 
-// isNotLinux 检查当前平台是否非 Linux。
-func isNotLinux() bool { return runtime.GOOS != "linux" }
-
-// ────────────────────────────────────────────────────────────
 // go-common/log
 // ────────────────────────────────────────────────────────────
 
@@ -1507,12 +1502,9 @@ func verifyHertz() result {
 }
 
 // verifyKitex 测试 Kitex 客户端 Option 创建。
-// Kitex 在非 Linux 平台导入时可能 panic，仅在 Linux 上测试。
+// Kitex v0.16.2 SharedTicker init() 在 macOS ARM 上 panic（time.NewTicker(0)），非平台限制而是库 bug。
 func verifyKitex() result {
-	if isNotLinux() {
-		return result{"SKIP", "go-framework/kitex", "Kitex 仅在 Linux 支持，当前: " + runtime.GOOS}
-	}
-	return result{"SKIP", "go-framework/kitex", "需要在 Linux 环境运行"}
+	return result{"SKIP", "go-framework/kitex", "Kitex v0.16.2 在 macOS ARM init() panic（SharedTicker bug），需在 Linux 上测试"}
 }
 
 // verifyConfig 测试 YAML 配置加载与 Polaris 远程配置。
