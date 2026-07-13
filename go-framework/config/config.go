@@ -20,9 +20,10 @@ type RegistryOption struct {
 	Address string `json:"address"  yaml:"address"`
 }
 
-// Loader 通用 YAML 配置加载器接口
+// Loader 通用 YAML 配置加载器接口。
 type Loader interface {
-	Load(path string, v interface{}) error
+	// Load 从指定路径加载 YAML 配置到 v 中。
+	Load(path string, v any) error
 }
 
 // Duration 封装 time.Duration，支持 YAML 字符串格式 (e.g., "30s", "5m")
@@ -31,7 +32,7 @@ type Duration struct {
 }
 
 // UnmarshalYAML 实现 yaml.Unmarshaler，解析 "30s" 等格式
-func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (d *Duration) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	if err := unmarshal(&s); err != nil {
 		return err

@@ -126,7 +126,7 @@ func (s *FileShipper) shipSince(offset int64) (int64, error) {
 }
 
 func parseJSONLine(line []byte) map[string]string {
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(line, &raw); err != nil {
 		return nil
 	}

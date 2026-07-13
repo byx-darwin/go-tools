@@ -1,3 +1,4 @@
+// Package kafka 提供 Kafka 生产者和消费者配置及工厂方法（基于 kafka-go）。
 package kafka
 
 import "time"
