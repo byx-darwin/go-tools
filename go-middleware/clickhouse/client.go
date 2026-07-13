@@ -2,10 +2,11 @@ package clickhouse
 
 import (
 	"crypto/tls"
-	"fmt"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
+
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 )
 
 // NewClient 创建 ClickHouse 原生协议客户端。
@@ -15,7 +16,7 @@ func NewClient(config Config) (clickhouse.Conn, error) {
 	if config.DSN != "" {
 		opts, err := clickhouse.ParseDSN(config.DSN)
 		if err != nil {
-			return nil, fmt.Errorf("clickhouse: parse DSN: %w", err)
+			return nil, goerror.ErrCHParseDSN.Wrap(err)
 		}
 		return clickhouse.Open(opts)
 	}

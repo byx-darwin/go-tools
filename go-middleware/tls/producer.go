@@ -16,11 +16,13 @@ package tls
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
+	"github.com/samber/oops"
 	"github.com/volcengine/volc-sdk-golang/service/tls"
+
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 )
 
 // ProducerConfig 生产者配置
@@ -56,13 +58,19 @@ type Producer struct {
 // NewProducer 创建 TLS Producer。
 func NewProducer(cfg ProducerConfig) (*Producer, error) {
 	if cfg.Endpoint == "" {
-		return nil, fmt.Errorf("tls: endpoint is required")
+		return nil, oops.With("tls.NewProducer").
+			Code(goerror.CodeTLSInvalidConfig).
+			Errorf("endpoint is required")
 	}
 	if cfg.TopicID == "" {
-		return nil, fmt.Errorf("tls: topic_id is required")
+		return nil, oops.With("tls.NewProducer").
+			Code(goerror.CodeTLSInvalidConfig).
+			Errorf("topic_id is required")
 	}
 	if cfg.Region == "" {
-		return nil, fmt.Errorf("tls: region is required")
+		return nil, oops.With("tls.NewProducer").
+			Code(goerror.CodeTLSInvalidConfig).
+			Errorf("region is required")
 	}
 	if cfg.Source == "" {
 		cfg.Source = "go-tools"
@@ -137,7 +145,9 @@ func (p *Producer) flush(_ context.Context) error {
 		Logs:         logs,
 	})
 	if err != nil {
-		return fmt.Errorf("tls: put logs: %w", err)
+		return oops.With("tls.flush").
+			Code(goerror.CodeTLSSend).
+			Wrap(err)
 	}
 	return nil
 }

@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,6 +13,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
+
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 )
 
 // AuthFace 鉴权接口，由业务方实现 AK/SK 查找逻辑。
@@ -61,12 +62,16 @@ func Auth(authFace AuthFace) app.HandlerFunc {
 func parseAuthorization(request *protocol.Request) (ak, sign string, t int64, err error) {
 	auth := string(request.Header.Peek("X-Signature"))
 	if auth == "" {
-		return "", "", 0, errors.New("authorization header is empty")
+		return "", "", 0, goerror.In("auth.parseAuthorization").
+			Code(goerror.CodeParamInvalid).
+			Errorf("authorization header is empty")
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(auth)
 	if err != nil {
-		return "", "", 0, fmt.Errorf("authorization base64 decode: %w", err)
+		return "", "", 0, goerror.In("auth.parseAuthorization").
+			Code(goerror.CodeParamInvalid).
+			Wrap(err)
 	}
 
 	kvs := make(map[string]string)
@@ -78,13 +83,19 @@ func parseAuthorization(request *protocol.Request) (ak, sign string, t int64, er
 	}
 
 	if ak = kvs["ak"]; ak == "" {
-		return "", "", 0, errors.New("ak is empty")
+		return "", "", 0, goerror.In("auth.parseAuthorization").
+			Code(goerror.CodeParamInvalid).
+			Errorf("ak is empty")
 	}
 	if sign = kvs["sign"]; sign == "" {
-		return "", "", 0, errors.New("sign is empty")
+		return "", "", 0, goerror.In("auth.parseAuthorization").
+			Code(goerror.CodeParamInvalid).
+			Errorf("sign is empty")
 	}
 	if tt, ok := kvs["t"]; !ok || tt == "" {
-		return "", "", 0, errors.New("timestamp is empty")
+		return "", "", 0, goerror.In("auth.parseAuthorization").
+			Code(goerror.CodeParamInvalid).
+			Errorf("timestamp is empty")
 	} else {
 		t, _ = strconv.ParseInt(tt, 10, 64)
 	}

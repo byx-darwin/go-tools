@@ -49,6 +49,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "gitflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/hooks/auto-report-bug.sh\""
+          }
+        ]
+      }
     ]
   },
   "env": {
