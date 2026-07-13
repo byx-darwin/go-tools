@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-lint:
+    name: ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - go-common
+          - go-auth
+          - go-middleware
+          - go-framework
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          check-latest: true
+
+      - name: go build
+        run: go build ./${{ matrix.module }}/...
+
+      - name: go vet
+        run: go vet ./${{ matrix.module }}/...
+
+      - name: go test
+        run: go test ./${{ matrix.module }}/... -count=1 -race -coverprofile=${{ matrix.module }}-coverage.out
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: ${{ matrix.module }}
+          args: --timeout=5m
+
+      - name: upload coverage
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.module }}
+          path: ${{ matrix.module }}-coverage.out
+          retention-days: 7

@@ -25,4 +25,13 @@ const (
 
 	// CategorySecurity 安全相关日志。
 	CategorySecurity = "security"
+
+	// CategoryApp 应用层日志。
+	CategoryApp = "app"
+
+	// CategoryCache 缓存操作日志。
+	CategoryCache = "cache"
+
+	// CategoryMQ 消息队列日志。
+	CategoryMQ = "mq"
 )

@@ -1,0 +1,63 @@
+name: Security
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # 每周日 00:00 UTC
+  push:
+    branches: [main]
+    paths:
+      - "**/go.mod"
+      - "**/go.sum"
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/go.mod"
+      - "**/go.sum"
+  workflow_dispatch: # 允许手动触发
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          check-latest: true
+
+      - name: install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: scan go-common
+        run: govulncheck -mode=binary ./go-common/...
+
+      - name: scan go-auth
+        run: govulncheck -mode=binary ./go-auth/...
+
+      - name: scan go-middleware
+        run: govulncheck -mode=binary ./go-middleware/...
+
+      - name: scan go-framework
+        run: govulncheck -mode=binary ./go-framework/...
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: go
+
+      - uses: github/codeql-action/analyze@v3
