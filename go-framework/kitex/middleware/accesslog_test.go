@@ -35,7 +35,7 @@ func TestAccessLog_Kitex_Error(t *testing.T) {
 
 func TestAccessLog_Kitex_TypeCompatibility(t *testing.T) {
 	// Verify Middleware type is compatible with kitex endpoint.Middleware
-	var mw Middleware = AccessLog()
+	mw := AccessLog()
 	assert.NotNil(t, mw)
 
 	// Verify Endpoint type

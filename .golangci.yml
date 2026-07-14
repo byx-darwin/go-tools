@@ -1,34 +1,44 @@
+version: "2"
 run:
-  timeout: 5m
   modules-download-mode: readonly
-
 linters:
   enable:
-    - gofmt
-    - goimports
+    - gocritic
     - misspell
     - revive
     - unconvert
     - unparam
-    - gocritic
-
-linters-settings:
-  misspell:
-    locale: US
-  revive:
-    rules:
-      - name: exported
-        arguments:
-          - disableStutteringCheck
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-    disabled-checks:
-      - ifElseChain
-      - unnamedResult
-
+  settings:
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - unnamedResult
+      enabled-tags:
+        - diagnostic
+        - style
+    misspell:
+      locale: US
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - disableStutteringCheck
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 50
   max-same-issues: 10
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

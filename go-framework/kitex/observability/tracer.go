@@ -84,7 +84,7 @@ func (s *serverTracer) Finish(ctx context.Context) {
 	injectStatsEventsToSpan(span, st)
 
 	// 错误处理
-	if err, panicMsg := parseRPCError(ri); err != nil || panicMsg != "" {
+	if panicMsg, err := parseRPCError(ri); err != nil || panicMsg != "" {
 		recordErrorSpanWithStack(span, err, panicMsg)
 	}
 
@@ -154,7 +154,7 @@ func (c *clientTracer) Finish(ctx context.Context) {
 
 	injectStatsEventsToSpan(span, st)
 
-	if err, panicMsg := parseRPCError(ri); err != nil || panicMsg != "" {
+	if panicMsg, err := parseRPCError(ri); err != nil || panicMsg != "" {
 		recordErrorSpanWithStack(span, err, panicMsg)
 	}
 
@@ -190,10 +190,10 @@ func injectStatsEventsToSpan(span oteltrace.Span, st rpcinfo.RPCStats) {
 }
 
 // parseRPCError 从 RPCInfo 中提取错误信息。
-func parseRPCError(ri rpcinfo.RPCInfo) (rpcErr error, panicMsg string) {
+func parseRPCError(ri rpcinfo.RPCInfo) (panicMsg string, rpcErr error) {
 	st := ri.Stats()
 	if st == nil {
-		return nil, ""
+		return "", nil
 	}
 
 	rpcErr = st.Error()

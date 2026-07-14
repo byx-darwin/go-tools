@@ -160,22 +160,22 @@ func (c *CacheStore) Set(id, value string) error {
 }
 
 // Get 实现 base64Captcha.Store 接口。
-func (c *CacheStore) Get(id string, clear bool) string {
+func (c *CacheStore) Get(id string, shouldClear bool) string {
 	preKey, _ := c.snapshot()
 	key := preKey + id
 	val, ok, _ := c.cache.Get(key)
 	if !ok {
 		return ""
 	}
-	if clear {
+	if shouldClear {
 		c.cache.Delete(key)
 	}
 	return val
 }
 
 // Verify 实现 base64Captcha.Store 接口。
-func (c *CacheStore) Verify(id, answer string, clear bool) bool {
-	v := c.Get(id, clear)
+func (c *CacheStore) Verify(id, answer string, shouldClear bool) bool {
+	v := c.Get(id, shouldClear)
 	return v == answer
 }
 
