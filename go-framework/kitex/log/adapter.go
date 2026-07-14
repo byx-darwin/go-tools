@@ -132,5 +132,5 @@ func (a *KitexAdapter) SetLevel(level klog.Level) { a.level = level }
 func (a *KitexAdapter) SetOutput(w io.Writer) { a.writer = w }
 
 func (a *KitexAdapter) log(level slog.Level, msg string) {
-	a.logger.Logger.LogAttrs(context.Background(), level, msg)
+	a.logger.LogAttrs(context.Background(), level, msg)
 }
