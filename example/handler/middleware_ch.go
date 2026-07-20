@@ -34,7 +34,7 @@ func clickhouseHandler(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	var result any
+	var result uint8
 	queryErr := chClient.QueryRow(ctx, "SELECT 1").Scan(&result)
 
 	resp := map[string]any{}

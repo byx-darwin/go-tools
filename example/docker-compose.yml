@@ -39,6 +39,9 @@ services:
       retries: 10
   clickhouse:
     image: clickhouse/clickhouse-server:24.12
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: demo
     ports: ["9000:9000"]
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]

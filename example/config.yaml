@@ -33,15 +33,17 @@ redis:
 kafka:
   broker: ["localhost:9092"]
   topic: "go-tools-demo"
+  allow_auto_topic_creation: true
 
 db:
+  driver: "mysql"
   source: "root:root@tcp(localhost:3306)/demo"
 
 elasticsearch:
   addresses: ["http://localhost:9200"]
 
 clickhouse:
-  dsn: "clickhouse://default:@localhost:9000/demo"
+  dsn: "clickhouse://default:demo@localhost:9000/default"
 
 captcha:
   key_long: 6

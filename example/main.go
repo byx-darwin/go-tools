@@ -28,6 +28,13 @@ import (
 	kitexlog "github.com/byx-darwin/go-tools/go-framework/kitex/log"
 	kitexobs "github.com/byx-darwin/go-tools/go-framework/kitex/observability"
 	mwauth "github.com/byx-darwin/go-tools/go-middleware/auth"
+	"github.com/byx-darwin/go-tools/go-middleware/clickhouse"
+	mwdb "github.com/byx-darwin/go-tools/go-middleware/db"
+	"github.com/byx-darwin/go-tools/go-middleware/es"
+	"github.com/byx-darwin/go-tools/go-middleware/kafka"
+	mwredis "github.com/byx-darwin/go-tools/go-middleware/redis"
+
+	_ "github.com/go-sql-driver/mysql" // MySQL driver for go-middleware/db.
 )
 
 func main() {
@@ -80,6 +87,10 @@ func main() {
 
 	// 5. 初始化运行时依赖（session / device store, config handler）
 	deps := initDeps(cfg)
+
+	// 5.5 初始化中间件客户端（Redis / Kafka / DB / ES / ClickHouse）。
+	mwCleanup := initMiddlewareClients(ctx, cfg)
+	defer mwCleanup()
 
 	// 6. 创建 Hertz HTTP server
 	h := createHertzServer(cfg, deps, hertzObs)
@@ -191,6 +202,87 @@ func waitForPort(addr string, timeout time.Duration) bool {
 		time.Sleep(500 * time.Millisecond)
 	}
 	return false
+}
+
+// initMiddlewareClients 初始化中间件客户端（Redis / Kafka / DB / ES / ClickHouse）。
+//
+// 每个客户端独立初始化，失败时仅记录警告并跳过（handler 会返回 "not configured"）。
+// 返回的 cleanup 函数用于优雅关闭所有已初始化的客户端。
+func initMiddlewareClients(ctx context.Context, cfg *AppConfig) func() {
+	var cleanups []func()
+
+	// Redis。
+	if len(cfg.Redis.Addrs) > 0 {
+		client, cleanup, err := mwredis.NewUniversalClient(ctx, &cfg.Redis)
+		if err != nil {
+			log.L().Warn("redis init failed, middleware routes will report not_configured", "error", err)
+		} else {
+			handler.SetRedisClient(client)
+			cleanups = append(cleanups, cleanup)
+			log.L().Info("redis client initialized", "addrs", cfg.Redis.Addrs)
+		}
+	}
+
+	// Kafka Writer（生产者）。
+	if len(cfg.Kafka.Broker) > 0 {
+		w := kafka.NewWriter(cfg.Kafka)
+		handler.SetKafkaWriter(w)
+		cleanups = append(cleanups, func() { _ = w.Close() })
+		log.L().Info("kafka writer initialized", "broker", cfg.Kafka.Broker, "topic", cfg.Kafka.Topic)
+	}
+
+	// Kafka Consumer（消费者）。
+	if len(cfg.KafkaReader.Broker) > 0 {
+		c := kafka.NewConsumer(cfg.KafkaReader)
+		handler.SetKafkaConsumer(c)
+		cleanups = append(cleanups, func() { _ = c.Close() })
+		log.L().Info("kafka consumer initialized", "broker", cfg.KafkaReader.Broker, "topic", cfg.KafkaReader.Topic)
+	}
+
+	// DB。
+	if cfg.DB.Source != "" {
+		driver := cfg.DB.Driver
+		if driver == "" {
+			driver = "mysql"
+		}
+		dbClient, cleanup, err := mwdb.NewDB(ctx, driver, cfg.DB.Source, &cfg.DB)
+		if err != nil {
+			log.L().Warn("db init failed, middleware routes will report not_configured", "error", err)
+		} else {
+			handler.SetDBClient(dbClient)
+			cleanups = append(cleanups, cleanup)
+			log.L().Info("db client initialized", "driver", driver)
+		}
+	}
+
+	// Elasticsearch。
+	if len(cfg.Elasticsearch.Addresses) > 0 {
+		client, err := es.NewClient(cfg.Elasticsearch)
+		if err != nil {
+			log.L().Warn("elasticsearch init failed, middleware routes will report not_configured", "error", err)
+		} else {
+			handler.SetESClient(client)
+			log.L().Info("elasticsearch client initialized", "addresses", cfg.Elasticsearch.Addresses)
+		}
+	}
+
+	// ClickHouse。
+	if cfg.ClickHouse.DSN != "" {
+		conn, err := clickhouse.NewClient(cfg.ClickHouse)
+		if err != nil {
+			log.L().Warn("clickhouse init failed, middleware routes will report not_configured", "error", err)
+		} else {
+			handler.SetClickHouseClient(conn)
+			cleanups = append(cleanups, func() { _ = conn.Close() })
+			log.L().Info("clickhouse client initialized", "dsn", cfg.ClickHouse.DSN)
+		}
+	}
+
+	return func() {
+		for _, fn := range cleanups {
+			fn()
+		}
+	}
 }
 
 // createHertzServer 创建 Hertz HTTP 服务。
