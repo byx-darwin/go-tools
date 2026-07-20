@@ -49,6 +49,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(?!Bash$).*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tokenless hook compress --semantic --target claude --project go-tools --user-name baoyx"
+          }
+        ]
+      }
     ]
   },
   "env": {
