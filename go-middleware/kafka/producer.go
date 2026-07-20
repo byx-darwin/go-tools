@@ -30,8 +30,10 @@ func NewWriter(cfg WriterConfig) *Writer {
 
 	return &Writer{
 		w: &kafka.Writer{
-			Addr:     kafka.TCP(cfg.Broker...),
-			Balancer: &kafka.LeastBytes{},
+			Addr:                   kafka.TCP(cfg.Broker...),
+			Topic:                  cfg.Topic,
+			AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
+			Balancer:               &kafka.LeastBytes{},
 			Transport: &kafka.Transport{
 				TLS: transportTLS,
 			},

@@ -7,6 +7,9 @@ type WriterConfig struct {
 	Broker []string `json:"broker" yaml:"broker"`
 	Topic  string   `json:"topic" yaml:"topic"`
 
+	// AllowAutoTopicCreation 当 topic 不存在时自动创建。
+	AllowAutoTopicCreation bool `json:"allow_auto_topic_creation" yaml:"allow_auto_topic_creation"`
+
 	TLS struct {
 		Enable             bool `json:"enable" yaml:"enable"`
 		InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
