@@ -126,7 +126,7 @@ func (ic *ImageCaptcha) Generate() (id, b64s, answer string, err error) {
 }
 
 // Verify 校验用户输入是否与验证码匹配。
-// clear=true 时校验通过后自动清除缓存（一次性使用）。
-func (ic *ImageCaptcha) Verify(id, answer string, clear bool) bool {
-	return ic.captcha.Verify(id, answer, clear)
+// shouldClear=true 时校验通过后自动清除缓存（一次性使用）。
+func (ic *ImageCaptcha) Verify(id, answer string, shouldClear bool) bool {
+	return ic.captcha.Verify(id, answer, shouldClear)
 }

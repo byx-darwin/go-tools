@@ -20,6 +20,10 @@ import (
 	"io"
 	"os"
 	"time"
+
+	"github.com/samber/oops"
+
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 )
 
 // FileShipperConfig 文件上报配置。
@@ -42,7 +46,9 @@ type FileShipper struct {
 // NewFileShipper 创建文件上报器。
 func NewFileShipper(cfg FileShipperConfig) (*FileShipper, error) {
 	if cfg.FilePath == "" {
-		return nil, fmt.Errorf("tls: file_path is required")
+		return nil, oops.With("tls.NewFileShipper").
+			Code(goerror.CodeTLSInvalidConfig).
+			Errorf("file_path is required")
 	}
 	if cfg.CheckInterval == 0 {
 		cfg.CheckInterval = 2 * time.Second
@@ -52,7 +58,9 @@ func NewFileShipper(cfg FileShipperConfig) (*FileShipper, error) {
 	}
 	producer, err := NewProducer(cfg.ProducerConfig)
 	if err != nil {
-		return nil, fmt.Errorf("tls: create producer: %w", err)
+		return nil, oops.With("tls.NewFileShipper").
+			Code(goerror.CodeTLSProducerInit).
+			Wrap(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &FileShipper{producer: producer, config: cfg, ctx: ctx, cancel: cancel, done: make(chan struct{})}, nil
@@ -126,7 +134,7 @@ func (s *FileShipper) shipSince(offset int64) (int64, error) {
 }
 
 func parseJSONLine(line []byte) map[string]string {
-	var raw map[string]interface{}
+	var raw map[string]any
 	if err := json.Unmarshal(line, &raw); err != nil {
 		return nil
 	}

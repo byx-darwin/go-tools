@@ -245,7 +245,11 @@ func initMiddlewareClients(ctx context.Context, cfg *AppConfig) func() {
 		if driver == "" {
 			driver = "mysql"
 		}
-		dbClient, cleanup, err := mwdb.NewDB(ctx, driver, cfg.DB.Source, &cfg.DB)
+		dbClient, cleanup, err := mwdb.NewDB(ctx,
+			mwdb.WithDriver(driver),
+			mwdb.WithSource(cfg.DB.Source),
+			mwdb.WithPoolConfig(&cfg.DB),
+		)
 		if err != nil {
 			log.L().Warn("db init failed, middleware routes will report not_configured", "error", err)
 		} else {

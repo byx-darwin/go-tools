@@ -1,0 +1,57 @@
+{
+  "version": "1.1",
+  "workflow_id": "wf-2026-07-13-001",
+  "title": "DDD 模式 — 领域日志封装",
+  "mode": "full",
+  "created_at": "2026-07-13T12:50:00+08:00",
+  "updated_at": "2026-07-13T16:15:00+08:00",
+  "current_phase": 4,
+  "phases": {
+    "1": {
+      "name": "Clarification",
+      "status": "complete",
+      "started_at": "2026-07-13T12:50:00+08:00",
+      "completed_at": "2026-07-13T15:30:00+08:00",
+      "executor": null,
+      "evidence": {
+        "issue_url": "https://github.com/byx-darwin/go-tools/issues/13",
+        "comment_id": "4955496156",
+        "design_doc_path": "docs/superpowers/specs/2026-07-13-ddd-domain-logging-design.md"
+      }
+    },
+    "2": {
+      "name": "Planning",
+      "status": "complete",
+      "started_at": "2026-07-13T15:30:00+08:00",
+      "completed_at": "2026-07-13T15:45:00+08:00",
+      "executor": null,
+      "evidence": {
+        "spec_path": "docs/superpowers/plans/2026-07-13-ddd-domain-logging.md",
+        "user_approved": true
+      }
+    },
+    "3": {
+      "name": "Execution",
+      "status": "complete",
+      "started_at": "2026-07-13T15:45:00+08:00",
+      "completed_at": "2026-07-13T16:00:00+08:00",
+      "executor": null,
+      "evidence": {
+        "branch": "feat/13-ddd-domain-logging",
+        "pr_url": "https://github.com/byx-darwin/go-tools/pull/14",
+        "tests_passed": true
+      }
+    },
+    "4": {
+      "name": "Delivery",
+      "status": "complete",
+      "started_at": "2026-07-13T16:00:00+08:00",
+      "completed_at": "2026-07-13T16:15:00+08:00",
+      "executor": null,
+      "evidence": {
+        "pipeline_ok": true,
+        "review_report_path": "review by subagent-driven-development whole-branch review (Approved after fix)"
+      }
+    }
+  }
+}

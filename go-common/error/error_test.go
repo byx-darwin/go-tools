@@ -46,6 +46,13 @@ func TestPredefinedErrors(t *testing.T) {
 		{"ErrAuthFailed", ErrAuthFailed.Wrap(errors.New("no")), CodeAuthFailed, "auth_failed"},
 		{"ErrConfigNotFound", ErrConfigNotFound.Wrap(errors.New("miss")), CodeConfigNotFound, "config_not_found"},
 		{"ErrRPCUnavailable", ErrRPCUnavailable.Wrap(errors.New("down")), CodeRPCUnavailable, "rpc_unavailable"},
+		{"ErrPolarisInit", ErrPolarisInit.Wrap(errors.New("init")), CodePolarisInit, "polaris_init_error"},
+		{"ErrCHParseDSN", ErrCHParseDSN.Wrap(errors.New("dsn")), CodeCHParseDSN, "ch_parse_dsn_error"},
+		{"ErrTLSInvalidConfig", ErrTLSInvalidConfig.Wrap(errors.New("cfg")), CodeTLSInvalidConfig, "tls_invalid_config_error"},
+		{"ErrTLSProducerInit", ErrTLSProducerInit.Wrap(errors.New("prod")), CodeTLSProducerInit, "tls_producer_init_error"},
+		{"ErrObsTraceExport", ErrObsTraceExport.Wrap(errors.New("trace")), CodeObsTraceExport, "observability_trace_export_error"},
+		{"ErrObsMetricExport", ErrObsMetricExport.Wrap(errors.New("metric")), CodeObsMetricExport, "observability_metric_export_error"},
+		{"ErrObsRuntimeMetrics", ErrObsRuntimeMetrics.Wrap(errors.New("rtm")), CodeObsRuntimeMetrics, "observability_runtime_metrics_error"},
 	}
 
 	for _, tt := range tests {

@@ -67,7 +67,7 @@ func createOutputHandler(w io.Writer, cfg Config) slog.Handler {
 
 // WithCategory 创建带分类的子 Logger。
 func (l *Logger) WithCategory(category string) *Logger {
-	handler := NewCategoryHandler(l.Logger.Handler(), category)
+	handler := NewCategoryHandler(l.Handler(), category)
 	return &Logger{
 		Logger: slog.New(handler),
 		level:  l.level,

@@ -52,6 +52,10 @@ const (
 	CodeConfigNotFound = 10003
 	// CodeConfigInvalid 配置无效
 	CodeConfigInvalid = 10004
+	// CodePolarisInit Polaris 初始化失败
+	CodePolarisInit = 10005
+	// CodePolarisGetConfig Polaris 获取配置文件失败
+	CodePolarisGetConfig = 10006
 	// CodeRPCUnavailable RPC 服务不可用
 	CodeRPCUnavailable = 10010
 	// CodeRPCTimeout RPC 超时
@@ -98,20 +102,26 @@ const (
 
 // ClickHouse 错误码 20401-20499。
 const (
-	CodeCHConnect = 20401 // ClickHouse 连接失败
-	CodeCHQuery   = 20402 // ClickHouse 查询失败
+	CodeCHConnect  = 20401 // ClickHouse 连接失败
+	CodeCHQuery    = 20402 // ClickHouse 查询失败
+	CodeCHParseDSN = 20403 // ClickHouse DSN 解析失败
 )
 
 // TLS 错误码 20501-20599。
 const (
-	CodeTLSConnect = 20501 // TLS 连接失败
-	CodeTLSSend    = 20502 // TLS 发送失败
+	CodeTLSConnect       = 20501 // TLS 连接失败
+	CodeTLSSend          = 20502 // TLS 发送失败
+	CodeTLSInvalidConfig = 20503 // TLS 配置无效
+	CodeTLSProducerInit  = 20504 // TLS Producer 初始化失败
 )
 
 // Observability 错误码 20601-20699。
 const (
-	CodeObsInit   = 20601 // Observability 初始化失败
-	CodeObsExport = 20602 // Observability 导出失败
+	CodeObsInit           = 20601 // Observability 初始化失败
+	CodeObsExport         = 20602 // Observability 导出失败
+	CodeObsTraceExport    = 20603 // Trace exporter 创建失败
+	CodeObsMetricExport   = 20604 // Metric exporter 创建失败
+	CodeObsRuntimeMetrics = 20605 // Runtime metrics 启动失败
 )
 
 // ── 项目自定义业务错误码 (40000-59999) — RPC 调用成功，HTTP 返回 200 ──
@@ -151,15 +161,17 @@ const (
 
 // go-framework 预定义错误。
 var (
-	ErrSystem         = Code(CodeSystem).Public("system_error")
-	ErrParamInvalid   = Code(CodeParamInvalid).Public("param_invalid")
-	ErrAuthFailed     = Code(CodeAuthFailed).Public("auth_failed")
-	ErrConfigNotFound = Code(CodeConfigNotFound).Public("config_not_found")
-	ErrConfigInvalid  = Code(CodeConfigInvalid).Public("config_invalid")
-	ErrRPCUnavailable = Code(CodeRPCUnavailable).Public("rpc_unavailable")
-	ErrRPCTimeout     = Code(CodeRPCTimeout).Public("rpc_timeout")
-	ErrRPCDecodeError = Code(CodeRPCDecodeError).Public("rpc_decode_error")
-	ErrRPCEncodeError = Code(CodeRPCEncodeError).Public("rpc_encode_error")
+	ErrSystem           = Code(CodeSystem).Public("system_error")
+	ErrParamInvalid     = Code(CodeParamInvalid).Public("param_invalid")
+	ErrAuthFailed       = Code(CodeAuthFailed).Public("auth_failed")
+	ErrConfigNotFound   = Code(CodeConfigNotFound).Public("config_not_found")
+	ErrConfigInvalid    = Code(CodeConfigInvalid).Public("config_invalid")
+	ErrPolarisInit      = Code(CodePolarisInit).Public("polaris_init_error")
+	ErrPolarisGetConfig = Code(CodePolarisGetConfig).Public("polaris_get_config_error")
+	ErrRPCUnavailable   = Code(CodeRPCUnavailable).Public("rpc_unavailable")
+	ErrRPCTimeout       = Code(CodeRPCTimeout).Public("rpc_timeout")
+	ErrRPCDecodeError   = Code(CodeRPCDecodeError).Public("rpc_decode_error")
+	ErrRPCEncodeError   = Code(CodeRPCEncodeError).Public("rpc_encode_error")
 )
 
 // Redis 预定义错误。
@@ -196,20 +208,26 @@ var (
 
 // ClickHouse 预定义错误。
 var (
-	ErrCHConnect = Code(CodeCHConnect).Public("ch_connect_error")
-	ErrCHQuery   = Code(CodeCHQuery).Public("ch_query_error")
+	ErrCHConnect  = Code(CodeCHConnect).Public("ch_connect_error")
+	ErrCHQuery    = Code(CodeCHQuery).Public("ch_query_error")
+	ErrCHParseDSN = Code(CodeCHParseDSN).Public("ch_parse_dsn_error")
 )
 
 // TLS 预定义错误。
 var (
-	ErrTLSConnect = Code(CodeTLSConnect).Public("tls_connect_error")
-	ErrTLSSend    = Code(CodeTLSSend).Public("tls_send_error")
+	ErrTLSConnect       = Code(CodeTLSConnect).Public("tls_connect_error")
+	ErrTLSSend          = Code(CodeTLSSend).Public("tls_send_error")
+	ErrTLSInvalidConfig = Code(CodeTLSInvalidConfig).Public("tls_invalid_config_error")
+	ErrTLSProducerInit  = Code(CodeTLSProducerInit).Public("tls_producer_init_error")
 )
 
 // Observability 预定义错误。
 var (
-	ErrObsInit   = Code(CodeObsInit).Public("observability_init_error")
-	ErrObsExport = Code(CodeObsExport).Public("observability_export_error")
+	ErrObsInit           = Code(CodeObsInit).Public("observability_init_error")
+	ErrObsExport         = Code(CodeObsExport).Public("observability_export_error")
+	ErrObsTraceExport    = Code(CodeObsTraceExport).Public("observability_trace_export_error")
+	ErrObsMetricExport   = Code(CodeObsMetricExport).Public("observability_metric_export_error")
+	ErrObsRuntimeMetrics = Code(CodeObsRuntimeMetrics).Public("observability_runtime_metrics_error")
 )
 
 // 业务预定义错误。
@@ -321,11 +339,13 @@ func httpStatusByCode(code int) int {
 		return 503
 	case CodeESConnect:
 		return 503
-	case CodeCHConnect:
+	case CodeCHConnect, CodeCHParseDSN:
 		return 503
-	case CodeTLSConnect:
+	case CodeTLSConnect, CodeTLSInvalidConfig, CodeTLSProducerInit:
 		return 503
-	case CodeObsInit:
+	case CodeObsInit, CodeObsTraceExport, CodeObsMetricExport, CodeObsRuntimeMetrics:
+		return 503
+	case CodePolarisInit, CodePolarisGetConfig:
 		return 503
 
 	// 504 — 超时
