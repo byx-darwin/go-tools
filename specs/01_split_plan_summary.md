@@ -21,12 +21,17 @@ go-tools/                     (go workspace)
 ## 二、目标结构（三层）
 
 ```text
-go-common          ← 最底层，零框架依赖
-    ↑
-go-middleware       ← 中间件客户端（Redis / Kafka / DB）
-    ↑
-go-framework        ← 框架适配（Hertz / Kitex + 配置）
+              go-common    ← 最底层，零框架依赖
+                  ↑
+               go-auth      ← 认证工具
+              ↑       ↑
+    ┌─────────┘       └─────────┐
+go-middleware              go-framework
+中间件客户端                框架适配
+（Redis / Kafka / DB）      （Hertz / Kitex + 配置）
 ```
+
+> 真实拓扑是 **DAG**：`go-framework` 与 `go-middleware` 为**兄弟关系**，二者均依赖 `go-auth` + `go-common`，彼此无依赖。
 
 ## 三、模块归属
 

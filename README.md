@@ -5,12 +5,18 @@ Go microservice toolkits — Hertz / Kitex project infrastructure.
 ## Architecture
 
 ```
-go-common          ← Zero-dependency utility libraries
-    ↑
-go-middleware      ← Middleware clients (Redis / Kafka / DB / ES / CH / TLS)
-    ↑
-go-framework       ← Hertz / Kitex framework adapters (Config / Server / Option / Observability)
+                go-common    ← Zero-dependency utility libraries
+                    ↑
+                 go-auth      ← Auth utilities (JWT / Session / Device)
+                ↑       ↑
+      ┌─────────┘       └─────────┐
+go-middleware                  go-framework
+Middleware clients             Hertz / Kitex framework adapters
+(Redis / Kafka / DB /          (Config / Server / Option /
+ ES / CH / TLS)                 Observability)
 ```
+
+> Real topology is a **DAG**: `go-framework` and `go-middleware` are **siblings** — both depend on `go-auth` + `go-common`, and neither depends on the other.
 
 ## Modules
 
