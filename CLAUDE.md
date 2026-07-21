@@ -108,7 +108,7 @@ go.work                    → Workspace root (go 1.25.8)
 go-common/                 → Zero-dependency utilities
   cache/                   → Generic cache (samber/hot wrapper): LRU/LFU/FIFO/TwoQueue/ARC
   captcha/                 → CAPTCHA generation with cache
-  crypto/                  → Encryption (MD5/SHA/HMAC/AES/TEA)
+  crypto/                  → Encryption (MD5/SHA/HMAC/TEA)
   httpclient/              → HTTP client with retry, m3u8 support
   log/                     → Structured logging (slog + lumberjack + OTel)
   netutil/                 → Network utilities
