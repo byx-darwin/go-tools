@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -13,7 +14,8 @@ import (
 
 // Sign 签发 JWT，支持任意 Claims 类型。
 // claims 必须实现 jwt.Claims 接口（通常通过嵌入 jwt.RegisteredClaims）。
-// 当 opts 中设置了 WithExpiration 时，自动设置 ExpiresAt。
+// 默认过期时间为 2 小时，可通过 WithExpiration 覆盖；
+// 若 Claims 已自带 ExpiresAt，则优先保留 Claims 中的显式值。
 // 当 opts 中设置了 WithIssuer 时，自动设置 Issuer。
 func Sign[T any](claims T, secret []byte, opts ...Option) (string, error) {
 	cfg := applyOptions(opts)
@@ -41,8 +43,11 @@ func Sign[T any](claims T, secret []byte, opts ...Option) (string, error) {
 
 // Verify 验证 JWT，返回指定类型的 Claims 指针。
 // 验证失败时返回认证错误（TokenInvalid 或 TokenExpired）。
-func Verify[T any](tokenStr string, secret []byte) (*T, error) {
+// 支持通过 opts 指定期望的签名算法（默认 HS256），防止算法混淆攻击。
+// 使用 WithSigningMethod 覆盖默认算法（如 RS256、ES256）。
+func Verify[T any](tokenStr string, secret []byte, opts ...Option) (*T, error) {
 	var zero T
+	cfg := applyOptions(opts)
 
 	// 通过 any 进行运行时接口检查。
 	claims, ok := any(&zero).(gojwt.Claims)
@@ -52,7 +57,11 @@ func Verify[T any](tokenStr string, secret []byte) (*T, error) {
 			Errorf("claims type %T does not implement jwt.Claims", zero)
 	}
 
-	token, err := gojwt.ParseWithClaims(tokenStr, claims, func(_ *gojwt.Token) (any, error) {
+	token, err := gojwt.ParseWithClaims(tokenStr, claims, func(tok *gojwt.Token) (any, error) {
+		// 验证签名算法，防止算法混淆攻击（如 RS256→HS256）。
+		if tok.Method != cfg.signingMethod {
+			return nil, fmt.Errorf("unexpected signing method: got %v, want %v", tok.Header["alg"], cfg.signingMethod.Alg())
+		}
 		return secret, nil
 	})
 	if err != nil {
@@ -71,29 +80,45 @@ func Verify[T any](tokenStr string, secret []byte) (*T, error) {
 
 // Refresh 刷新 JWT（延长过期时间，保留原有 Claims 数据）。
 // 先验证原 Token 有效性，再使用新选项重新签发。
-// 原 Claims 中的 ExpiresAt、Issuer 等会被 opts 中的值覆盖。
+// 原 Claims 中的 ExpiresAt、Issuer 等会被 opts 中的值覆盖；
+// 未显式指定 WithExpiration 时，使用默认 2 小时过期。
 func Refresh[T any](tokenStr string, secret []byte, opts ...Option) (string, error) {
-	// 先验证原 Token，提取 Claims。
-	claims, err := Verify[T](tokenStr, secret)
+	// 先验证原 Token，提取 Claims。opts 透传给 Verify 以复用签名算法校验。
+	claims, err := Verify[T](tokenStr, secret, opts...)
 	if err != nil {
 		return "", oops.With("jwt.Refresh").
 			Code(autherror.CodeJWTRefreshFailed).
 			Wrap(err)
 	}
 
-	// 使用原 Claims 重新签发，应用新选项。
-	return Sign(*claims, secret, opts...)
+	// Refresh 语义：新 Token 不复用旧 Token 的剩余有效期，强制刷新 ExpiresAt。
+	signOpts := append([]Option{withIgnoreClaimsExpiration()}, opts...)
+	return Sign(*claims, secret, signOpts...)
 }
 
 // setClaimsDefaults 根据配置设置 Claims 的默认字段。
+//   - Sign 路径（ignoreClaimsExpiration == false）：
+//     若未显式指定 expiration，仅在 Claims 未自带 ExpiresAt 时以默认 2h 填充，
+//     保留调用方在 Claims 中显式设置的过期时间。
+//   - Refresh 路径（ignoreClaimsExpiration == true）：
+//     忽略 Claims 自带的 ExpiresAt，总是以默认 2h 或显式 WithExpiration 重新设定，
+//     保证新 Token 不复用旧 Token 的剩余有效期。
 func setClaimsDefaults(claims gojwt.Claims, cfg config) {
 	rc := extractRegisteredClaims(claims)
 	if rc == nil {
 		return
 	}
 
-	if cfg.expiration > 0 {
-		rc.ExpiresAt = gojwt.NewNumericDate(time.Now().Add(cfg.expiration))
+	switch {
+	case cfg.expiration != nil:
+		// 显式 WithExpiration 覆盖一切。
+		rc.ExpiresAt = gojwt.NewNumericDate(time.Now().Add(*cfg.expiration))
+	case cfg.ignoreClaimsExpiration:
+		// Refresh 路径：强制刷新为默认 2h。
+		rc.ExpiresAt = gojwt.NewNumericDate(time.Now().Add(defaultExpiration))
+	case rc.ExpiresAt == nil:
+		// Sign 默认路径：Claims 未自带 ExpiresAt 时填充默认。
+		rc.ExpiresAt = gojwt.NewNumericDate(time.Now().Add(defaultExpiration))
 	}
 
 	if cfg.issuer != "" {
