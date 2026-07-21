@@ -125,7 +125,7 @@ func extractRegisteredClaims(claims gojwt.Claims) *gojwt.RegisteredClaims {
 // extractEmbeddedRegisteredClaims 通过反射查找嵌入的 RegisteredClaims 字段。
 func extractEmbeddedRegisteredClaims(claims gojwt.Claims) *gojwt.RegisteredClaims {
 	v := reflect.ValueOf(claims)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return nil
 		}

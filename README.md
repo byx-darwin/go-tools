@@ -68,6 +68,12 @@ defer closeFn()
 
 Go 1.25+
 
+golangci-lint v2 (>= v2.12.2) — 用于本地静态分析（CI 已启用）。安装/升级：
+
+```bash
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+```
+
 ## Migration
 
 See [specs/05_migration_guide.md](./specs/05_migration_guide.md) for migrating from legacy go-tools.

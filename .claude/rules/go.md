@@ -149,6 +149,12 @@ defer f.Close()          // errcheck 报错
 
 ### 8.6 Workspace 下运行 lint
 
+**所需版本：golangci-lint v2（>= v2.12.2）**。`.golangci.yml` 为 v2 格式，用 v1 运行会报 *"configuration file for golangci-lint v2 with golangci-lint v1"* 而失败。升级：
+
+```bash
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+```
+
 golangci-lint 不支持 workspace 根目录 `./...`，必须逐 module 运行：
 
 ```bash
