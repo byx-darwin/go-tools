@@ -64,7 +64,8 @@ func TestSignWithCustomSigningMethod(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	parsed, err := Verify[UserClaims](token, testSecret)
+	// 签发与验证必须使用相同的签名算法，否则方法不匹配会被拒绝。
+	parsed, err := Verify[UserClaims](token, testSecret, WithSigningMethod(gojwt.SigningMethodHS512))
 	require.NoError(t, err)
 	assert.Equal(t, "user-789", parsed.UserUUID)
 }
@@ -188,6 +189,80 @@ func TestRefreshWithIssuer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "new-issuer", parsed.Issuer)
 	assert.Equal(t, "user-issuer-refresh", parsed.UserUUID)
+}
+
+func TestVerifyWithExplicitSigningMethod(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-hs512-explicit"}
+
+	// 用 HS512 签发。
+	token, err := Sign(claims, testSecret,
+		WithExpiration(time.Hour),
+		WithSigningMethod(gojwt.SigningMethodHS512),
+	)
+	require.NoError(t, err)
+
+	// 显式声明期望 HS512 应当成功，Claims 完整返回。
+	parsed, err := Verify[UserClaims](token, testSecret, WithSigningMethod(gojwt.SigningMethodHS512))
+	require.NoError(t, err)
+	assert.Equal(t, "user-hs512-explicit", parsed.UserUUID)
+}
+
+func TestVerifyAlgorithmConfusion(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-confusion"}
+
+	// 攻击场景：Token 实际用 HS256 签发，但调用方期望 RS256。
+	// keyfunc 必须在任何 RSA/PEM 解析之前拒绝方法不匹配。
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	_, err = Verify[UserClaims](token, testSecret, WithSigningMethod(gojwt.SigningMethodRS256))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeTokenInvalid, code)
+}
+
+func TestVerifyMethodMismatchHS512(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-mismatch"}
+
+	// 用 HS512 签发。
+	token, err := Sign(claims, testSecret,
+		WithExpiration(time.Hour),
+		WithSigningMethod(gojwt.SigningMethodHS512),
+	)
+	require.NoError(t, err)
+
+	// 裸 Verify 默认期望 HS256，HS512 Token 应被拒绝。
+	_, err = Verify[UserClaims](token, testSecret)
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeTokenInvalid, code)
+}
+
+func TestRefreshWithSigningMethod(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-refresh-hs512"}
+
+	// 用 HS512 签发短期 Token。
+	token, err := Sign(claims, testSecret,
+		WithExpiration(30*time.Minute),
+		WithSigningMethod(gojwt.SigningMethodHS512),
+	)
+	require.NoError(t, err)
+
+	// Refresh 透传 WithSigningMethod，验证通过后续签。
+	newToken, err := Refresh[UserClaims](token, testSecret,
+		WithExpiration(24*time.Hour),
+		WithSigningMethod(gojwt.SigningMethodHS512),
+	)
+	require.NoError(t, err)
+	assert.NotEmpty(t, newToken)
+	assert.NotEqual(t, token, newToken)
+
+	// 新 Token 用 HS512 验证通过。
+	parsed, err := Verify[UserClaims](newToken, testSecret, WithSigningMethod(gojwt.SigningMethodHS512))
+	require.NoError(t, err)
+	assert.Equal(t, "user-refresh-hs512", parsed.UserUUID)
 }
 
 // ── Options 防御 ──

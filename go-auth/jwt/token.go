@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -41,8 +42,11 @@ func Sign[T any](claims T, secret []byte, opts ...Option) (string, error) {
 
 // Verify 验证 JWT，返回指定类型的 Claims 指针。
 // 验证失败时返回认证错误（TokenInvalid 或 TokenExpired）。
-func Verify[T any](tokenStr string, secret []byte) (*T, error) {
+// 支持通过 opts 指定期望的签名算法（默认 HS256），防止算法混淆攻击。
+// 使用 WithSigningMethod 覆盖默认算法（如 RS256、ES256）。
+func Verify[T any](tokenStr string, secret []byte, opts ...Option) (*T, error) {
 	var zero T
+	cfg := applyOptions(opts)
 
 	// 通过 any 进行运行时接口检查。
 	claims, ok := any(&zero).(gojwt.Claims)
@@ -52,7 +56,11 @@ func Verify[T any](tokenStr string, secret []byte) (*T, error) {
 			Errorf("claims type %T does not implement jwt.Claims", zero)
 	}
 
-	token, err := gojwt.ParseWithClaims(tokenStr, claims, func(_ *gojwt.Token) (any, error) {
+	token, err := gojwt.ParseWithClaims(tokenStr, claims, func(tok *gojwt.Token) (any, error) {
+		// 验证签名算法，防止算法混淆攻击（如 RS256→HS256）。
+		if tok.Method != cfg.signingMethod {
+			return nil, fmt.Errorf("unexpected signing method: got %v, want %v", tok.Header["alg"], cfg.signingMethod.Alg())
+		}
 		return secret, nil
 	})
 	if err != nil {
@@ -73,8 +81,8 @@ func Verify[T any](tokenStr string, secret []byte) (*T, error) {
 // 先验证原 Token 有效性，再使用新选项重新签发。
 // 原 Claims 中的 ExpiresAt、Issuer 等会被 opts 中的值覆盖。
 func Refresh[T any](tokenStr string, secret []byte, opts ...Option) (string, error) {
-	// 先验证原 Token，提取 Claims。
-	claims, err := Verify[T](tokenStr, secret)
+	// 先验证原 Token，提取 Claims。opts 透传给 Verify 以复用签名算法校验。
+	claims, err := Verify[T](tokenStr, secret, opts...)
 	if err != nil {
 		return "", oops.With("jwt.Refresh").
 			Code(autherror.CodeJWTRefreshFailed).
