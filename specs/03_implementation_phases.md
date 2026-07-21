@@ -152,7 +152,7 @@ Phase 1 (go-common)
     ↓
 Phase 2 (go-middleware) ──→ 需要 go-common
     ↓
-Phase 3 (go-framework)  ──→ 需要 go-common + go-middleware ✓ 已完成
+Phase 3 (go-framework)  ──→ 需要 go-common + go-auth ✓ 已完成
     ↓
     ↓
 Phase 5 (验证 + 文档)

@@ -11,14 +11,18 @@ The 5-module → 3-library split (2026-06-23) is **complete**. ncgo generated pr
 ### Structure
 
 ```text
-go-common          ← 最底层，零框架依赖 (crypto, cache, httpclient, log, timeutil, netutil, captcha, error)
-    ↑
-go-auth            ← 认证工具 (JWT, Session/Device 接口, 错误码)
-    ↑
-go-middleware       ← 中间件客户端 (redis, kafka, db, es, clickhouse, tls, auth)
-    ↑
-go-framework        ← 框架适配 (hertz, kitex, config)
+                    go-common    ← 最底层，零框架依赖
+                        ↑          (crypto, cache, httpclient, log, timeutil, netutil, captcha, error)
+                     go-auth       ← 认证工具 (JWT, Session/Device 接口, 错误码)
+                    ↑       ↑
+          ┌─────────┘       └─────────┐
+    go-middleware                  go-framework
+    中间件客户端                    框架适配 (hertz, kitex, config)
+    (redis, kafka, db,
+     es, clickhouse, tls, auth)
 ```
+
+> 真实拓扑是 **DAG，非线性链**：`go-framework` 与 `go-middleware` 为**兄弟关系**（sibling），二者均依赖 `go-auth` + `go-common`，彼此**无依赖**。
 
 | Module | Import Path | Purpose |
 |--------|------------|---------|
@@ -118,7 +122,7 @@ go-middleware/             → Middleware clients (no Hertz/Kitex dependency)
   es/                      → Elasticsearch client
   clickhouse/              → ClickHouse client
   tls/                     → TLS connection setup (火山引擎)
-go-framework/              → Framework adapters (depends on go-common + go-middleware)
+go-framework/              → Framework adapters (depends on go-common + go-auth; sibling of go-middleware)
   hertz/                   → Hertz HTTP server, response helpers, middleware
   hertz/observability/     → OTel Tracing + Metrics (W3C + B3 propagator, runtime metrics)
   kitex/                   → Kitex RPC options, discovery, registry, rpcerror
@@ -136,9 +140,11 @@ specs/                     → Strategic planning documents
 Each sub-module has its own `go.mod`. Cross-module dependencies use `github.com/byx-darwin/go-tools/<module>` import paths and are declared in `go.work`. Do not create circular dependencies between modules.
 
 ### Dependency hierarchy
-- **go-common**: zero framework dependency, pure utility — does not import go-middleware or go-framework
-- **go-middleware**: middleware clients — may import go-common, must NOT import go-framework
-- **go-framework**: Hertz/Kitex adapters — may import go-common and go-middleware
+The four libraries form a **DAG, not a linear chain**. `go-framework` and `go-middleware` are **siblings** — both consume `go-auth` + `go-common`, and neither depends on the other.
+- **go-common**: zero framework dependency, pure utility — does not import any other library
+- **go-auth**: auth utilities — may import go-common only
+- **go-middleware**: middleware clients — may import go-common and go-auth, must NOT import go-framework
+- **go-framework**: Hertz/Kitex adapters — may import go-common and go-auth, must NOT import go-middleware (siblings)
 
 ### ncgo alignment
 - **Config structs**: go-tools structs are the "source of truth", ncgo templates import them
