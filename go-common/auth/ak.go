@@ -23,9 +23,9 @@ func GetRandAk(length int) string {
 		return ""
 	}
 	ak := make([]byte, length)
-	max := big.NewInt(int64(len(akCharset)))
+	maxVal := big.NewInt(int64(len(akCharset)))
 	for i := range ak {
-		n, err := rand.Int(rand.Reader, max)
+		n, err := rand.Int(rand.Reader, maxVal)
 		if err != nil {
 			panic("auth: read crypto/rand: " + err.Error())
 		}
