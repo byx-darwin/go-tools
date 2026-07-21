@@ -22,8 +22,6 @@ import (
 	"time"
 
 	"github.com/samber/oops"
-
-	goerror "github.com/byx-darwin/go-tools/go-common/error"
 )
 
 // FileShipperConfig 文件上报配置。
@@ -47,7 +45,7 @@ type FileShipper struct {
 func NewFileShipper(cfg FileShipperConfig) (*FileShipper, error) {
 	if cfg.FilePath == "" {
 		return nil, oops.With("tls.NewFileShipper").
-			Code(goerror.CodeTLSInvalidConfig).
+			Code(CodeInvalidConfig).
 			Errorf("file_path is required")
 	}
 	if cfg.CheckInterval == 0 {
@@ -59,7 +57,7 @@ func NewFileShipper(cfg FileShipperConfig) (*FileShipper, error) {
 	producer, err := NewProducer(cfg.ProducerConfig)
 	if err != nil {
 		return nil, oops.With("tls.NewFileShipper").
-			Code(goerror.CodeTLSProducerInit).
+			Code(CodeProducerInit).
 			Wrap(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
