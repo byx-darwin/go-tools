@@ -302,8 +302,18 @@ func AsOopsError(err error) (oops.OopsError, bool) {
 // ── HTTP 状态码映射 ──
 
 // HTTPStatus 从 error 中提取错误码，映射为 HTTP 状态码。
+// 优先级：各模块注册的细粒度映射 → 内置映射（迁移期保留，Task 6 由范围兜底替代）。
 func HTTPStatus(err error) int {
 	code, _ := Extract(err)
+	return httpStatusForCode(code)
+}
+
+// httpStatusForCode 按注册表 + 内置 switch 映射错误码到 HTTP 状态码。
+// 迁移期内置 switch 作为二级兜底；Task 6 删除 switch 后改为范围兜底。
+func httpStatusForCode(code int) int {
+	if status, ok := lookupHTTPStatus(code); ok {
+		return status
+	}
 	return httpStatusByCode(code)
 }
 
@@ -376,13 +386,13 @@ func httpStatusByCode(code int) int {
 
 // IsClientError 判断错误码是否属于客户端错误（4xx）。
 func IsClientError(code int) bool {
-	s := httpStatusByCode(code)
+	s := httpStatusForCode(code)
 	return s >= 400 && s < 500
 }
 
 // IsServerError 判断错误码是否属于服务端/基础设施错误（5xx）。
 func IsServerError(code int) bool {
-	return httpStatusByCode(code) >= 500
+	return httpStatusForCode(code) >= 500
 }
 
 // IsBusinessErrorCode 判断错误码是否属于业务错误（200，RPC 成功）。
