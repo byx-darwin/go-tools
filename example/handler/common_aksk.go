@@ -19,8 +19,8 @@ func akskHandler(_ context.Context, c *app.RequestContext) {
 	// 生成随机 AK。
 	ak := auth.GetRandAk(32)
 
-	// 基于 AK 刷新 SK。
-	sk := auth.RefreshSK(ak)
+	// 生成密码学安全的随机 SK。
+	sk := auth.RefreshSK()
 
 	// 使用 HMAC-SHA256 签名（常见于 API 鉴权场景）。
 	message := "GET\n/api/users\n2026-06-26T00:00:00Z"
