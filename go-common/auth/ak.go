@@ -2,14 +2,15 @@ package auth
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"math/big"
-	"time"
-
-	"github.com/byx-darwin/go-tools/go-common/crypto"
 )
 
 // akCharset 是 AK 使用的 62 个字母数字字符（a-z、A-Z、0-9）。
 const akCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+// skBytes 是 SK 的随机字节数（256 位熵）。
+const skBytes = 32
 
 // GetRandAk 生成并返回指定长度的随机 AK（Access Key）。
 //
@@ -33,8 +34,15 @@ func GetRandAk(length int) string {
 	return string(ak)
 }
 
-// RefreshSK 刷新SK
-func RefreshSK(ak string) string {
-	signer := ak + "/" + time.Now().String()
-	return crypto.MD5([]byte(signer))
+// RefreshSK 生成并返回密码学安全的随机 SK（Secret Key）。
+//
+// 内部使用 crypto/rand 生成 32 字节（256 位）随机数据并 hex 编码（64 字符），
+// 用作 AK/SK 认证方案的 HMAC 密钥。SK 不再由 ak 或时间戳派生，具备完整秘密熵。
+// 若读取 crypto/rand 失败（在支持的平台上几乎不可能），将 panic。
+func RefreshSK() string {
+	b := make([]byte, skBytes)
+	if _, err := rand.Read(b); err != nil {
+		panic("auth: read crypto/rand: " + err.Error())
+	}
+	return hex.EncodeToString(b)
 }
