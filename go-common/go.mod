@@ -1,6 +1,6 @@
 module github.com/byx-darwin/go-tools/go-common
 
-go 1.25.0
+go 1.26.5
 
 require (
 	github.com/dave/dst v0.27.4
