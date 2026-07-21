@@ -5,13 +5,13 @@
 
 ## 一、项目定位
 
-**go-tools** 是 Hertz/Kitex 微服务共享基础设施库，提供配置、日志、中间件客户端、错误处理等通用能力。三个独立库按依赖层级组织。
+**go-tools** 是 Hertz/Kitex 微服务共享基础设施库，提供配置、日志、中间件客户端、错误处理等通用能力。四个独立库（go-common / go-auth / go-middleware / go-framework）按依赖 DAG 组织。
 
 ## 二、架构
 
 ```text
                     go-common    ← 最底层，零框架依赖
-                        ↑          (cache, log, captcha, errcode, netutil, crypto, httpclient, timeutil)
+                        ↑          (cache, log, captcha, error, netutil, crypto, httpclient, timeutil)
                      go-auth       ← 认证工具 (JWT, Session/Device)
                     ↑       ↑
           ┌─────────┘       └─────────┐
@@ -31,7 +31,7 @@
 |---|------|
 | `cache` | 泛型缓存（基于 samber/hot，支持 FIFO/LRU/LFU/CLOCK/MRU + TTL） |
 | `captcha` | 验证码生成与校验（图片验证码 + 数字/字母码 + CacheStore） |
-| `errcode` | 统一错误码定义（10000-59999）+ HTTP 状态码映射 |
+| `error` | 统一错误码定义（10000-59999）+ HTTP 状态码映射 |
 | `log` | 结构化日志（基于 slog + OTel TraceID/SpanID + 文件轮转） |
 | `log/adapters` | Hertz/Kitex 日志适配器 |
 | `netutil` | 网络工具（内网 IP 获取） |
@@ -39,6 +39,18 @@
 | `httpclient` | HTTP 客户端（重试/M3U8） |
 | `auth` | AK/SK 生成 |
 | `timeutil` | 时间工具 |
+| `astutil` | Go AST 操作库（基于 dave/dst，代码生成辅助） |
+| `executil` | 增强的命令执行包装器 |
+| `templateutil` | 可插拔的模板辅助函数库 |
+
+### go-auth
+
+| 包 | 职责 |
+|---|------|
+| `jwt` | 泛型 JWT 签发/验证/刷新（基于 golang-jwt/jwt/v5，Sign/Verify/Refresh） |
+| `session` | 会话存储契约（Session 结构体 + Store 接口） |
+| `device` | 设备会话管理契约（Device 结构体 + Store 接口） |
+| `error` | 认证错误码与预定义错误构造器（40000-40099，包名 autherror） |
 
 ### go-middleware
 
@@ -94,7 +106,7 @@ go-middleware  20000-20699  ── redis/kafka/db/es/ch/tls/obs
   40310-40314  状态（AccountDisabled/OrderInvalid/BalanceInsufficient/VerificationFailed/OperationDenied）
 ```
 
-详见 `go-common/errcode/code.go` 和 `go-framework/kitex/rpcerror/error.go`。
+详见 `go-common/error/error.go` 和 `go-framework/kitex/rpcerror/error.go`。
 
 ## 五、关键技术决策
 
