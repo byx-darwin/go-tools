@@ -1,6 +1,6 @@
 module github.com/byx-darwin/go-tools/example
 
-go 1.25.8
+go 1.26.5
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.46.0
