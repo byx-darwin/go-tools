@@ -3,8 +3,6 @@ module github.com/byx-darwin/go-tools/go-common
 go 1.25.0
 
 require (
-	github.com/cloudwego/hertz v0.10.5
-	github.com/cloudwego/kitex v0.16.2
 	github.com/dave/dst v0.27.4
 	github.com/mojocn/base64Captcha v1.3.8
 	github.com/samber/hot v0.13.0
