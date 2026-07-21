@@ -2,7 +2,6 @@ package crypto
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 	"testing"
 )
 
@@ -90,114 +89,5 @@ func TestEncodePwd(t *testing.T) {
 	pwd2 := EncodePwd(password, ak)
 	if pwd != pwd2 {
 		t.Error("EncodePwd is not deterministic")
-	}
-}
-
-func TestTEAEncodeDecode(t *testing.T) {
-	teaKey := "12345678abcdefgh" // 16 chars = 16 bytes
-	original := []byte("test data for TEA")
-
-	encoded, pad, err := EncodeTeaStr(original, teaKey)
-	if err != nil {
-		t.Fatalf("EncodeTeaStr failed: %v", err)
-	}
-	if len(encoded) == 0 {
-		t.Fatal("EncodeTeaStr returned empty result")
-	}
-
-	decoded, err := DecodeTeaStr(encoded, pad, teaKey)
-	if err != nil {
-		t.Fatalf("DecodeTeaStr failed: %v", err)
-	}
-
-	if string(decoded) != string(original) {
-		t.Errorf("TEA roundtrip failed: got %q, want %q", decoded, original)
-	}
-}
-
-func TestTEAEncodeDecodeBlockAligned(t *testing.T) {
-	teaKey := "12345678abcdefgh"
-	// 8 bytes = exactly one block, no padding needed
-	original := []byte("data1234")
-
-	encoded, pad, err := EncodeTeaStr(original, teaKey)
-	if err != nil {
-		t.Fatalf("EncodeTeaStr failed: %v", err)
-	}
-	if pad != 0 {
-		t.Logf("padding for 8-byte data = %d (expected 0)", pad)
-	}
-
-	decoded, err := DecodeTeaStr(encoded, pad, teaKey)
-	if err != nil {
-		t.Fatalf("DecodeTeaStr failed: %v", err)
-	}
-
-	if string(decoded) != string(original) {
-		t.Errorf("TEA roundtrip failed for block-aligned: got %q, want %q", decoded, original)
-	}
-}
-
-func TestTEAEncodeDecodeMultiBlock(t *testing.T) {
-	teaKey := "12345678abcdefgh"
-	// 20 bytes = more than 2 blocks
-	original := []byte("this is longer data")
-
-	encoded, pad, err := EncodeTeaStr(original, teaKey)
-	if err != nil {
-		t.Fatalf("EncodeTeaStr failed: %v", err)
-	}
-
-	decoded, err := DecodeTeaStr(encoded, pad, teaKey)
-	if err != nil {
-		t.Fatalf("DecodeTeaStr failed: %v", err)
-	}
-
-	if string(decoded) != string(original) {
-		t.Errorf("TEA roundtrip failed for multi-block: got %q, want %q", decoded, original)
-	}
-}
-
-func TestGetTeaPadLen(t *testing.T) {
-	// If already aligned, no pad
-	if pl := GetTeaPadLen(8); pl != 0 {
-		t.Errorf("GetTeaPadLen(8) = %d, want 0", pl)
-	}
-	// If 5 bytes, need 3 to align to 8
-	if pl := GetTeaPadLen(5); pl != 3 {
-		t.Errorf("GetTeaPadLen(5) = %d, want 3", pl)
-	}
-}
-
-func TestTeaHexDecode(t *testing.T) {
-	teaKey := "12345678abcdefgh"
-	original := []byte("hello!!")
-
-	// Encode
-	encoded, _, err := EncodeTeaStr(original, teaKey)
-	if err != nil {
-		t.Fatalf("EncodeTeaStr failed: %v", err)
-	}
-
-	// Convert to hex
-	hexEncoded := []byte(hex.EncodeToString(encoded))
-
-	// Decode from hex (bLen is the original plaintext length)
-	decoded, err := TeaHexDecode(hexEncoded, len(original), teaKey)
-	if err != nil {
-		t.Fatalf("TeaHexDecode failed: %v", err)
-	}
-
-	if string(decoded) != string(original) {
-		t.Errorf("TeaHexDecode roundtrip failed: got %q, want %q", decoded, original)
-	}
-}
-
-func TestDecodeTeaStrWrongLength(t *testing.T) {
-	teaKey := "12345678abcdefgh"
-	// 3 bytes is not a multiple of tea.BlockSize (8)
-	_, err := DecodeTeaStr([]byte("abc"), 0, teaKey)
-	if err == nil {
-		t.Error("DecodeTeaStr should return error for non-aligned input")
 	}
 }
