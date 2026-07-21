@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	goerror "github.com/byx-darwin/go-tools/go-common/error"
-	"github.com/byx-darwin/go-tools/go-framework/config"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/tracer"
 	"github.com/cloudwego/hertz/pkg/common/tracer/stats"
@@ -22,6 +20,9 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.36.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/byx-darwin/go-tools/go-framework/config"
+	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
 )
 
 // Provider Hertz OTel Provider（Tracing + Metrics）。
@@ -58,7 +59,7 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 		otlptracegrpc.WithInsecure(),
 	)
 	if err != nil {
-		return nil, goerror.ErrObsTraceExport.Wrap(err)
+		return nil, frameworkerror.ErrObsTraceExport.Wrap(err)
 	}
 
 	sampler := sdktrace.TraceIDRatioBased(1.0)
@@ -89,7 +90,7 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 			otlpmetricgrpc.WithInsecure(),
 		)
 		if err != nil {
-			return nil, goerror.ErrObsMetricExport.Wrap(err)
+			return nil, frameworkerror.ErrObsMetricExport.Wrap(err)
 		}
 
 		interval := cfg.MetricsInterval
@@ -107,7 +108,7 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 
 		// Go runtime metrics（goroutines, GC, memory 等）
 		if err := runtimemetrics.Start(runtimemetrics.WithMeterProvider(mp)); err != nil {
-			return nil, goerror.ErrObsRuntimeMetrics.Wrap(err)
+			return nil, frameworkerror.ErrObsRuntimeMetrics.Wrap(err)
 		}
 
 		// 包装 shutdown 以同时关闭 metrics

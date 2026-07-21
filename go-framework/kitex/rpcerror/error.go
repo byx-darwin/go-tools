@@ -1,6 +1,7 @@
 // Package rpcerror 提供 Kitex RPC 框架的错误分类与适配。
 //
-// 核心错误处理（错误码、构造函数、Extract、预定义错误）已迁移至 go-common/error。
+// 框架错误码与预定义错误位于 go-framework/error（frameworkerror）；
+// 错误构造与提取机制位于 go-common/error。
 // 本包仅保留 Kitex 特定的分类逻辑和 BizStatus 适配器。
 package rpcerror
 
@@ -8,6 +9,7 @@ import (
 	"errors"
 
 	goerror "github.com/byx-darwin/go-tools/go-common/error"
+	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
 	"github.com/cloudwego/kitex/pkg/kerrors"
 	"github.com/samber/oops"
 )
@@ -51,7 +53,7 @@ func IsTimeout(err error) bool {
 		return true
 	}
 	code, _ := goerror.Extract(err)
-	return code == goerror.CodeRPCTimeout
+	return code == frameworkerror.CodeRPCTimeout
 }
 
 // FrameworkErrorName 返回 Kitex 框架错误的名称，非框架错误返回空字符串。

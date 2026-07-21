@@ -2,7 +2,7 @@
 package config
 
 import (
-	goerror "github.com/byx-darwin/go-tools/go-common/error"
+	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
 
 	"github.com/polarismesh/polaris-go"
 	"github.com/polarismesh/polaris-go/pkg/model"
@@ -31,12 +31,12 @@ func LoadPolarisConfig(opts ...PolarisOption) (*PolarisConfigFile, error) {
 
 	configAPI, err := polaris.NewConfigAPI()
 	if err != nil {
-		return nil, goerror.ErrPolarisInit.Wrap(err)
+		return nil, frameworkerror.ErrPolarisInit.Wrap(err)
 	}
 
 	configFile, err := configAPI.GetConfigFile(cfg.namespace, cfg.group, cfg.fileName) //nolint:staticcheck // Polaris SDK 尚未提供 FetchConfigFile 稳定版本
 	if err != nil {
-		return nil, goerror.ErrPolarisGetConfig.Wrap(err)
+		return nil, frameworkerror.ErrPolarisGetConfig.Wrap(err)
 	}
 
 	if cfg.listener != nil {
