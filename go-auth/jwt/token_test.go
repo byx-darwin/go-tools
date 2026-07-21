@@ -240,7 +240,27 @@ func TestRefreshCarriesDefaultExpiration(t *testing.T) {
 	assert.WithinDuration(t, time.Now().Add(2*time.Hour), parsed.ExpiresAt.Time, 5*time.Minute)
 }
 
+func TestRefreshExplicitExpirationOverridesDefault(t *testing.T) {
+	// Refresh 显式 WithExpiration(24h) 必须同时覆盖旧 Token 自带的过期时间与默认 2h。
+	claims := UserClaims{UserUUID: "user-refresh-override"}
+
+	// 旧 Token 使用 30 分钟过期（与默认 2h 和新 24h 都不相等，保证三者区分）。
+	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
+	require.NoError(t, err)
+
+	newToken, err := Refresh[UserClaims](token, testSecret, WithExpiration(24*time.Hour))
+	require.NoError(t, err)
+	assert.NotEmpty(t, newToken)
+	assert.NotEqual(t, token, newToken)
+
+	parsed, err := Verify[UserClaims](newToken, testSecret)
+	require.NoError(t, err)
+	require.NotNil(t, parsed.ExpiresAt)
+	assert.WithinDuration(t, time.Now().Add(24*time.Hour), parsed.ExpiresAt.Time, 5*time.Minute)
+}
+
 func TestVerifyWithExplicitSigningMethod(t *testing.T) {
+	// 合法的非默认算法流程，必须在调用方显式 pin 期望方法时继续工作。
 	claims := UserClaims{UserUUID: "user-hs512-explicit"}
 
 	// 用 HS512 签发。
@@ -272,6 +292,7 @@ func TestVerifyAlgorithmConfusion(t *testing.T) {
 }
 
 func TestVerifyMethodMismatchHS512(t *testing.T) {
+	// 默认 pin 为 HS256：HS512 Token 必须被拒绝，防御静默算法降级。
 	claims := UserClaims{UserUUID: "user-mismatch"}
 
 	// 用 HS512 签发。
@@ -290,6 +311,7 @@ func TestVerifyMethodMismatchHS512(t *testing.T) {
 }
 
 func TestRefreshWithSigningMethod(t *testing.T) {
+	// Refresh 将 opts 透传给 Verify，确保非默认签名算法在刷新往返中存活。
 	claims := UserClaims{UserUUID: "user-refresh-hs512"}
 
 	// 用 HS512 签发短期 Token。
