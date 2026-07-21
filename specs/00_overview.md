@@ -10,13 +10,18 @@
 ## 二、架构
 
 ```text
-go-common          ← 最底层，零框架依赖
-    ↑                 (cache, log, captcha, errcode, netutil, crypto, httpclient, timeutil)
-go-middleware       ← 中间件客户端
-    ↑                 (redis, kafka, db, es, clickhouse, tls)
-go-framework        ← 框架适配
-                      (hertz, kitex, config, observability, accesslog, rpcerror)
+                    go-common    ← 最底层，零框架依赖
+                        ↑          (cache, log, captcha, errcode, netutil, crypto, httpclient, timeutil)
+                     go-auth       ← 认证工具 (JWT, Session/Device)
+                    ↑       ↑
+          ┌─────────┘       └─────────┐
+    go-middleware                  go-framework
+    中间件客户端                    框架适配
+    (redis, kafka, db,             (hertz, kitex, config,
+     es, clickhouse, tls)           observability, accesslog, rpcerror)
 ```
+
+> 真实拓扑是 **DAG**：`go-framework` 与 `go-middleware` 为**兄弟关系**，二者均依赖 `go-auth` + `go-common`，彼此无依赖。
 
 ## 三、各库职责
 

@@ -47,7 +47,7 @@ Current modules are being reorganized into three libraries (see `specs/02_split_
 |---------------|---------------|-----------------|
 | `tools/` | `go-common` | Zero framework dependency |
 | `middleware/` | `go-middleware` | No Hertz/Kitex dependency |
-| `config/`, `hertz/`, `kitex/` | `go-framework` | Depends on go-common + go-middleware |
+| `config/`, `hertz/`, `kitex/` | `go-framework` | Depends on go-common + go-auth (sibling of go-middleware) |
 
 When adding new code, place it according to these rules:
 - Pure utilities (crypto, cache, time, net) → go-common tier

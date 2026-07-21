@@ -83,7 +83,7 @@ go-framework        ← 框架适配（Hertz / Kitex + 配置）
 | — | `go-framework/kitex/middleware/accesslog.go` | Kitex Access Log 中间件（结构化 JSON 日志） |
 | — | `go-framework/hertz/middleware/accesslog.go` | Hertz Access Log 中间件（结构化 JSON 日志） |
 
-**依赖**：go-common + go-middleware + `hertz` + `kitex` + `polaris-go`
+**依赖**：go-common + go-auth + `hertz` + `kitex` + `polaris-go`
 
 ## 四、导入路径变化
 
