@@ -28,15 +28,17 @@ func cryptoHandler(_ context.Context, c *app.RequestContext) {
 		"encode_pwd":  crypto.EncodePwd("mypassword", "access-key"),
 	}
 
-	// TEA 加密/解密示例。
-	teaKey := "1234567890123456" // TEA 需要 16 字节密钥
-	encoded, pad, encErr := crypto.EncodeTeaStr([]byte("sensitive-data"), teaKey)
-	if encErr == nil {
-		decoded, decErr := crypto.DecodeTeaStr(encoded, pad, teaKey)
-		if decErr == nil {
-			results["tea_encoded_hex"] = fmt.Sprintf("%x", encoded)
-			results["tea_decoded"] = string(decoded)
-			results["tea_pad_len"] = pad
+	// AES-GCM 认证加密/解密示例。
+	aesKey := []byte("0123456789abcdef") // AES-128 需要 16 字节密钥
+	aesCipher, newErr := crypto.NewAESGCM(aesKey)
+	if newErr == nil {
+		encoded, sealErr := aesCipher.Seal([]byte("sensitive-data"))
+		if sealErr == nil {
+			decoded, openErr := aesCipher.Open(encoded)
+			if openErr == nil {
+				results["aesgcm_encoded_hex"] = fmt.Sprintf("%x", encoded)
+				results["aesgcm_decoded"] = string(decoded)
+			}
 		}
 	}
 

@@ -10,7 +10,6 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/valyala/fasthttp v1.71.0
 	go.opentelemetry.io/otel/trace v1.44.0
-	golang.org/x/crypto v0.53.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 

@@ -1,6 +1,6 @@
 // Package crypto 提供加密/解密、哈希和 HMAC 工具函数。
 //
-// 支持 AES、TEA、MD5、SHA 系列算法，以及 HMAC 签名验证。
+// 支持 AES-GCM 认证加密、MD5、SHA 系列哈希，以及 HMAC 签名验证。
 package crypto
 
 import (
