@@ -70,17 +70,50 @@ func TestSignWithCustomSigningMethod(t *testing.T) {
 	assert.Equal(t, "user-789", parsed.UserUUID)
 }
 
-func TestSignWithoutExpiration(t *testing.T) {
-	claims := UserClaims{UserUUID: "user-noexp"}
+func TestSignDefaultExpiration(t *testing.T) {
+	// 不传 WithExpiration 时，应自动使用默认过期时间（2h）。
+	claims := UserClaims{UserUUID: "user-default-exp"}
 
 	token, err := Sign(claims, testSecret)
 	require.NoError(t, err)
 
 	parsed, err := Verify[UserClaims](token, testSecret)
 	require.NoError(t, err)
-	assert.Equal(t, "user-noexp", parsed.UserUUID)
-	// 没设过期时间时 ExpiresAt 为 nil。
-	assert.Nil(t, parsed.ExpiresAt)
+	assert.Equal(t, "user-default-exp", parsed.UserUUID)
+	require.NotNil(t, parsed.ExpiresAt)
+	assert.WithinDuration(t, time.Now().Add(2*time.Hour), parsed.ExpiresAt.Time, 5*time.Minute)
+}
+
+func TestSignExplicitExpirationOverridesDefault(t *testing.T) {
+	// 显式 WithExpiration(1h) 应覆盖默认 2h。
+	claims := UserClaims{UserUUID: "user-override-exp"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](token, testSecret)
+	require.NoError(t, err)
+	require.NotNil(t, parsed.ExpiresAt)
+	assert.WithinDuration(t, time.Now().Add(time.Hour), parsed.ExpiresAt.Time, 5*time.Minute)
+}
+
+func TestSignPreservesExplicitClaimsExpiration(t *testing.T) {
+	// Claims 自带显式 ExpiresAt 时，不应被默认值覆盖。
+	futureTime := time.Now().Add(48 * time.Hour)
+	claims := UserClaims{
+		UserUUID: "user-explicit-claims-exp",
+		RegisteredClaims: gojwt.RegisteredClaims{
+			ExpiresAt: gojwt.NewNumericDate(futureTime),
+		},
+	}
+
+	token, err := Sign(claims, testSecret)
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](token, testSecret)
+	require.NoError(t, err)
+	require.NotNil(t, parsed.ExpiresAt)
+	assert.WithinDuration(t, futureTime, parsed.ExpiresAt.Time, time.Minute)
 }
 
 // ── Verify 失败场景 ──
@@ -191,6 +224,22 @@ func TestRefreshWithIssuer(t *testing.T) {
 	assert.Equal(t, "user-issuer-refresh", parsed.UserUUID)
 }
 
+func TestRefreshCarriesDefaultExpiration(t *testing.T) {
+	// Refresh 不传 WithExpiration 时，新 Token 也应使用默认 2h。
+	claims := UserClaims{UserUUID: "user-refresh-default"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	newToken, err := Refresh[UserClaims](token, testSecret)
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](newToken, testSecret)
+	require.NoError(t, err)
+	require.NotNil(t, parsed.ExpiresAt)
+	assert.WithinDuration(t, time.Now().Add(2*time.Hour), parsed.ExpiresAt.Time, 5*time.Minute)
+}
+
 func TestVerifyWithExplicitSigningMethod(t *testing.T) {
 	claims := UserClaims{UserUUID: "user-hs512-explicit"}
 
@@ -268,6 +317,7 @@ func TestRefreshWithSigningMethod(t *testing.T) {
 // ── Options 防御 ──
 
 func TestWithExpirationZeroIgnored(t *testing.T) {
+	// 零值 WithExpiration(0) 被忽略 → 默认 2h 生效。
 	claims := UserClaims{UserUUID: "user-zero-exp"}
 
 	token, err := Sign(claims, testSecret, WithExpiration(0))
@@ -275,10 +325,12 @@ func TestWithExpirationZeroIgnored(t *testing.T) {
 
 	parsed, err := Verify[UserClaims](token, testSecret)
 	require.NoError(t, err)
-	assert.Nil(t, parsed.ExpiresAt)
+	require.NotNil(t, parsed.ExpiresAt)
+	assert.WithinDuration(t, time.Now().Add(2*time.Hour), parsed.ExpiresAt.Time, 5*time.Minute)
 }
 
 func TestWithExpirationNegativeIgnored(t *testing.T) {
+	// 负值 WithExpiration(-time.Hour) 被忽略 → 默认 2h 生效。
 	claims := UserClaims{UserUUID: "user-neg-exp"}
 
 	token, err := Sign(claims, testSecret, WithExpiration(-time.Hour))
@@ -286,7 +338,8 @@ func TestWithExpirationNegativeIgnored(t *testing.T) {
 
 	parsed, err := Verify[UserClaims](token, testSecret)
 	require.NoError(t, err)
-	assert.Nil(t, parsed.ExpiresAt)
+	require.NotNil(t, parsed.ExpiresAt)
+	assert.WithinDuration(t, time.Now().Add(2*time.Hour), parsed.ExpiresAt.Time, 5*time.Minute)
 }
 
 func TestWithIssuerEmptyIgnored(t *testing.T) {
