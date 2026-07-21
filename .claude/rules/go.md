@@ -158,7 +158,7 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 golangci-lint 不支持 workspace 根目录 `./...`，必须逐 module 运行：
 
 ```bash
-for m in go-common go-middleware go-framework; do
+for m in go-common go-auth go-middleware go-framework; do
   golangci-lint run --timeout=5m ./$m/...
 done
 ```

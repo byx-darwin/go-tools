@@ -28,7 +28,7 @@ repos:
 
       - id: go-vet
         name: go vet
-        entry: bash -c 'go vet ./go-common/... ./go-middleware/... ./go-framework/...'
+        entry: bash -c 'go vet ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/...'
         language: system
         pass_filenames: false
         stages:
@@ -36,7 +36,7 @@ repos:
 
       - id: go-test
         name: go test
-        entry: bash -c 'go test ./go-common/... ./go-middleware/... ./go-framework/... -count=1'
+        entry: bash -c 'go test ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/... -count=1'
         language: system
         pass_filenames: false
         stages:
@@ -44,7 +44,7 @@ repos:
 
       - id: go-build
         name: go build
-        entry: bash -c 'go build ./go-common/... ./go-middleware/... ./go-framework/...'
+        entry: bash -c 'go build ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/...'
         language: system
         pass_filenames: false
         stages:
@@ -52,7 +52,7 @@ repos:
 
       - id: go-lint
         name: golangci-lint
-        entry: bash -c 'for m in go-common go-middleware go-framework; do echo "==> $m"; golangci-lint run --timeout=5m ./$m/... || exit 1; done'
+        entry: bash -c 'for m in go-common go-auth go-middleware go-framework; do echo "==> $m"; golangci-lint run --timeout=5m ./$m/... || exit 1; done'
         language: system
         pass_filenames: false
         stages:

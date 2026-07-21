@@ -66,10 +66,10 @@ See `specs/00_overview.md` for full error code table.
 
 ```bash
 # Build all modules in workspace
-go build ./go-common/... ./go-middleware/... ./go-framework/...
+go build ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/...
 
 # Test all modules
-go test ./go-common/... ./go-middleware/... ./go-framework/... -count=1
+go test ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/... -count=1
 
 # Test a specific module
 go test ./go-common/... -count=1
@@ -78,16 +78,16 @@ go test ./go-framework/... -count=1
 
 # Lint
 gofmt -l $(find . -name '*.go' -not -path '*/vendor/*' -not -path './.git/*')
-go vet ./go-common/... ./go-middleware/... ./go-framework/...
+go vet ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/...
 
 # Lint (golangci-lint, workspace 必须逐 module 运行)
-for m in go-common go-middleware go-framework; do golangci-lint run --timeout=5m ./$m/...; done
+for m in go-common go-auth go-middleware go-framework; do golangci-lint run --timeout=5m ./$m/...; done
 
 # Full validation (CI-equivalent)
-go build ./go-common/... ./go-middleware/... ./go-framework/... && \
-  go vet ./go-common/... ./go-middleware/... ./go-framework/... && \
-  for m in go-common go-middleware go-framework; do golangci-lint run --timeout=5m ./$m/... || exit 1; done && \
-  go test ./go-common/... ./go-middleware/... ./go-framework/... -count=1
+go build ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/... && \
+  go vet ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/... && \
+  for m in go-common go-auth go-middleware go-framework; do golangci-lint run --timeout=5m ./$m/... || exit 1; done && \
+  go test ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/... -count=1
 
 # Pre-commit setup
 pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push
@@ -158,7 +158,7 @@ Exported functions, types, and interfaces are contract-sensitive. Changes requir
 
 - **Unit tests**: `*_test.go` alongside code for helpers, pure logic, utilities.
 - **Integration tests**: Cross-module wiring tests where applicable.
-- Run tests per-module when working on a specific module; run `go test ./go-common/... ./go-middleware/... ./go-framework/... -count=1` for full validation.
+- Run tests per-module when working on a specific module; run `go test ./go-common/... ./go-auth/... ./go-middleware/... ./go-framework/... -count=1` for full validation.
 
 ## Rules
 
@@ -166,3 +166,13 @@ Hand-authored rules in `.claude/rules/`:
 - `go.md` — Go coding style, workspace structure, module boundaries, **static analysis (golangci-lint) rules**.
 - `agent-engineering.md` — Execution workflow, validation order, failure handling, risk control.
 - `options-pattern.md` — Functional Options pattern standard.
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+This repository uses OpenWiki for recurring code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+
+The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
+
+<!-- OPENWIKI:END -->
