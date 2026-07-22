@@ -29,7 +29,6 @@ func TestServerConfig_Full(t *testing.T) {
 			Enable: true,
 			AK:     "test-ak",
 			SK:     "test-sk",
-			TeaKey: "test-tea-key",
 		},
 	}
 
@@ -41,7 +40,7 @@ func TestServerConfig_Full(t *testing.T) {
 	assert.True(t, c.HTTP.IsRecovery)
 	assert.True(t, c.Auth.Enable)
 	assert.Equal(t, "test-ak", c.Auth.AK)
-	assert.Equal(t, "test-tea-key", c.Auth.TeaKey)
+	assert.Equal(t, "test-sk", c.Auth.SK)
 }
 
 func TestHTTPOption_Mode(t *testing.T) {
