@@ -3,10 +3,10 @@
 // 本包是纯机制包，不持有任何模块的具体错误码：
 //
 //   - 构造/提取机制：Code、In、Extract、ExtractWithFallback、AsOopsError
-//   - 码段边界常量：Framework/Middleware/Project 的 Min/Max
+//   - 码段边界常量：Framework/Middleware/Auth/Project 的 Min/Max
 //   - HTTP 状态注册表：RegisterHTTPStatuses 供各属主模块在 init() 注册
 //     细粒度映射；HTTPStatus 先查注册表，再走范围兜底
-//     （业务码 ≥ ProjectCodeMin → 200；其余 >0 → 500；非 oops → 200）
+//     （业务码 ≥ AuthCodeMin → 200；其余 >0 → 500；非 oops → 200）
 //
 // 具体错误码由各属主模块定义：
 //
@@ -41,7 +41,9 @@ const (
 	FrameworkCodeMax  = 10499 // go-framework 最大错误码
 	MiddlewareCodeMin = 20000 // go-middleware 最小错误码
 	MiddlewareCodeMax = 20699 // go-middleware 最大错误码
-	ProjectCodeMin    = 40000 // 项目自定义最小错误码
+	AuthCodeMin       = 40000 // go-auth 最小错误码（业务码段下限）
+	AuthCodeMax       = 40099 // go-auth 最大错误码
+	ProjectCodeMin    = 40100 // 项目自定义最小错误码
 	ProjectCodeMax    = 59999 // 项目自定义最大错误码
 )
 
@@ -110,8 +112,8 @@ func httpStatusForCode(code int) int {
 		return status
 	}
 	switch {
-	case code >= ProjectCodeMin:
-		return 200 // 业务错误（RPC 调用成功，HTTP 200）
+	case code >= AuthCodeMin:
+		return 200 // 业务错误（auth 段 + project 段，RPC 调用成功，HTTP 200）
 	case code > 0:
 		return 500 // 未注册的框架/基础设施错误
 	default:
@@ -131,6 +133,7 @@ func IsServerError(code int) bool {
 }
 
 // IsBusinessErrorCode 判断错误码是否属于业务错误（200，RPC 成功）。
+// 业务码段下限为 AuthCodeMin（40000），涵盖 auth 段（40000-40099）与 project 段（40100-59999）。
 func IsBusinessErrorCode(code int) bool {
-	return code >= ProjectCodeMin || (code < FrameworkCodeMin && code > 0)
+	return code >= AuthCodeMin || (code < FrameworkCodeMin && code > 0)
 }
