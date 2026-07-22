@@ -32,5 +32,4 @@ type HTTPAuth struct {
 	Enable bool   `json:"enable"  yaml:"enable"`
 	AK     string `json:"ak"  yaml:"ak"`
 	SK     string `json:"sk"  yaml:"sk"`
-	TeaKey string `json:"tea_key"  yaml:"tea_key"`
 }
