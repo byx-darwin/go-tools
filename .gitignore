@@ -19,6 +19,7 @@ go.work.sum
 .claude/gh-issue/
 .claude/skills/
 .superpowers/
+.cache/
 
 # Logs
 example/logs/
