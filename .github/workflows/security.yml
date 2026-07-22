@@ -45,7 +45,7 @@ jobs:
 
       - name: scan
         working-directory: ${{ matrix.module }}
-        run: GOWORK=off govulncheck ./...
+        run: govulncheck ./...
 
   codeql:
     name: CodeQL
