@@ -11,13 +11,15 @@
 set -euo pipefail
 
 VERSION="${1:-v0.1.0}"
-TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+# Use a non-system temp dir (Go rejects go.mod in system temp roots like /var/folders)
+WORKDIR="${HOME}/.cache/verify-consumer-$$"
+mkdir -p "$WORKDIR"
+trap 'rm -rf "$WORKDIR"' EXIT
 
 echo "→ Verifying external consumer resolution for version ${VERSION}..."
-echo "  Temp dir: $TMPDIR"
+echo "  Work dir: $WORKDIR"
 
-cd "$TMPDIR"
+cd "$WORKDIR"
 
 # Initialize a fresh module (outside any workspace)
 export GOWORK=off
