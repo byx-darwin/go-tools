@@ -40,14 +40,15 @@ The 5-module → 3-library split (2026-06-23) is **complete**. ncgo generated pr
 | D3 | Error library | **oops** as primary | ✅ done |
 | D4 | Release strategy | **Independent versioning** | ✅ active |
 | D5 | Old modules | **Fully removed**, all code migrated to 3 libraries | ✅ done |
+| D6 | Error code ownership | **Owning modules** define their codes; `go-common/error` = mechanism + band boundaries + HTTP registry | ✅ active |
 
 ## Error Code Ranges
 
 ```
-go-framework: 10000-10499  (system, param, auth, config, RPC middleware)
-go-middleware: 20000-20699 (redis, kafka, db, es, clickhouse, observability)
-go-auth:       40000-40099 (token, session, device auth errors)
-Project custom: 40100-59999 (business modules, external dependencies)
+go-framework: 10000-10499  (system, param, auth, config, RPC; defined in go-framework/error + obs 20601-20605)
+go-middleware: 20000-20699 (clickhouse 20401-20403, tls 20501-20504 defined in-package; redis/kafka/db/es bands reserved)
+go-auth:       40000-40099 (token, session, device auth errors; defined in go-auth/error)
+Project custom: 40100-59999 (business modules, external dependencies; no library predefinitions)
 ```
 
 See `specs/00_overview.md` for full error code table.
@@ -114,7 +115,7 @@ go-common/                 → Zero-dependency utilities
   netutil/                 → Network utilities
   timeutil/                → Time formatting helpers
   auth/                    → Auth helpers (AK/SK)
-  error/                   → Unified error handling (error codes + oops constructors)
+  error/                   → Error mechanism (oops Builder/Extract + band boundaries + HTTP status registry)
 go-middleware/             → Middleware clients (no Hertz/Kitex dependency)
   redis/                   → Redis client (go-redis v9, UniversalClient)
   kafka/                   → Kafka client (kafka-go)
@@ -123,6 +124,7 @@ go-middleware/             → Middleware clients (no Hertz/Kitex dependency)
   clickhouse/              → ClickHouse client
   tls/                     → TLS connection setup (火山引擎)
 go-framework/              → Framework adapters (depends on go-common + go-auth; sibling of go-middleware)
+  error/                   → Framework error codes (10000-10013 + obs 20601-20605, package frameworkerror)
   hertz/                   → Hertz HTTP server, response helpers, middleware
   hertz/observability/     → OTel Tracing + Metrics (W3C + B3 propagator, runtime metrics)
   kitex/                   → Kitex RPC options, discovery, registry, rpcerror
