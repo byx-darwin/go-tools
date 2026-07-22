@@ -21,8 +21,6 @@ import (
 
 	"github.com/samber/oops"
 	"github.com/volcengine/volc-sdk-golang/service/tls"
-
-	goerror "github.com/byx-darwin/go-tools/go-common/error"
 )
 
 // ProducerConfig 生产者配置
@@ -59,17 +57,17 @@ type Producer struct {
 func NewProducer(cfg ProducerConfig) (*Producer, error) {
 	if cfg.Endpoint == "" {
 		return nil, oops.With("tls.NewProducer").
-			Code(goerror.CodeTLSInvalidConfig).
+			Code(CodeInvalidConfig).
 			Errorf("endpoint is required")
 	}
 	if cfg.TopicID == "" {
 		return nil, oops.With("tls.NewProducer").
-			Code(goerror.CodeTLSInvalidConfig).
+			Code(CodeInvalidConfig).
 			Errorf("topic_id is required")
 	}
 	if cfg.Region == "" {
 		return nil, oops.With("tls.NewProducer").
-			Code(goerror.CodeTLSInvalidConfig).
+			Code(CodeInvalidConfig).
 			Errorf("region is required")
 	}
 	if cfg.Source == "" {
@@ -146,7 +144,7 @@ func (p *Producer) flush(_ context.Context) error {
 	})
 	if err != nil {
 		return oops.With("tls.flush").
-			Code(goerror.CodeTLSSend).
+			Code(CodeSend).
 			Wrap(err)
 	}
 	return nil

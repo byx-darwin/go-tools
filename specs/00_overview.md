@@ -31,7 +31,7 @@
 |---|------|
 | `cache` | 泛型缓存（基于 samber/hot，支持 FIFO/LRU/LFU/CLOCK/MRU + TTL） |
 | `captcha` | 验证码生成与校验（图片验证码 + 数字/字母码 + CacheStore） |
-| `error` | 统一错误码定义（10000-59999）+ HTTP 状态码映射 |
+| `error` | 错误处理机制（oops Builder/Extract）+ 码段边界常量 + HTTP 状态注册表 |
 | `log` | 结构化日志（基于 slog + OTel TraceID/SpanID + 文件轮转） |
 | `log/adapters` | Hertz/Kitex 日志适配器 |
 | `netutil` | 网络工具（内网 IP 获取） |
@@ -68,6 +68,7 @@
 | 包 | 职责 |
 |---|------|
 | `config` | 公共配置 + Hertz/Kitex 配置（ServerConfig / ClientConfig / ObservabilityConfig） |
+| `error` | 框架错误码与预定义构造器（10000-10013 + obs 20601-20605，包名 frameworkerror） |
 | `hertz/server` | Hertz HTTP 服务工厂 |
 | `hertz/middleware` | CORS / Auth / AccessLog 中间件 |
 | `hertz/observability` | OTel Tracing + Metrics（OTLP gRPC, 复合 Propagator, runtime metrics） |
@@ -78,35 +79,42 @@
 
 ## 四、错误码体系
 
+错误码由各属主模块定义（D6）；`go-common/error` 只提供机制、码段边界与 HTTP 状态注册表。
+
 ```
-go-framework  10000-10499  ── system/param/auth/config/RPC
+go-framework/error (frameworkerror)  10000-10013  ── system/param/auth/config/Polaris/RPC
   10000 CodeSystem            → HTTP 500
   10001 CodeParamInvalid      → HTTP 400
   10002 CodeAuthFailed        → HTTP 401
   10003 CodeConfigNotFound    → HTTP 500
   10004 CodeConfigInvalid     → HTTP 500
+  10005 CodePolarisInit       → HTTP 503
+  10006 CodePolarisGetConfig  → HTTP 503
   10010 CodeRPCUnavailable    → HTTP 503
   10011 CodeRPCTimeout        → HTTP 504
   10012 CodeRPCDecodeError    → HTTP 500
   10013 CodeRPCEncodeError    → HTTP 500
 
-go-middleware  20000-20699  ── redis/kafka/db/es/ch/tls/obs
-  20001-20005  Redis      → HTTP 500/503
-  20101-20105  Kafka      → HTTP 500/503
-  20201-20204  DB         → HTTP 500/503
-  20301-20302  ES         → HTTP 500/503
-  20401-20402  ClickHouse → HTTP 500/503
-  20501-20502  TLS        → HTTP 500/503
-  20601-20602  Obs        → HTTP 500/503
+go-framework/error (frameworkerror)  obs 段 20601-20605  ── observability（framework 适配层使用）
+  20601-20605  Obs  → HTTP 503（export 失败 20602 → 500）
 
-项目业务       40000-59999  ── HTTP 200（RPC 调用成功）
+go-auth/error (autherror)  40001-40009  ── token/session/device/JWT → HTTP 200
+
+go-middleware  20000-20699（码段边界，包内按需定义）
+  clickhouse   20401-20403  → HTTP 503（query 失败 20402 → 500）
+  tls          20501-20504  → HTTP 503（send 失败 20502 → 500）
+  redis/kafka/db/es 预留分配（尚无定义；需要时在各包内定义并 init() 注册）
+
+项目业务       40100-59999  ── HTTP 200（RPC 调用成功；库内无预定义，以下为推荐分配）
   40010-40012  数据（NotFound/Duplicate/Conflict）
   40110-40113  认证（LoginFailed/TokenExpired/TokenInvalid/PermissionDenied）
   40210-40212  限制（RateLimit/QuotaExceeded/IPBlocked）
   40310-40314  状态（AccountDisabled/OrderInvalid/BalanceInsufficient/VerificationFailed/OperationDenied）
 ```
 
-详见 `go-common/error/error.go` 和 `go-framework/kitex/rpcerror/error.go`。
+HTTP 状态映射机制：各属主模块在 `init()` 中调用 `goerror.RegisterHTTPStatuses` 注册细粒度映射；`goerror.HTTPStatus` 先查注册表，再走范围兜底（业务码 → 200，其余未注册 >0 → 500，非 oops → 200）。
+
+详见 `go-common/error/`（机制）、`go-framework/error/`（框架码）、`go-auth/error/`（认证码）、`go-middleware/{clickhouse,tls}/errors.go`（中间件码）。
 
 ## 五、关键技术决策
 
@@ -118,6 +126,7 @@ go-middleware  20000-20699  ── redis/kafka/db/es/ch/tls/obs
 | Kafka | `kafka-go` |
 | 配置时间格式 | `time.Duration`（YAML: `30s`） |
 | 构造函数 | Functional Options 模式 |
+| 错误码归属（D6） | 各模块拥有自己的错误码；`go-common/error` 只提供机制 + 码段边界 + HTTP 状态注册表 |
 
 ## 六、开发规范
 

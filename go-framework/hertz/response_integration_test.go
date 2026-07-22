@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"testing"
 
-	goerror "github.com/byx-darwin/go-tools/go-common/error"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/config"
 	"github.com/cloudwego/hertz/pkg/common/ut"
 	"github.com/cloudwego/hertz/pkg/route"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
 )
 
 // setupHertzEngine 创建测试用 Hertz engine。
@@ -31,7 +32,7 @@ func setupHertzEngine(t *testing.T, r *Responder) *route.Engine {
 	})
 	engine.GET("/error", func(ctx context.Context, c *app.RequestContext) {
 		resp := RespondFrom(c)
-		err := goerror.ErrParamInvalid.Wrap(errors.New("field 'name' is empty"))
+		err := frameworkerror.ErrParamInvalid.Wrap(errors.New("field 'name' is empty"))
 		resp.Error(ctx, c, err, "参数无效")
 	})
 	engine.GET("/error-plain", func(ctx context.Context, c *app.RequestContext) {
@@ -96,7 +97,7 @@ func TestResponder_Error_RPCRouting(t *testing.T) {
 
 	var resp Response
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, goerror.CodeParamInvalid, resp.Code)
+	assert.Equal(t, frameworkerror.CodeParamInvalid, resp.Code)
 	assert.Equal(t, "param_invalid", resp.Msg)
 }
 
@@ -136,7 +137,7 @@ func TestResponder_Error_DebugMode(t *testing.T) {
 	engine.Use(r.Middleware())
 	engine.GET("/debug-error", func(ctx context.Context, c *app.RequestContext) {
 		resp := RespondFrom(c)
-		err := goerror.ErrParamInvalid.Wrap(errors.New("sensitive detail"))
+		err := frameworkerror.ErrParamInvalid.Wrap(errors.New("sensitive detail"))
 		resp.Error(ctx, c, err, "参数无效")
 	})
 

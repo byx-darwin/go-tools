@@ -15,6 +15,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 
 	goerror "github.com/byx-darwin/go-tools/go-common/error"
+	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
 )
 
 // defaultTimestampWindow AK/SK 签名时间戳默认新鲜度窗口（±5 分钟）。
@@ -112,14 +113,14 @@ func parseAuthorization(request *protocol.Request) (ak, sign string, t int64, er
 	auth := string(request.Header.Peek("X-Signature"))
 	if auth == "" {
 		return "", "", 0, goerror.In("auth.parseAuthorization").
-			Code(goerror.CodeParamInvalid).
+			Code(frameworkerror.CodeParamInvalid).
 			Errorf("authorization header is empty")
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(auth)
 	if err != nil {
 		return "", "", 0, goerror.In("auth.parseAuthorization").
-			Code(goerror.CodeParamInvalid).
+			Code(frameworkerror.CodeParamInvalid).
 			Wrap(err)
 	}
 
@@ -133,24 +134,24 @@ func parseAuthorization(request *protocol.Request) (ak, sign string, t int64, er
 
 	if ak = kvs["ak"]; ak == "" {
 		return "", "", 0, goerror.In("auth.parseAuthorization").
-			Code(goerror.CodeParamInvalid).
+			Code(frameworkerror.CodeParamInvalid).
 			Errorf("ak is empty")
 	}
 	if sign = kvs["sign"]; sign == "" {
 		return "", "", 0, goerror.In("auth.parseAuthorization").
-			Code(goerror.CodeParamInvalid).
+			Code(frameworkerror.CodeParamInvalid).
 			Errorf("sign is empty")
 	}
 	tt, ok := kvs["t"]
 	if !ok || tt == "" {
 		return "", "", 0, goerror.In("auth.parseAuthorization").
-			Code(goerror.CodeParamInvalid).
+			Code(frameworkerror.CodeParamInvalid).
 			Errorf("timestamp is empty")
 	}
 	parsed, perr := strconv.ParseInt(tt, 10, 64)
 	if perr != nil {
 		return "", "", 0, goerror.In("auth.parseAuthorization").
-			Code(goerror.CodeParamInvalid).
+			Code(frameworkerror.CodeParamInvalid).
 			Wrap(perr)
 	}
 	t = parsed

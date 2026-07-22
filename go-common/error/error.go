@@ -1,17 +1,23 @@
-// Package error 提供基于 oops 的统一错误处理框架。
+// Package error 提供基于 oops 的统一错误处理机制。
 //
-// 错误码范围：
+// 本包是纯机制包，不持有任何模块的具体错误码：
 //
-//	go-framework: 10000-10499  (system, param, auth, config, RPC middleware)
-//	go-middleware:  20000-20699 (redis, kafka, db, es, clickhouse, observability)
-//	Project custom: 40000-59999 (business modules, external dependencies)
+//   - 构造/提取机制：Code、In、Extract、ExtractWithFallback、AsOopsError
+//   - 码段边界常量：Framework/Middleware/Project 的 Min/Max
+//   - HTTP 状态注册表：RegisterHTTPStatuses 供各属主模块在 init() 注册
+//     细粒度映射；HTTPStatus 先查注册表，再走范围兜底
+//     （业务码 ≥ ProjectCodeMin → 200；其余 >0 → 500；非 oops → 200）
+//
+// 具体错误码由各属主模块定义：
+//
+//	go-framework/error (frameworkerror): 10000-10013 + obs 20601-20605
+//	go-auth/error      (autherror):      40000-40099
+//	go-middleware/clickhouse:            20401-20403
+//	go-middleware/tls:                   20501-20504
 //
 // 用法：
 //
 //	import goerror "github.com/byx-darwin/go-tools/go-common/error"
-//
-//	// 预定义错误
-//	err := goerror.ErrParamInvalid.Wrap(originalErr)
 //
 //	// 自定义错误码
 //	err := goerror.Code(40001).Public("data_duplicate").Wrap(err)
@@ -37,216 +43,6 @@ const (
 	MiddlewareCodeMax = 20699 // go-middleware 最大错误码
 	ProjectCodeMin    = 40000 // 项目自定义最小错误码
 	ProjectCodeMax    = 59999 // 项目自定义最大错误码
-)
-
-// ── go-framework 预定义错误码 (10000-10499) ──
-
-const (
-	// CodeSystem 系统内部错误（兜底）
-	CodeSystem = 10000
-	// CodeParamInvalid 参数无效
-	CodeParamInvalid = 10001
-	// CodeAuthFailed 鉴权失败
-	CodeAuthFailed = 10002
-	// CodeConfigNotFound 配置未找到
-	CodeConfigNotFound = 10003
-	// CodeConfigInvalid 配置无效
-	CodeConfigInvalid = 10004
-	// CodePolarisInit Polaris 初始化失败
-	CodePolarisInit = 10005
-	// CodePolarisGetConfig Polaris 获取配置文件失败
-	CodePolarisGetConfig = 10006
-	// CodeRPCUnavailable RPC 服务不可用
-	CodeRPCUnavailable = 10010
-	// CodeRPCTimeout RPC 超时
-	CodeRPCTimeout = 10011
-	// CodeRPCDecodeError RPC 解码错误
-	CodeRPCDecodeError = 10012
-	// CodeRPCEncodeError RPC 编码错误
-	CodeRPCEncodeError = 10013
-)
-
-// ── go-middleware 预定义错误码 (20000-20699) ──
-
-// Redis 错误码 20001-20099。
-const (
-	CodeRedisConnect  = 20001 // Redis 连接失败
-	CodeRedisPing     = 20002 // Redis Ping 失败
-	CodeRedisOp       = 20003 // Redis 操作失败
-	CodeRedisPipeline = 20004 // Redis Pipeline 失败
-	CodeRedisSentinel = 20005 // Redis Sentinel 失败
-)
-
-// Kafka 错误码 20101-20199。
-const (
-	CodeKafkaConnect   = 20101 // Kafka 连接失败
-	CodeKafkaSend      = 20102 // Kafka 发送失败
-	CodeKafkaConsume   = 20103 // Kafka 消费失败
-	CodeKafkaCommit    = 20104 // Kafka 提交偏移失败
-	CodeKafkaRebalance = 20105 // Kafka 重平衡失败
-)
-
-// DB 错误码 20201-20299。
-const (
-	CodeDBConnect = 20201 // DB 连接失败
-	CodeDBQuery   = 20202 // DB 查询失败
-	CodeDBExec    = 20203 // DB 执行失败
-	CodeDBMigrate = 20204 // DB 迁移失败
-)
-
-// ES 错误码 20301-20399。
-const (
-	CodeESConnect = 20301 // ES 连接失败
-	CodeESQuery   = 20302 // ES 查询失败
-)
-
-// ClickHouse 错误码 20401-20499。
-const (
-	CodeCHConnect  = 20401 // ClickHouse 连接失败
-	CodeCHQuery    = 20402 // ClickHouse 查询失败
-	CodeCHParseDSN = 20403 // ClickHouse DSN 解析失败
-)
-
-// TLS 错误码 20501-20599。
-const (
-	CodeTLSConnect       = 20501 // TLS 连接失败
-	CodeTLSSend          = 20502 // TLS 发送失败
-	CodeTLSInvalidConfig = 20503 // TLS 配置无效
-	CodeTLSProducerInit  = 20504 // TLS Producer 初始化失败
-)
-
-// Observability 错误码 20601-20699。
-const (
-	CodeObsInit           = 20601 // Observability 初始化失败
-	CodeObsExport         = 20602 // Observability 导出失败
-	CodeObsTraceExport    = 20603 // Trace exporter 创建失败
-	CodeObsMetricExport   = 20604 // Metric exporter 创建失败
-	CodeObsRuntimeMetrics = 20605 // Runtime metrics 启动失败
-)
-
-// ── 项目自定义业务错误码 (40000-59999) — RPC 调用成功，HTTP 返回 200 ──
-
-// 数据相关错误码 40010-40019。
-const (
-	CodeDataNotFound  = 40010 // 数据不存在
-	CodeDataDuplicate = 40011 // 数据重复
-	CodeDataConflict  = 40012 // 数据冲突（并发修改）
-)
-
-// 认证/授权错误码 40110-40119。
-const (
-	CodeLoginFailed      = 40110 // 账号或密码错误
-	CodeTokenExpired     = 40111 // 凭证过期
-	CodeTokenInvalid     = 40112 // 凭证无效
-	CodePermissionDenied = 40113 // 无权限
-)
-
-// 限制/风控错误码 40210-40219。
-const (
-	CodeRateLimit     = 40210 // 频率限制
-	CodeQuotaExceeded = 40211 // 配额用尽
-	CodeIPBlocked     = 40212 // IP 受限
-)
-
-// 业务状态错误码 40310-40319。
-const (
-	CodeAccountDisabled     = 40310 // 账户已禁用
-	CodeOrderInvalid        = 40311 // 订单状态不符
-	CodeBalanceInsufficient = 40312 // 余额不足
-	CodeVerificationFailed  = 40313 // 验证码错误
-	CodeOperationDenied     = 40314 // 操作被拒绝
-)
-
-// ── 预定义错误构造器 ──
-
-// go-framework 预定义错误。
-var (
-	ErrSystem           = Code(CodeSystem).Public("system_error")
-	ErrParamInvalid     = Code(CodeParamInvalid).Public("param_invalid")
-	ErrAuthFailed       = Code(CodeAuthFailed).Public("auth_failed")
-	ErrConfigNotFound   = Code(CodeConfigNotFound).Public("config_not_found")
-	ErrConfigInvalid    = Code(CodeConfigInvalid).Public("config_invalid")
-	ErrPolarisInit      = Code(CodePolarisInit).Public("polaris_init_error")
-	ErrPolarisGetConfig = Code(CodePolarisGetConfig).Public("polaris_get_config_error")
-	ErrRPCUnavailable   = Code(CodeRPCUnavailable).Public("rpc_unavailable")
-	ErrRPCTimeout       = Code(CodeRPCTimeout).Public("rpc_timeout")
-	ErrRPCDecodeError   = Code(CodeRPCDecodeError).Public("rpc_decode_error")
-	ErrRPCEncodeError   = Code(CodeRPCEncodeError).Public("rpc_encode_error")
-)
-
-// Redis 预定义错误。
-var (
-	ErrRedisConnect  = Code(CodeRedisConnect).Public("redis_connect_error")
-	ErrRedisPing     = Code(CodeRedisPing).Public("redis_ping_error")
-	ErrRedisOp       = Code(CodeRedisOp).Public("redis_operation_error")
-	ErrRedisPipeline = Code(CodeRedisPipeline).Public("redis_pipeline_error")
-	ErrRedisSentinel = Code(CodeRedisSentinel).Public("redis_sentinel_error")
-)
-
-// Kafka 预定义错误。
-var (
-	ErrKafkaConnect   = Code(CodeKafkaConnect).Public("kafka_connect_error")
-	ErrKafkaSend      = Code(CodeKafkaSend).Public("kafka_send_error")
-	ErrKafkaConsume   = Code(CodeKafkaConsume).Public("kafka_consume_error")
-	ErrKafkaCommit    = Code(CodeKafkaCommit).Public("kafka_commit_error")
-	ErrKafkaRebalance = Code(CodeKafkaRebalance).Public("kafka_rebalance_error")
-)
-
-// DB 预定义错误。
-var (
-	ErrDBConnect = Code(CodeDBConnect).Public("db_connect_error")
-	ErrDBQuery   = Code(CodeDBQuery).Public("db_query_error")
-	ErrDBExec    = Code(CodeDBExec).Public("db_exec_error")
-	ErrDBMigrate = Code(CodeDBMigrate).Public("db_migrate_error")
-)
-
-// ES 预定义错误。
-var (
-	ErrESConnect = Code(CodeESConnect).Public("es_connect_error")
-	ErrESQuery   = Code(CodeESQuery).Public("es_query_error")
-)
-
-// ClickHouse 预定义错误。
-var (
-	ErrCHConnect  = Code(CodeCHConnect).Public("ch_connect_error")
-	ErrCHQuery    = Code(CodeCHQuery).Public("ch_query_error")
-	ErrCHParseDSN = Code(CodeCHParseDSN).Public("ch_parse_dsn_error")
-)
-
-// TLS 预定义错误。
-var (
-	ErrTLSConnect       = Code(CodeTLSConnect).Public("tls_connect_error")
-	ErrTLSSend          = Code(CodeTLSSend).Public("tls_send_error")
-	ErrTLSInvalidConfig = Code(CodeTLSInvalidConfig).Public("tls_invalid_config_error")
-	ErrTLSProducerInit  = Code(CodeTLSProducerInit).Public("tls_producer_init_error")
-)
-
-// Observability 预定义错误。
-var (
-	ErrObsInit           = Code(CodeObsInit).Public("observability_init_error")
-	ErrObsExport         = Code(CodeObsExport).Public("observability_export_error")
-	ErrObsTraceExport    = Code(CodeObsTraceExport).Public("observability_trace_export_error")
-	ErrObsMetricExport   = Code(CodeObsMetricExport).Public("observability_metric_export_error")
-	ErrObsRuntimeMetrics = Code(CodeObsRuntimeMetrics).Public("observability_runtime_metrics_error")
-)
-
-// 业务预定义错误。
-var (
-	ErrDataNotFound        = Code(CodeDataNotFound).Public("data_not_found")
-	ErrDataDuplicate       = Code(CodeDataDuplicate).Public("data_duplicate")
-	ErrDataConflict        = Code(CodeDataConflict).Public("data_conflict")
-	ErrLoginFailed         = Code(CodeLoginFailed).Public("login_failed")
-	ErrTokenExpired        = Code(CodeTokenExpired).Public("token_expired")
-	ErrTokenInvalid        = Code(CodeTokenInvalid).Public("token_invalid")
-	ErrPermissionDenied    = Code(CodePermissionDenied).Public("permission_denied")
-	ErrRateLimit           = Code(CodeRateLimit).Public("rate_limit")
-	ErrQuotaExceeded       = Code(CodeQuotaExceeded).Public("quota_exceeded")
-	ErrIPBlocked           = Code(CodeIPBlocked).Public("ip_blocked")
-	ErrAccountDisabled     = Code(CodeAccountDisabled).Public("account_disabled")
-	ErrOrderInvalid        = Code(CodeOrderInvalid).Public("order_invalid")
-	ErrBalanceInsufficient = Code(CodeBalanceInsufficient).Public("balance_insufficient")
-	ErrVerificationFailed  = Code(CodeVerificationFailed).Public("verification_failed")
-	ErrOperationDenied     = Code(CodeOperationDenied).Public("operation_denied")
 )
 
 // ── 构造函数 ──
@@ -302,87 +98,36 @@ func AsOopsError(err error) (oops.OopsError, bool) {
 // ── HTTP 状态码映射 ──
 
 // HTTPStatus 从 error 中提取错误码，映射为 HTTP 状态码。
+// 优先级：各模块注册的细粒度映射 → 范围兜底。
 func HTTPStatus(err error) int {
 	code, _ := Extract(err)
-	return httpStatusByCode(code)
+	return httpStatusForCode(code)
 }
 
-// httpStatusByCode 根据错误码返回对应的 HTTP 状态码。
-func httpStatusByCode(code int) int {
-	switch code {
-	// 4xx — 客户端错误
-	case CodeParamInvalid:
-		return 400
-	case CodeAuthFailed:
-		return 401
-
-	// 5xx — 框架/基础设施错误
-	case CodeSystem:
-		return 500
-	case CodeConfigNotFound:
-		return 500
-	case CodeConfigInvalid:
-		return 500
-	case CodeRPCDecodeError:
-		return 500
-	case CodeRPCEncodeError:
-		return 500
-
-	// 503 — 依赖服务不可用
-	case CodeRPCUnavailable:
-		return 503
-	case CodeRedisConnect, CodeRedisPing, CodeRedisSentinel:
-		return 503
-	case CodeKafkaConnect:
-		return 503
-	case CodeDBConnect:
-		return 503
-	case CodeESConnect:
-		return 503
-	case CodeCHConnect, CodeCHParseDSN:
-		return 503
-	case CodeTLSConnect, CodeTLSInvalidConfig, CodeTLSProducerInit:
-		return 503
-	case CodeObsInit, CodeObsTraceExport, CodeObsMetricExport, CodeObsRuntimeMetrics:
-		return 503
-	case CodePolarisInit, CodePolarisGetConfig:
-		return 503
-
-	// 504 — 超时
-	case CodeRPCTimeout:
-		return 504
-
-	// 中间件操作错误 → 500
-	case CodeRedisOp, CodeRedisPipeline:
-		return 500
-	case CodeKafkaSend, CodeKafkaConsume, CodeKafkaCommit, CodeKafkaRebalance:
-		return 500
-	case CodeDBQuery, CodeDBExec, CodeDBMigrate:
-		return 500
-	case CodeESQuery:
-		return 500
-	case CodeCHQuery:
-		return 500
-	case CodeTLSSend:
-		return 500
-	case CodeObsExport:
-		return 500
-
-	// 业务错误（40000+）→ 200
+// httpStatusForCode 按注册表 + 范围兜底映射错误码到 HTTP 状态码。
+func httpStatusForCode(code int) int {
+	if status, ok := lookupHTTPStatus(code); ok {
+		return status
+	}
+	switch {
+	case code >= ProjectCodeMin:
+		return 200 // 业务错误（RPC 调用成功，HTTP 200）
+	case code > 0:
+		return 500 // 未注册的框架/基础设施错误
 	default:
-		return 200
+		return 200 // 非 oops 错误 / 无错误码
 	}
 }
 
 // IsClientError 判断错误码是否属于客户端错误（4xx）。
 func IsClientError(code int) bool {
-	s := httpStatusByCode(code)
+	s := httpStatusForCode(code)
 	return s >= 400 && s < 500
 }
 
 // IsServerError 判断错误码是否属于服务端/基础设施错误（5xx）。
 func IsServerError(code int) bool {
-	return httpStatusByCode(code) >= 500
+	return httpStatusForCode(code) >= 500
 }
 
 // IsBusinessErrorCode 判断错误码是否属于业务错误（200，RPC 成功）。

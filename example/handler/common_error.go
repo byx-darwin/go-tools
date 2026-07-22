@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	goerror "github.com/byx-darwin/go-tools/go-common/error"
+	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
 	hertzresp "github.com/byx-darwin/go-tools/go-framework/hertz"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -17,7 +18,7 @@ func RegisterErrorRoutes(h *server.Hertz) {
 
 func errorHandler(_ context.Context, c *app.RequestContext) {
 	// 使用预定义错误。
-	err1 := goerror.ErrParamInvalid.Wrap(fmt.Errorf("username is required"))
+	err1 := frameworkerror.ErrParamInvalid.Wrap(fmt.Errorf("username is required"))
 	code1, public1 := goerror.Extract(err1)
 
 	// 自定义错误码。

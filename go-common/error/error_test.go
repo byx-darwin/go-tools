@@ -7,6 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// init 注册测试专用码 39911 → 404。
+// 放在 init() 而非某个 Test 函数内，保证与测试文件/函数的执行顺序无关
+// （Go 按文件名字母序执行：error_test.go 先于 httpstatus_test.go）。
+func init() {
+	RegisterHTTPStatuses(map[int]int{39911: 404})
+}
+
 // ── 错误码范围 ──
 
 func TestCodeConstants(t *testing.T) {
@@ -18,50 +25,20 @@ func TestCodeConstants(t *testing.T) {
 
 func TestCode_Basic(t *testing.T) {
 	original := errors.New("original error")
-	err := Code(CodeParamInvalid).Public("param_invalid").Wrap(original)
+	err := Code(12345).Public("custom_error").Wrap(original)
 
 	code, public := Extract(err)
-	assert.Equal(t, CodeParamInvalid, code)
-	assert.Equal(t, "param_invalid", public)
+	assert.Equal(t, 12345, code)
+	assert.Equal(t, "custom_error", public)
 }
 
 func TestIn_Basic(t *testing.T) {
 	original := errors.New("auth failed")
-	err := In("auth").Code(CodeAuthFailed).Public("token_expired").Wrap(original)
+	err := In("auth").Code(12346).Public("token_expired").Wrap(original)
 
 	code, public := Extract(err)
-	assert.Equal(t, CodeAuthFailed, code)
+	assert.Equal(t, 12346, code)
 	assert.Equal(t, "token_expired", public)
-}
-
-func TestPredefinedErrors(t *testing.T) {
-	tests := []struct {
-		name   string
-		err    error
-		code   int
-		public string
-	}{
-		{"ErrSystem", ErrSystem.Wrap(errors.New("sys")), CodeSystem, "system_error"},
-		{"ErrParamInvalid", ErrParamInvalid.Wrap(errors.New("bad")), CodeParamInvalid, "param_invalid"},
-		{"ErrAuthFailed", ErrAuthFailed.Wrap(errors.New("no")), CodeAuthFailed, "auth_failed"},
-		{"ErrConfigNotFound", ErrConfigNotFound.Wrap(errors.New("miss")), CodeConfigNotFound, "config_not_found"},
-		{"ErrRPCUnavailable", ErrRPCUnavailable.Wrap(errors.New("down")), CodeRPCUnavailable, "rpc_unavailable"},
-		{"ErrPolarisInit", ErrPolarisInit.Wrap(errors.New("init")), CodePolarisInit, "polaris_init_error"},
-		{"ErrCHParseDSN", ErrCHParseDSN.Wrap(errors.New("dsn")), CodeCHParseDSN, "ch_parse_dsn_error"},
-		{"ErrTLSInvalidConfig", ErrTLSInvalidConfig.Wrap(errors.New("cfg")), CodeTLSInvalidConfig, "tls_invalid_config_error"},
-		{"ErrTLSProducerInit", ErrTLSProducerInit.Wrap(errors.New("prod")), CodeTLSProducerInit, "tls_producer_init_error"},
-		{"ErrObsTraceExport", ErrObsTraceExport.Wrap(errors.New("trace")), CodeObsTraceExport, "observability_trace_export_error"},
-		{"ErrObsMetricExport", ErrObsMetricExport.Wrap(errors.New("metric")), CodeObsMetricExport, "observability_metric_export_error"},
-		{"ErrObsRuntimeMetrics", ErrObsRuntimeMetrics.Wrap(errors.New("rtm")), CodeObsRuntimeMetrics, "observability_runtime_metrics_error"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			code, public := Extract(tt.err)
-			assert.Equal(t, tt.code, code)
-			assert.Equal(t, tt.public, public)
-		})
-	}
 }
 
 func TestExtract_NilError(t *testing.T) {
@@ -106,28 +83,17 @@ func TestAsOopsError_NonOops(t *testing.T) {
 	assert.False(t, ok)
 }
 
-// ── HTTP 状态码映射 ──
+// ── HTTP 状态码映射（范围兜底；细粒度映射见各属主模块测试）──
 
-func TestHTTPStatus(t *testing.T) {
+func TestHTTPStatus_Fallback(t *testing.T) {
 	tests := []struct {
 		name string
 		err  error
 		want int
 	}{
-		{"param invalid", ErrParamInvalid.Wrap(errors.New("bad")), 400},
-		{"auth failed", ErrAuthFailed.Wrap(errors.New("no")), 401},
-		{"system", ErrSystem.Wrap(errors.New("boom")), 500},
-		{"config not found", ErrConfigNotFound.Wrap(errors.New("miss")), 500},
-		{"rpc unavailable", ErrRPCUnavailable.Wrap(errors.New("down")), 503},
-		{"rpc timeout", ErrRPCTimeout.Wrap(errors.New("slow")), 504},
-		{"redis connect", ErrRedisConnect.Wrap(errors.New("redis down")), 503},
-		{"kafka connect", ErrKafkaConnect.Wrap(errors.New("kafka down")), 503},
-		{"db connect", ErrDBConnect.Wrap(errors.New("db down")), 503},
-		{"redis op", ErrRedisOp.Wrap(errors.New("fail")), 500},
-		{"kafka send", ErrKafkaSend.Wrap(errors.New("fail")), 500},
-		{"db query", ErrDBQuery.Wrap(errors.New("fail")), 500},
-		{"custom business", Code(40001).Public("data_duplicate").Wrap(errors.New("dup")), 200},
-		{"plain error", errors.New("plain"), 200},
+		{"business code → 200", Code(40001).Public("data_duplicate").Wrap(errors.New("dup")), 200},
+		{"unregistered infra code → 500", Code(20999).Public("unregistered").Wrap(errors.New("x")), 500},
+		{"plain error → 200", errors.New("plain"), 200},
 	}
 
 	for _, tt := range tests {
@@ -138,22 +104,21 @@ func TestHTTPStatus(t *testing.T) {
 }
 
 func TestIsClientError(t *testing.T) {
-	assert.True(t, IsClientError(CodeParamInvalid))
-	assert.True(t, IsClientError(CodeAuthFailed))
-	assert.False(t, IsClientError(CodeSystem))
-	assert.False(t, IsClientError(CodeDataNotFound))
+	// 39911 已由本文件 init() 注册为 404。
+	assert.True(t, IsClientError(39911))
+	assert.False(t, IsClientError(40001)) // 业务码 → 200
+	assert.False(t, IsClientError(20999)) // 未注册 → 500
 }
 
 func TestIsServerError(t *testing.T) {
-	assert.True(t, IsServerError(CodeSystem))
-	assert.True(t, IsServerError(CodeRPCUnavailable))
-	assert.True(t, IsServerError(CodeRedisConnect))
-	assert.False(t, IsServerError(CodeDataNotFound))
+	assert.True(t, IsServerError(20999))  // 未注册 >0 → 500
+	assert.False(t, IsServerError(40001)) // 业务码 → 200
+	assert.False(t, IsServerError(0))     // 无码 → 200
 }
 
 func TestIsBusinessErrorCode(t *testing.T) {
-	assert.True(t, IsBusinessErrorCode(CodeDataNotFound))
+	assert.True(t, IsBusinessErrorCode(40010))
 	assert.True(t, IsBusinessErrorCode(40001))
-	assert.False(t, IsBusinessErrorCode(CodeSystem))
-	assert.False(t, IsBusinessErrorCode(CodeRedisConnect))
+	assert.False(t, IsBusinessErrorCode(10000))
+	assert.False(t, IsBusinessErrorCode(20001))
 }
