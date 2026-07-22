@@ -47,8 +47,8 @@ The 5-module → 3-library split (2026-06-23) is **complete**. ncgo generated pr
 ```
 go-framework: 10000-10499  (system, param, auth, config, RPC; defined in go-framework/error + obs 20601-20605)
 go-middleware: 20000-20699 (clickhouse 20401-20403, tls 20501-20504 defined in-package; redis/kafka/db/es bands reserved)
-go-auth:       40000-40099 (token, session, device auth errors; defined in go-auth/error)
-Project custom: 40100-59999 (business modules, external dependencies; no library predefinitions)
+go-auth:       40000-40099 (token, session, device auth errors; defined in go-auth/error; AuthCodeMin/Max)
+Project custom: 40100-59999 (business modules, external dependencies; no library predefinitions; ProjectCodeMin)
 ```
 
 See `specs/00_overview.md` for full error code table.

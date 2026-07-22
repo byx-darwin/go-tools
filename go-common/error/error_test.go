@@ -18,7 +18,23 @@ func init() {
 
 func TestCodeConstants(t *testing.T) {
 	assert.Less(t, FrameworkCodeMax, MiddlewareCodeMin)
-	assert.Less(t, MiddlewareCodeMax, ProjectCodeMin)
+	assert.Less(t, MiddlewareCodeMax, AuthCodeMin)
+	assert.Less(t, AuthCodeMax, ProjectCodeMin)
+}
+
+// auth 段（40000-40099）是业务码段下限，行为须与迁移前逐值一致。
+func TestAuthBandBoundary(t *testing.T) {
+	assert.Equal(t, 40000, AuthCodeMin)
+	assert.Equal(t, 40099, AuthCodeMax)
+	assert.Equal(t, 40100, ProjectCodeMin)
+
+	// 业务码判定：auth 段 + project 段均为业务码
+	assert.True(t, IsBusinessErrorCode(AuthCodeMin))    // 40000
+	assert.True(t, IsBusinessErrorCode(AuthCodeMax))    // 40099
+	assert.True(t, IsBusinessErrorCode(ProjectCodeMin)) // 40100
+
+	// HTTP 兜底：auth 段未注册码 → 200
+	assert.Equal(t, 200, HTTPStatus(Code(40050).Public("auth_band").Wrap(errors.New("x"))))
 }
 
 // ── Code / Extract ──
