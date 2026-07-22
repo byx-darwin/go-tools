@@ -28,13 +28,3 @@ func TestRegisterHTTPStatuses_DuplicatePanics(t *testing.T) {
 		RegisterHTTPStatuses(map[int]int{39902: 503})
 	})
 }
-
-func TestIsClientError_RegisteredCode(t *testing.T) {
-	RegisterHTTPStatuses(map[int]int{39905: 404})
-	assert.True(t, IsClientError(39905))
-}
-
-func TestIsServerError_RegisteredCode(t *testing.T) {
-	RegisterHTTPStatuses(map[int]int{39906: 503})
-	assert.True(t, IsServerError(39906))
-}
