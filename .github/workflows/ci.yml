@@ -56,3 +56,41 @@ jobs:
           name: coverage-${{ matrix.module }}
           path: ${{ matrix.module }}-coverage.out
           retention-days: 7
+
+  mod-hygiene:
+    name: go.mod hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: check no replace in published modules
+        run: |
+          FAILED=0
+          for mod in go-common go-auth go-middleware go-framework; do
+            if grep -q '^replace' "$mod/go.mod"; then
+              echo "::error file=${mod}/go.mod::contains replace directive — published modules must not use replace"
+              FAILED=1
+            fi
+          done
+          if [[ "$FAILED" -eq 1 ]]; then
+            echo "Published modules must not contain replace directives."
+            echo "Local development uses go.work workspace resolution."
+            echo "See RELEASE.md for the release process."
+            exit 1
+          fi
+          echo "✓ No replace directives in published modules"
+
+      - name: check no v0.0.0 sibling requires
+        run: |
+          FAILED=0
+          for mod in go-auth go-middleware go-framework; do
+            if grep -q 'byx-darwin/go-tools/go-.* v0\.0\.0' "$mod/go.mod"; then
+              echo "::error file=${mod}/go.mod::contains v0.0.0 sibling require — use real published versions"
+              FAILED=1
+            fi
+          done
+          if [[ "$FAILED" -eq 1 ]]; then
+            echo "Sibling module requires must reference real published versions."
+            exit 1
+          fi
+          echo "✓ No v0.0.0 sibling requires"
