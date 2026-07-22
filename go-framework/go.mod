@@ -4,8 +4,8 @@ go 1.26.5
 
 require (
 	github.com/bytedance/gopkg v0.1.4
-	github.com/byx-darwin/go-tools/go-auth v0.0.0-00010101000000-000000000000
-	github.com/byx-darwin/go-tools/go-common v0.0.0
+	github.com/byx-darwin/go-tools/go-auth v0.1.0
+	github.com/byx-darwin/go-tools/go-common v0.1.0
 	github.com/cloudwego/hertz v0.10.5
 	github.com/cloudwego/kitex v0.16.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -23,11 +23,6 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.44.0
 	go.opentelemetry.io/otel/trace v1.44.0
 	gopkg.in/yaml.v3 v3.0.1
-)
-
-replace (
-	github.com/byx-darwin/go-tools/go-auth => ../go-auth
-	github.com/byx-darwin/go-tools/go-common => ../go-common
 )
 
 require (

@@ -3,7 +3,7 @@ module github.com/byx-darwin/go-tools/go-auth
 go 1.26.5
 
 require (
-	github.com/byx-darwin/go-tools/go-common v0.0.0
+	github.com/byx-darwin/go-tools/go-common v0.1.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/samber/oops v1.22.0
 	github.com/stretchr/testify v1.11.1
@@ -20,5 +20,3 @@ require (
 	golang.org/x/text v0.38.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/byx-darwin/go-tools/go-common => ../go-common
