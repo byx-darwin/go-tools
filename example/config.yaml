@@ -68,7 +68,6 @@ hertz:
     enable: true
     ak: "example-ak"
     sk: "example-sk"
-    tea_key: "0123456789abcdef"
 
 kitex:
   rpc:

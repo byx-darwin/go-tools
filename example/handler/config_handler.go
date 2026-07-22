@@ -201,7 +201,7 @@ func maskSecrets(m map[string]any) map[string]any {
 // isSensitiveKey 判断 key 是否包含敏感词。
 func isSensitiveKey(key string) bool {
 	lower := strings.ToLower(key)
-	for _, s := range []string{"secret", "password", "token", "sk", "tea_key", "app_key"} {
+	for _, s := range []string{"secret", "password", "token", "sk", "app_key"} {
 		if strings.Contains(lower, s) {
 			return true
 		}
