@@ -1,7 +1,7 @@
 // Package frameworkerror 提供 go-framework 模块的错误码和预定义错误构造器。
 //
 // 错误码范围：
-//   - 10000-10013: system/param/auth/config/Polaris/RPC
+//   - 10000-10023: system/param/auth/config/Polaris/signature/RPC/token
 //   - 20601-20605: observability（obs 段由 framework 适配层 hertz/kitex 使用；
 //     码值为 wire 契约，禁止改号）
 //
@@ -15,13 +15,13 @@ import (
 // Builder 是错误构建器类型别名。
 type Builder = goerror.Builder
 
-// 框架错误码 10000-10013。
+// 框架错误码 10000-10023。
 const (
 	// CodeSystem 系统内部错误（兜底）
 	CodeSystem = 10000
 	// CodeParamInvalid 参数无效
 	CodeParamInvalid = 10001
-	// CodeAuthFailed 鉴权失败
+	// CodeAuthFailed 鉴权失败（通用）
 	CodeAuthFailed = 10002
 	// CodeConfigNotFound 配置未找到
 	CodeConfigNotFound = 10003
@@ -31,6 +31,12 @@ const (
 	CodePolarisInit = 10005
 	// CodePolarisGetConfig Polaris 获取配置文件失败
 	CodePolarisGetConfig = 10006
+	// CodeSignatureMissing 缺少签名 Header（X-App-Key / X-Timestamp / X-Nonce / X-Signature）
+	CodeSignatureMissing = 10007
+	// CodeSignatureExpired 签名时间戳超出允许偏差
+	CodeSignatureExpired = 10018
+	// CodeSignatureInvalid 签名值校验失败
+	CodeSignatureInvalid = 10019
 	// CodeRPCUnavailable RPC 服务不可用
 	CodeRPCUnavailable = 10010
 	// CodeRPCTimeout RPC 超时
@@ -39,6 +45,14 @@ const (
 	CodeRPCDecodeError = 10012
 	// CodeRPCEncodeError RPC 编码错误
 	CodeRPCEncodeError = 10013
+	// CodeTokenMissing 缺少认证 Token（JWT / Bearer）
+	CodeTokenMissing = 10020
+	// CodeTokenInvalid Token 校验失败
+	CodeTokenInvalid = 10021
+	// CodeTokenExpired Token 已过期
+	CodeTokenExpired = 10022
+	// CodeAppKeyInvalid AppKey 无效或未注册
+	CodeAppKeyInvalid = 10023
 )
 
 // Observability 错误码 20601-20605（obs 段，由 framework 适配层使用）。
@@ -79,6 +93,20 @@ var (
 	ErrRPCDecodeError = goerror.Code(CodeRPCDecodeError).Public("rpc_decode_error")
 	// ErrRPCEncodeError RPC 编码错误
 	ErrRPCEncodeError = goerror.Code(CodeRPCEncodeError).Public("rpc_encode_error")
+	// ErrSignatureMissing 缺少签名 Header
+	ErrSignatureMissing = goerror.Code(CodeSignatureMissing).Public("signature_missing")
+	// ErrSignatureExpired 签名时间戳过期
+	ErrSignatureExpired = goerror.Code(CodeSignatureExpired).Public("signature_expired")
+	// ErrSignatureInvalid 签名校验失败
+	ErrSignatureInvalid = goerror.Code(CodeSignatureInvalid).Public("signature_invalid")
+	// ErrTokenMissing 缺少认证 Token
+	ErrTokenMissing = goerror.Code(CodeTokenMissing).Public("token_missing")
+	// ErrTokenInvalid Token 校验失败
+	ErrTokenInvalid = goerror.Code(CodeTokenInvalid).Public("token_invalid")
+	// ErrTokenExpired Token 已过期
+	ErrTokenExpired = goerror.Code(CodeTokenExpired).Public("token_expired")
+	// ErrAppKeyInvalid AppKey 无效
+	ErrAppKeyInvalid = goerror.Code(CodeAppKeyInvalid).Public("app_key_invalid")
 )
 
 // 预定义 Observability 错误构造器。
@@ -115,5 +143,15 @@ func init() {
 		CodeObsMetricExport:   503,
 		CodeObsRuntimeMetrics: 503,
 		CodeRPCTimeout:        504,
+		// Signature errors: missing/expired → 401, invalid → 403
+		CodeSignatureMissing: 401,
+		CodeSignatureExpired: 401,
+		CodeSignatureInvalid: 403,
+		// Token errors: missing/invalid/expired → 401
+		CodeTokenMissing: 401,
+		CodeTokenInvalid: 401,
+		CodeTokenExpired: 401,
+		// AppKey invalid → 403
+		CodeAppKeyInvalid: 403,
 	})
 }
