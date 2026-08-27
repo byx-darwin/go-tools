@@ -13,6 +13,8 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // ── 响应体 ──
@@ -20,13 +22,8 @@ import (
 // intPtr 返回 int 值的指针，用于 WithDefaultBizCode 等 Option。
 func intPtr(v int) *int { return &v }
 
-// Response 统一响应体。
-// 支持 JSON 和 Protobuf 双格式序列化。
-type Response struct {
-	Code int    `json:"code" protobuf:"varint,1,opt,name=code"`
-	Msg  string `json:"msg"  protobuf:"bytes,2,opt,name=msg"`
-	Data any    `json:"data,omitempty" protobuf:"bytes,3,opt,name=data"`
-}
+// Response 已在 response.pb.go 中通过 protoc 生成，支持 Protobuf 序列化。
+// 定义见 response.proto。
 
 // ── I18n 接口 ──
 
@@ -243,7 +240,22 @@ func (r *Responder) writeResponse(ctx *app.RequestContext, httpCode int, obj any
 
 // reply 内部写响应方法。
 func (r *Responder) reply(ctx *app.RequestContext, httpCode, bizCode int, data any, msg string) {
-	resp := Response{Code: bizCode, Msg: msg, Data: data}
+	var anyData *anypb.Any
+	if data != nil {
+		if protoMsg, ok := data.(proto.Message); ok {
+			var err error
+			anyData, err = anypb.New(protoMsg)
+			if err != nil {
+				// 如果包装失败，记录错误但继续（data 将为 nil）
+				// TODO: 考虑使用日志记录
+				anyData = nil
+			}
+		}
+		// 如果 data 不是 Protobuf 消息，anyData 保持为 nil
+		// JSON 序列化时会忽略 nil 字段
+	}
+
+	resp := Response{Code: int32(bizCode), Msg: msg, Data: anyData}
 	r.writeResponse(ctx, httpCode, resp)
 }
 

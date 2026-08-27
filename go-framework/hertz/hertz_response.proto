@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package hertz_response;
+
+option go_package = "github.com/byx-darwin/go-tools/go-framework/hertz";
+
+import "google/protobuf/any.proto";
+
+// Response 统一响应体。
+// 支持 JSON 和 Protobuf 双格式序列化。
+message Response {
+  int32 code = 1;
+  string msg = 2;
+  google.protobuf.Any data = 3;
+}
