@@ -255,7 +255,7 @@ func (r *Responder) reply(ctx *app.RequestContext, httpCode, bizCode int, data a
 		// JSON 序列化时会忽略 nil 字段
 	}
 
-	resp := Response{Code: int32(bizCode), Msg: msg, Data: anyData}
+	resp := &Response{Code: int32(bizCode), Msg: msg, Data: anyData}
 	r.writeResponse(ctx, httpCode, resp)
 }
 
