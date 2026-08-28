@@ -17,6 +17,16 @@ set -euo pipefail
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || exit 0)
 [ -z "$REPO_ROOT" ] && exit 0
 
+# Find .claude directory - check worktree first, then main repo
+if [ -d "$REPO_ROOT/.claude" ]; then
+  CLAUDE_DIR="$REPO_ROOT/.claude"
+else
+  # In worktree - find main repo via git-common-dir
+  COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null || exit 0)
+  MAIN_REPO=$(dirname "$COMMON_DIR")
+  CLAUDE_DIR="$MAIN_REPO/.claude"
+fi
+
 PENDING_FILE="$REPO_ROOT/.cache/bug-reports/pending.json"
 
 # No pending error report — silent exit.
@@ -121,7 +131,7 @@ echo "$PENDING_CONTENT"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  请加载 gitflow-autoreport-bug Skill 执行自动 Bug 报告流程。"
-echo "  Skill 路径: skills/gitflow-autoreport-bug/SKILL.md"
+echo "  Skill 路径: $CLAUDE_DIR/skills/gf-autoreport-bug/SKILL.md"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
