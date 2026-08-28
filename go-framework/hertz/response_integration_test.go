@@ -272,7 +272,9 @@ func TestResponder_Success_ProtoData_AnyExpansion(t *testing.T) {
 	// 验证 anypb.Any 被展开，包含内部字段
 	assert.Contains(t, body, `"code"`)
 	assert.Contains(t, body, `"msg"`)
+	// 不应包含 @type 字段（protojson 展开 Any 时默认会带 @type，需要移除）
+	assert.NotContains(t, body, `"@type"`)
 	// 不应包含 type_url 和 value 字段（未展开的 anypb.Any 格式）
 	assert.NotContains(t, body, `"type_url"`)
-	assert.NotContains(t, body, `"@"type"`)
+	assert.NotContains(t, body, `"value"`)
 }

@@ -3,6 +3,7 @@ package hertz
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -241,11 +242,52 @@ func (r *Responder) writeResponse(ctx *app.RequestContext, httpCode int, obj any
 				ctx.JSON(httpCode, obj)
 				return
 			}
+			// 移除 anypb.Any 展开后残留的 @type 字段，保持 JSON 简洁
+			jsonBytes = stripAnyTypeField(jsonBytes)
 			ctx.Data(httpCode, consts.MIMEApplicationJSONUTF8, jsonBytes)
 		} else {
 			ctx.JSON(httpCode, obj)
 		}
 	}
+}
+
+// stripAnyTypeField 移除 protojson 序列化 anypb.Any 时产生的 @type 字段。
+// protojson 展开 Any 时会保留 @type 字段用于类型识别，但对外 JSON 响应
+// 不需要此字段，需要删除以保持响应简洁。
+func stripAnyTypeField(jsonBytes []byte) []byte {
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(jsonBytes, &root); err != nil {
+		return jsonBytes
+	}
+	if dataRaw, ok := root["data"]; ok {
+		// 移除 data 对象中的 @type 字段
+		cleaned := removeJSONKey(dataRaw, "@type")
+		if cleaned != nil {
+			root["data"] = cleaned
+			if result, err := json.Marshal(root); err == nil {
+				return result
+			}
+		}
+	}
+	return jsonBytes
+}
+
+// removeJSONKey 从 JSON 对象中移除指定 key，返回新的 JSON 对象。
+// 如果输入不是 JSON 对象或 key 不存在，返回 nil。
+func removeJSONKey(raw json.RawMessage, key string) []byte {
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	if _, exists := m[key]; !exists {
+		return nil
+	}
+	delete(m, key)
+	result, err := json.Marshal(m)
+	if err != nil {
+		return nil
+	}
+	return result
 }
 
 // ── 响应方法 ──
