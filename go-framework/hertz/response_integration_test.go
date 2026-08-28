@@ -66,7 +66,7 @@ func TestResponder_Success_Integration(t *testing.T) {
 
 	var resp Response
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, int32(http.StatusOK), resp.Code)
 	assert.Equal(t, "ok", resp.Msg)
 	assert.Equal(t, map[string]any{"id": "123"}, resp.Data)
 }
@@ -81,7 +81,7 @@ func TestResponder_SuccessWithMsg_Integration(t *testing.T) {
 
 	var resp Response
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, int32(http.StatusOK), resp.Code)
 	assert.Equal(t, "操作成功", resp.Msg)
 }
 
@@ -97,7 +97,7 @@ func TestResponder_Error_RPCRouting(t *testing.T) {
 
 	var resp Response
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, frameworkerror.CodeParamInvalid, resp.Code)
+	assert.Equal(t, int32(frameworkerror.CodeParamInvalid), resp.Code)
 	assert.Equal(t, "param_invalid", resp.Msg)
 }
 
@@ -111,7 +111,7 @@ func TestResponder_Error_PlainError(t *testing.T) {
 
 	var resp Response
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, http.StatusInternalServerError, resp.Code)
+	assert.Equal(t, int32(http.StatusInternalServerError), resp.Code)
 	assert.Contains(t, resp.Msg, "操作失败")
 }
 
@@ -125,7 +125,7 @@ func TestResponder_ErrorWithCode(t *testing.T) {
 
 	var resp Response
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, 40300, resp.Code)
+	assert.Equal(t, int32(40300), resp.Code)
 	assert.Equal(t, "禁止访问", resp.Msg)
 }
 
