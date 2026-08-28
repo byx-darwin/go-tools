@@ -13,6 +13,7 @@ import (
 	"github.com/cloudwego/hertz/pkg/protocol/consts"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -232,7 +233,18 @@ func (r *Responder) writeResponse(ctx *app.RequestContext, httpCode int, obj any
 	case consts.MIMEPROTOBUF:
 		ctx.ProtoBuf(httpCode, obj)
 	default:
-		ctx.JSON(httpCode, obj)
+		// JSON 序列化：使用 protojson 以正确展开 anypb.Any
+		if resp, ok := obj.(*Response); ok && resp.Data != nil {
+			jsonBytes, err := protojson.Marshal(resp)
+			if err != nil {
+				// 降级为标准 JSON
+				ctx.JSON(httpCode, obj)
+				return
+			}
+			ctx.Data(httpCode, consts.MIMEApplicationJSONUTF8, jsonBytes)
+		} else {
+			ctx.JSON(httpCode, obj)
+		}
 	}
 }
 
@@ -240,23 +252,28 @@ func (r *Responder) writeResponse(ctx *app.RequestContext, httpCode int, obj any
 
 // reply 内部写响应方法。
 func (r *Responder) reply(ctx *app.RequestContext, httpCode, bizCode int, data any, msg string) {
-	var anyData *anypb.Any
-	if data != nil {
-		if protoMsg, ok := data.(proto.Message); ok {
-			var err error
-			anyData, err = anypb.New(protoMsg)
-			if err != nil {
-				// 如果包装失败，记录错误但继续（data 将为 nil）
-				// TODO: 考虑使用日志记录
-				anyData = nil
-			}
+	// 尝试将 data 包装为 anypb.Any（仅对 protobuf 消息）
+	if protoMsg, ok := data.(proto.Message); ok {
+		anyData, err := anypb.New(protoMsg)
+		if err != nil {
+			// 包装失败，降级为 nil
+			anyData = nil
 		}
-		// 如果 data 不是 Protobuf 消息，anyData 保持为 nil
-		// JSON 序列化时会忽略 nil 字段
+		resp := &Response{Code: int32(bizCode), Msg: msg, Data: anyData}
+		r.writeResponse(ctx, httpCode, resp)
+	} else if data != nil {
+		// 非 protobuf 数据，使用通用 map 结构
+		resp := map[string]any{
+			"code": int32(bizCode),
+			"msg":  msg,
+			"data": data,
+		}
+		r.writeResponse(ctx, httpCode, resp)
+	} else {
+		// data 为 nil，使用 Response 结构（无 data 字段）
+		resp := &Response{Code: int32(bizCode), Msg: msg}
+		r.writeResponse(ctx, httpCode, resp)
 	}
-
-	resp := &Response{Code: int32(bizCode), Msg: msg, Data: anyData}
-	r.writeResponse(ctx, httpCode, resp)
 }
 
 // Success 成功响应。
