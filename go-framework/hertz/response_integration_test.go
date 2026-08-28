@@ -64,11 +64,12 @@ func TestResponder_Success_Integration(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, w.Code)
 
-	var resp Response
+	// 非 protobuf 数据使用通用 map 结构序列化
+	var resp map[string]any
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	assert.Equal(t, int32(http.StatusOK), resp.Code)
-	assert.Equal(t, "ok", resp.Msg)
-	assert.Equal(t, map[string]any{"id": "123"}, resp.Data)
+	assert.Equal(t, float64(http.StatusOK), resp["code"])
+	assert.Equal(t, "ok", resp["msg"])
+	assert.Equal(t, map[string]any{"id": "123"}, resp["data"])
 }
 
 func TestResponder_SuccessWithMsg_Integration(t *testing.T) {
@@ -247,4 +248,31 @@ func TestResponder_WithTranslator(t *testing.T) {
 	var resp Response
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Equal(t, "已翻译-success_message", resp.Msg)
+}
+
+// ── anypb.Any JSON 展开测试 ──
+
+// TestResponder_Success_ProtoData_AnyExpansion 验证 protobuf 消息作为 data 时，
+// JSON 序列化会展开 anypb.Any（而非 {type_url, value} 原始格式）。
+func TestResponder_Success_ProtoData_AnyExpansion(t *testing.T) {
+	r := NewResponder()
+	engine := route.NewEngine(config.NewOptions([]config.Option{}))
+	engine.Use(r.Middleware())
+	engine.GET("/success-proto", func(ctx context.Context, c *app.RequestContext) {
+		resp := RespondFrom(c)
+		// 使用 Response 作为 protobuf 消息测试数据
+		resp.Success(c, &Response{Code: 1, Msg: "inner"})
+	})
+
+	w := ut.PerformRequest(engine, http.MethodGet, "/success-proto", nil)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	body := w.Body.String()
+	// 验证 anypb.Any 被展开，包含内部字段
+	assert.Contains(t, body, `"code"`)
+	assert.Contains(t, body, `"msg"`)
+	// 不应包含 type_url 和 value 字段（未展开的 anypb.Any 格式）
+	assert.NotContains(t, body, `"type_url"`)
+	assert.NotContains(t, body, `"@"type"`)
 }
