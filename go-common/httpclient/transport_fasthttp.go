@@ -16,6 +16,10 @@ func newFasthttpTransport() Transport {
 }
 
 func (t *fasthttpTransport) Do(ctx context.Context, req *Request) (*Response, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	fReq := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(fReq)
 	fReq.Header.SetMethod(req.Method)
