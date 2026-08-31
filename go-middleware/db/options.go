@@ -8,6 +8,7 @@ type dbConfig struct {
 	driver string
 	source string
 	pool   *Config
+	trace  bool
 }
 
 // WithDriver 设置数据库驱动名称（mysql, postgres, sqlite3 等）。
@@ -34,5 +35,12 @@ func WithPoolConfig(cfg *Config) Option {
 		if cfg != nil {
 			c.pool = cfg
 		}
+	}
+}
+
+// WithTrace 启用 OpenTelemetry 查询追踪和连接池指标（基于 otelsql）。
+func WithTrace() Option {
+	return func(c *dbConfig) {
+		c.trace = true
 	}
 }

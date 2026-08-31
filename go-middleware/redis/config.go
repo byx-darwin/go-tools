@@ -23,6 +23,14 @@ type Config struct {
 	Protocol   int    `json:"protocol" yaml:"protocol"`
 	ClientName string `json:"client_name" yaml:"client_name"`
 
+	// TLS 配置
+	TLS struct {
+		// Enable 是否启用 TLS
+		Enable bool `json:"enable" yaml:"enable"`
+		// InsecureSkipVerify 跳过证书验证
+		InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
+	} `json:"tls" yaml:"tls"`
+
 	// 连接池
 	PoolSize     int `json:"pool_size" yaml:"pool_size"`
 	MinIdleConns int `json:"min_idle_conns" yaml:"min_idle_conns"`

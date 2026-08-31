@@ -16,6 +16,7 @@ go.work.sum
 # OS
 .DS_Store
 .claude/worktrees/
+.worktree/
 .claude/gh-issue/
 .claude/skills/
 .superpowers/

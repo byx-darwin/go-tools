@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"crypto/tls"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
@@ -50,7 +51,7 @@ func NewUniversalClient(ctx context.Context, cfg *Config) (Client, func(), error
 
 	if _, err := rdb.Ping(ctx).Result(); err != nil {
 		closeFn()
-		return nil, nil, err
+		return nil, nil, ErrConnect.Wrap(err)
 	}
 
 	return rdb, closeFn, nil
@@ -74,14 +75,14 @@ func NewClient(ctx context.Context, cfg *Config, opts ...ClientOption) (*redis.C
 	client := redis.NewClient(toOptions(cfg))
 	if o.trace {
 		if err := redisotel.InstrumentTracing(client); err != nil {
-			panic(err)
+			return nil, ErrInstrument.Wrap(err)
 		}
 		if err := redisotel.InstrumentMetrics(client); err != nil {
-			panic(err)
+			return nil, ErrInstrument.Wrap(err)
 		}
 	}
 	if _, err := client.Ping(ctx).Result(); err != nil {
-		return nil, err
+		return nil, ErrConnect.Wrap(err)
 	}
 	return client, nil
 }
@@ -150,6 +151,9 @@ func toFailoverOptions(cfg *Config) *redis.FailoverOptions {
 	if cfg.MaxRetryBackoff > 0 {
 		opts.MaxRetryBackoff = cfg.MaxRetryBackoff
 	}
+	if cfg.TLS.Enable {
+		opts.TLSConfig = &tls.Config{InsecureSkipVerify: cfg.TLS.InsecureSkipVerify} //nolint:gosec // 用户可通过配置显式关闭 TLS 校验
+	}
 	return opts
 }
 
@@ -198,5 +202,8 @@ func applyOpts(opts *redis.Options, cfg *Config) {
 	}
 	if cfg.MaxRetryBackoff > 0 {
 		opts.MaxRetryBackoff = cfg.MaxRetryBackoff
+	}
+	if cfg.TLS.Enable {
+		opts.TLSConfig = &tls.Config{InsecureSkipVerify: cfg.TLS.InsecureSkipVerify} //nolint:gosec // 用户可通过配置显式关闭 TLS 校验
 	}
 }

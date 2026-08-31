@@ -5,11 +5,17 @@ import (
 	"net/http"
 
 	elasticsearchv8 "github.com/elastic/go-elasticsearch/v8"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // NewClient 创建 Elasticsearch v8 客户端。
-// 使用官方 go-elasticsearch 库，支持 TLS 和认证配置。
-func NewClient(config Config) (*elasticsearchv8.Client, error) {
+// 使用官方 go-elasticsearch 库，支持 TLS 和认证配置，可选 OpenTelemetry 追踪（WithTrace）。
+func NewClient(config Config, opts ...ClientOption) (*elasticsearchv8.Client, error) {
+	o := &clientOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
 	cfg := elasticsearchv8.Config{
 		Addresses: config.Addresses,
 		Username:  config.Username,
@@ -39,5 +45,13 @@ func NewClient(config Config) (*elasticsearchv8.Client, error) {
 		}
 	}
 
-	return elasticsearchv8.NewClient(cfg)
+	if o.trace {
+		cfg.Transport = otelhttp.NewTransport(cfg.Transport)
+	}
+
+	client, err := elasticsearchv8.NewClient(cfg)
+	if err != nil {
+		return nil, ErrInit.Wrap(err)
+	}
+	return client, nil
 }

@@ -101,9 +101,12 @@ go-framework/error (frameworkerror)  obs 段 20601-20605  ── observability�
 go-auth/error (autherror)  40001-40009  ── token/session/device/JWT → HTTP 200（AuthCodeMin=40000 / AuthCodeMax=40099）
 
 go-middleware  20000-20699（码段边界，包内按需定义）
+  redis        20101      → HTTP 503（连接/Ping 失败）
+  kafka        20201-20203 → HTTP 500（write/read/commit 失败）
+  db           20301-20302 → HTTP 500/503（open 失败 20301 → 500，connect 失败 20302 → 503）
   clickhouse   20401-20403  → HTTP 503（query 失败 20402 → 500）
   tls          20501-20504  → HTTP 503（send 失败 20502 → 500）
-  redis/kafka/db/es 预留分配（尚无定义；需要时在各包内定义并 init() 注册）
+  es           20701       → HTTP 503（客户端初始化失败）
 
 项目业务       40100-59999  ── HTTP 200（ProjectCodeMin=40100；业务码段下限为 AuthCodeMin=40000；库内无预定义，以下为推荐分配）
   40010-40012  数据（NotFound/Duplicate/Conflict）
@@ -114,7 +117,7 @@ go-middleware  20000-20699（码段边界，包内按需定义）
 
 HTTP 状态映射机制：各属主模块在 `init()` 中调用 `goerror.RegisterHTTPStatuses` 注册细粒度映射；`goerror.HTTPStatus` 先查注册表，再走范围兜底（业务码 ≥ AuthCodeMin（40000）→ 200，其余未注册 >0 → 500，非 oops → 200）。
 
-详见 `go-common/error/`（机制）、`go-framework/error/`（框架码）、`go-auth/error/`（认证码）、`go-middleware/{clickhouse,tls}/errors.go`（中间件码）。
+详见 `go-common/error/`（机制）、`go-framework/error/`（框架码）、`go-auth/error/`（认证码）、`go-middleware/{redis,kafka,db,clickhouse,tls,es}/errors.go`（中间件码）。
 
 ## 五、关键技术决策
 

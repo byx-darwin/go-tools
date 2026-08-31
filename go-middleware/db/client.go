@@ -3,7 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"time"
+
+	"github.com/XSAM/otelsql"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // DB 数据库连接封装
@@ -21,6 +23,7 @@ type DB struct {
 //	    db.WithDriver("mysql"),
 //	    db.WithSource("user:pass@tcp(localhost:3306)/dbname"),
 //	    db.WithPoolConfig(&db.Config{MaxOpenCons: 10}),
+//	    db.WithTrace(),
 //	)
 func NewDB(ctx context.Context, opts ...Option) (*DB, func(), error) {
 	cfg := &dbConfig{}
@@ -28,9 +31,17 @@ func NewDB(ctx context.Context, opts ...Option) (*DB, func(), error) {
 		opt(cfg)
 	}
 
-	database, err := sql.Open(cfg.driver, cfg.source)
+	var (
+		database *sql.DB
+		err      error
+	)
+	if cfg.trace {
+		database, err = otelsql.Open(cfg.driver, cfg.source)
+	} else {
+		database, err = sql.Open(cfg.driver, cfg.source)
+	}
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, ErrOpen.Wrap(err)
 	}
 
 	// Apply pool config
@@ -42,18 +53,29 @@ func NewDB(ctx context.Context, opts ...Option) (*DB, func(), error) {
 			database.SetMaxIdleConns(cfg.pool.MaxIdleCons)
 		}
 		if cfg.pool.ConMaxLifetime > 0 {
-			database.SetConnMaxLifetime(time.Duration(cfg.pool.ConMaxLifetime) * time.Second)
+			database.SetConnMaxLifetime(cfg.pool.ConMaxLifetime)
 		}
 		if cfg.pool.MaxIdleTime > 0 {
-			database.SetConnMaxIdleTime(time.Duration(cfg.pool.MaxIdleTime) * time.Second)
+			database.SetConnMaxIdleTime(cfg.pool.MaxIdleTime)
 		}
 	}
 
-	closeFn := func() { _ = database.Close() }
+	var statsReg metric.Registration
+	if cfg.trace {
+		// 连接池指标注册失败不应阻断数据库连接建立，仅静默降级。
+		statsReg, _ = otelsql.RegisterDBStatsMetrics(database)
+	}
+
+	closeFn := func() {
+		if statsReg != nil {
+			_ = statsReg.Unregister()
+		}
+		_ = database.Close()
+	}
 
 	if err := database.PingContext(ctx); err != nil {
 		closeFn()
-		return nil, nil, err
+		return nil, nil, ErrConnect.Wrap(err)
 	}
 
 	return &DB{DB: database}, closeFn, nil

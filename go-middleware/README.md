@@ -15,10 +15,10 @@ go get github.com/byx-darwin/go-tools/go-middleware
 | 包 | 说明 |
 |----|------|
 | `redis` | Redis 客户端（支持 Sentinel，UniversalClient，OTel 追踪） |
-| `kafka` | Kafka 生产者和消费者（基于 `github.com/segmentio/kafka-go`） |
-| `db` | 数据库配置 + 连接池工厂 |
-| `es` | Elasticsearch v8 客户端 |
-| `clickhouse` | ClickHouse 原生协议客户端（基于 `clickhouse-go/v2`；含包内错误码 20401-20403） |
+| `kafka` | Kafka 生产者和消费者（基于 `github.com/segmentio/kafka-go`；OTel 追踪，可选；DLQ 转发 + offset/lag 查询；含包内错误码 20201-20206） |
+| `db` | 数据库配置 + 连接池工厂（OTel 追踪，可选） |
+| `es` | Elasticsearch v8 客户端（OTel 追踪，可选） |
+| `clickhouse` | ClickHouse 原生协议客户端（基于 `clickhouse-go/v2`；含包内错误码 20401-20403；OTel 追踪，可选） |
 | `tls` | 火山引擎日志服务（Producer + FileShipper；含包内错误码 20501-20504） |
 
 ## 配置对齐
@@ -43,3 +43,5 @@ go-framework/*/observability  →  OTel Traces → Jaeger
 - `github.com/elastic/go-elasticsearch/v8`
 - `github.com/ClickHouse/clickhouse-go/v2`
 - `github.com/volcengine/volc-sdk-golang/service/tls`
+- `github.com/XSAM/otelsql`（db 可选 OTel 追踪）
+- `go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp`（es 可选 OTel 追踪）

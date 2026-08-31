@@ -254,6 +254,34 @@ func TestRedisDeviceStore_ListDevices(t *testing.T) {
 	assert.Nil(t, devices)
 }
 
+func TestRedisDeviceStore_AddDevice_DoesNotExtendOtherDevicesTTL(t *testing.T) {
+	mr, client := newTestDeviceRedisClient(t)
+	ctx := context.Background()
+	s := NewRedisDeviceStore(client, WithDeviceTTL(5*time.Second))
+
+	_, err := s.AddDevice(ctx, "user-1", "dev-1", "jti-1", 5)
+	require.NoError(t, err)
+
+	// 快进到 dev-1 快过期但还没过期的时间点。
+	mr.FastForward(4 * time.Second)
+
+	// 添加第二个设备：与 MemoryDeviceStore 一致，不应刷新 dev-1 的 TTL。
+	_, err = s.AddDevice(ctx, "user-1", "dev-2", "jti-2", 5)
+	require.NoError(t, err)
+
+	// 再快进 2s：dev-1 从创建起已过 6s（超过 5s TTL）应过期；
+	// dev-2 从创建起只过 2s，应仍然有效。
+	mr.FastForward(2 * time.Second)
+
+	ok, err := s.CheckDevice(ctx, "user-1", "dev-1", "jti-1")
+	require.NoError(t, err)
+	assert.False(t, ok, "dev-1 的 TTL 不应因 dev-2 加入而被刷新")
+
+	ok, err = s.CheckDevice(ctx, "user-1", "dev-2", "jti-2")
+	require.NoError(t, err)
+	assert.True(t, ok, "dev-2 刚创建应仍然有效")
+}
+
 func TestRedisDeviceStore_DeviceTTLExpiry(t *testing.T) {
 	mr, client := newTestDeviceRedisClient(t)
 	ctx := context.Background()

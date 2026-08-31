@@ -27,7 +27,9 @@ type deviceEntry struct {
 //   - Field: {deviceID}
 //   - Value: JSON(jti, created_at)
 //
-// 支持 TTL 自动过期和 maxDevices 限制（超出时按 created_at 踢出最旧设备）。
+// 每个设备字段拥有独立 TTL（HEXPIRE，需 Redis >= 7.4），添加新设备不会延长同一
+// 用户下其他已有设备的存活时间，与 MemoryDeviceStore 的按设备独立 TTL 语义保持一致。
+// 支持 maxDevices 限制（超出时按 created_at 踢出最旧设备）。
 type RedisDeviceStore struct {
 	client redis.UniversalClient
 	ttl    time.Duration
@@ -107,8 +109,8 @@ func (s *RedisDeviceStore) AddDevice(ctx context.Context, userUUID, deviceID, jt
 		return nil, oops.Wrapf(err, "device add")
 	}
 
-	// 刷新整个 Hash 的 TTL。
-	if err = s.client.Expire(ctx, key, s.ttl).Err(); err != nil {
+	// 仅刷新新增/续期设备自身字段的 TTL，不影响同一用户下其他设备的存活时间。
+	if err = s.client.HExpire(ctx, key, s.ttl, deviceID).Err(); err != nil {
 		return nil, oops.Wrapf(err, "device expire")
 	}
 
