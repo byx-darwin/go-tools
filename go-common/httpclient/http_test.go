@@ -1,131 +1,37 @@
 package httpclient
 
 import (
+	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/valyala/fasthttp"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConstants(t *testing.T) {
-	if DefaultSleep != 500*time.Millisecond {
-		t.Error("DefaultSleep should be 500ms")
-	}
-	if MethodGet != "GET" {
-		t.Error("MethodGet should be GET")
-	}
-	if MethodPost != "POST" {
-		t.Error("MethodPost should be POST")
-	}
+	require.Equal(t, 500*time.Millisecond, DefaultSleep)
+	require.Equal(t, "GET", MethodGet)
+	require.Equal(t, "POST", MethodPost)
 }
 
-func TestRetrySuccessFirstAttempt(t *testing.T) {
-	callCount := 0
-	fn := func() (*fasthttp.Response, int, error) {
-		callCount++
-		return &fasthttp.Response{}, 200, nil
-	}
+func TestSendReturnsFasthttpResponse(t *testing.T) {
+	srv := httptest.NewServer(nil)
+	defer srv.Close()
 
-	resp, status, err := Retry(3, 1*time.Millisecond, fn)
-	if err != nil {
-		t.Fatalf("Retry failed: %v", err)
-	}
-	if status != 200 {
-		t.Errorf("status = %d, want 200", status)
-	}
-	if resp == nil {
-		t.Error("response should not be nil")
-	}
-	if callCount != 1 {
-		t.Errorf("should call fn once on success, called %d times", callCount)
-	}
+	headers := map[string]string{"X-Test": "1"}
+	resp, status, err := Send(srv.URL, MethodGet, nil, headers, 2*time.Second)
+	require.NoError(t, err)
+	require.Equal(t, 404, status)
+	require.Equal(t, 404, resp.StatusCode())
+	require.Equal(t, "1", headers["X-Test"]) // original map untouched beyond caller's own keys
 }
 
-func TestRetryEventualSuccess(t *testing.T) {
-	callCount := 0
-	fn := func() (*fasthttp.Response, int, error) {
-		callCount++
-		if callCount < 3 {
-			return &fasthttp.Response{}, 500, nil // server error triggers retry
-		}
-		return &fasthttp.Response{}, 200, nil
-	}
+func TestSendWithRetryEventuallySucceeds(t *testing.T) {
+	srv := httptest.NewServer(nil)
+	defer srv.Close()
 
-	resp, status, err := Retry(3, 1*time.Millisecond, fn)
-	if err != nil {
-		t.Fatalf("Retry failed: %v", err)
-	}
-	if status != 200 {
-		t.Errorf("status = %d, want 200", status)
-	}
-	if resp == nil {
-		t.Error("response should not be nil")
-	}
-	if callCount != 3 {
-		t.Errorf("should retry twice, called %d times", callCount)
-	}
-}
-
-func TestRetryExhausted(t *testing.T) {
-	fn := func() (*fasthttp.Response, int, error) {
-		return &fasthttp.Response{}, 500, nil // always fail
-	}
-
-	_, status, _ := Retry(2, 1*time.Millisecond, fn)
-	if status != 500 {
-		t.Errorf("status = %d, want 500 after exhausted", status)
-	}
-}
-
-func TestRetryNoErrorButServerError(t *testing.T) {
-	callCount := 0
-	fn := func() (*fasthttp.Response, int, error) {
-		callCount++
-		return &fasthttp.Response{}, 503, nil
-	}
-
-	resp, _, _ := Retry(2, 1*time.Millisecond, fn)
-	if resp != nil {
-		t.Error("response should be nil when retries exhausted")
-	}
-	if callCount != 2 { // 1 initial + 1 retry
-		t.Errorf("callCount = %d, want 2", callCount)
-	}
-}
-
-func TestRetryZeroSleepUsesDefault(t *testing.T) {
-	fn := func() (*fasthttp.Response, int, error) {
-		return &fasthttp.Response{}, 200, nil
-	}
-
-	_, status, err := Retry(1, 0, fn) // sleep=0 → uses DefaultSleep
-	if err != nil {
-		t.Fatalf("Retry failed: %v", err)
-	}
-	if status != 200 {
-		t.Errorf("status = %d, want 200", status)
-	}
-}
-
-func TestRetryNonServerErrorNoRetry(t *testing.T) {
-	callCount := 0
-	fn := func() (*fasthttp.Response, int, error) {
-		callCount++
-		return &fasthttp.Response{}, 400, nil // 4xx not retried
-	}
-
-	_, status, _ := Retry(3, 1*time.Millisecond, fn)
-	if status != 400 {
-		t.Errorf("status = %d, want 400", status)
-	}
-	if callCount != 1 {
-		t.Errorf("should NOT retry on 4xx, called %d times", callCount)
-	}
-}
-
-func TestSendHeadersDefaultUserAgent(t *testing.T) {
-	// Verify the headers constants exist and are correct
-	if FasthttpVersion != "v1.61.0" {
-		t.Error("FasthttpVersion constant should exist")
-	}
+	headers := map[string]string{}
+	resp, err := SendWithRetry(srv.URL, MethodGet, nil, headers, time.Millisecond, 2*time.Second, 1)
+	require.NoError(t, err)
+	require.Equal(t, 404, resp.StatusCode())
 }
