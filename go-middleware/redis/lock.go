@@ -1,6 +1,9 @@
 package redis
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"sync"
 	"time"
 
@@ -79,3 +82,39 @@ func NewMutex(client goredis.UniversalClient, key string, opts ...MutexOption) *
 		watchdog:      o.watchdog,
 	}
 }
+
+func randomToken() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// TryLock 单次非阻塞尝试获取锁。成功后若启用 watchdog 会自动启动续期。
+func (m *Mutex) TryLock(ctx context.Context) (bool, error) {
+	token, err := randomToken()
+	if err != nil {
+		return false, ErrLockAcquire.Wrap(err)
+	}
+
+	ok, err := m.client.SetNX(ctx, m.key, token, m.ttl).Result()
+	if err != nil {
+		return false, ErrLockAcquire.Wrap(err)
+	}
+	if !ok {
+		return false, nil
+	}
+
+	m.mu.Lock()
+	m.token = token
+	m.mu.Unlock()
+
+	if m.watchdog {
+		m.startWatchdog()
+	}
+	return true, nil
+}
+
+// startWatchdog 在 Task 6 中实现；此处先占位为空操作以保证 TryLock 可编译独立测试。
+func (m *Mutex) startWatchdog() {}

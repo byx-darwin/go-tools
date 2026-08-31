@@ -1,12 +1,14 @@
 package redis
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newTestRedisClient(t *testing.T) (*miniredis.Miniredis, goredis.UniversalClient) {
@@ -49,4 +51,30 @@ func TestMutexOption_IgnoresInvalidValues(t *testing.T) {
 
 	assert.Equal(t, defaultMutexTTL, m.ttl)
 	assert.Equal(t, defaultRetryInterval, m.retryInterval)
+}
+
+func TestMutex_TryLock_Success(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	m := NewMutex(client, "lock:trylock", WithWatchdog(false))
+
+	ok, err := m.TryLock(context.Background())
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.NotEmpty(t, m.token)
+}
+
+func TestMutex_TryLock_AlreadyHeld(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	first := NewMutex(client, "lock:contested", WithWatchdog(false))
+	second := NewMutex(client, "lock:contested", WithWatchdog(false))
+
+	ok1, err1 := first.TryLock(context.Background())
+	require.NoError(t, err1)
+	require.True(t, ok1)
+
+	ok2, err2 := second.TryLock(context.Background())
+
+	assert.NoError(t, err2)
+	assert.False(t, ok2)
 }
