@@ -42,9 +42,9 @@ func (t *fasthttpTransport) Do(ctx context.Context, req *Request) (*Response, er
 	}
 
 	header := make(http.Header)
-	fResp.Header.VisitAll(func(k, v []byte) {
+	for k, v := range fResp.Header.All() {
 		header[string(k)] = append(header[string(k)], string(v))
-	})
+	}
 	body := make([]byte, len(fResp.Body()))
 	copy(body, fResp.Body())
 
