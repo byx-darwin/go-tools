@@ -1,6 +1,11 @@
 package httpclient
 
-import "time"
+import (
+	"context"
+	"math/rand"
+	"net/http"
+	"time"
+)
 
 const defaultUserAgent = "sznc-fasthttp-client-" + FasthttpVersion
 
@@ -78,4 +83,54 @@ func NewClient(opts ...Option) *Client {
 		opt(c)
 	}
 	return c
+}
+
+// Do 发送一次 HTTP 请求，按 Client 配置的 maxRetries 自动重试。
+// 网络层错误（err != nil）或 5xx 状态码触发重试；4xx 不重试。
+// 重试等待期间响应 ctx 取消/超时。
+func (c *Client) Do(ctx context.Context, method, url string, body []byte, headers map[string]string) (*Response, error) {
+	reqHeaders := make(map[string]string, len(headers)+1)
+	for k, v := range headers {
+		reqHeaders[k] = v
+	}
+	reqHeaders["User-Agent"] = c.userAgent
+
+	callCtx := ctx
+	var cancel context.CancelFunc
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline && c.timeout > 0 {
+		callCtx, cancel = context.WithTimeout(ctx, c.timeout)
+		defer cancel()
+	}
+
+	req := &Request{Method: method, URL: url, Body: body, Headers: reqHeaders}
+
+	interval := c.retryInterval
+	attempts := c.maxRetries + 1
+	var lastResp *Response
+	var lastErr error
+	for attempt := 0; attempt < attempts; attempt++ {
+		lastResp, lastErr = c.transport.Do(callCtx, req)
+		if !shouldRetry(lastResp, lastErr) {
+			return lastResp, lastErr
+		}
+		if attempt == attempts-1 {
+			break
+		}
+
+		wait := interval + time.Duration(rand.Int63n(int64(interval)+1))/2
+		select {
+		case <-callCtx.Done():
+			return nil, callCtx.Err()
+		case <-time.After(wait):
+		}
+		interval *= 2
+	}
+	return lastResp, lastErr
+}
+
+func shouldRetry(resp *Response, err error) bool {
+	if err != nil {
+		return true
+	}
+	return resp.StatusCode >= http.StatusInternalServerError
 }
