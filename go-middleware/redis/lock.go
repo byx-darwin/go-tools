@@ -117,8 +117,51 @@ func (m *Mutex) TryLock(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// startWatchdog 在 Task 6 中实现；此处先占位为空操作以保证 TryLock 可编译独立测试。
-func (m *Mutex) startWatchdog() {}
+var renewScript = goredis.NewScript(`
+if redis.call('get', KEYS[1]) == ARGV[1] then
+	return redis.call('pexpire', KEYS[1], ARGV[2])
+else
+	return 0
+end
+`)
+
+// startWatchdog 启动后台续期 goroutine：按 ttl/3 周期执行 Lua 续期脚本，
+// 直到 stopWatchdog 被调用或续期失败（锁已丢失）。
+func (m *Mutex) startWatchdog() {
+	stop := make(chan struct{})
+	m.mu.Lock()
+	m.stopCh = stop
+	m.mu.Unlock()
+
+	interval := m.ttl / 3
+	if interval <= 0 {
+		interval = time.Millisecond
+	}
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				m.mu.Lock()
+				token := m.token
+				m.mu.Unlock()
+				if token == "" {
+					return
+				}
+
+				res, err := renewScript.Run(context.Background(), m.client, []string{m.key}, token, m.ttl.Milliseconds()).Int64()
+				if err != nil || res == 0 {
+					return
+				}
+			}
+		}
+	}()
+}
 
 // releaseScript 校验 KEYS[1] 的值等于 ARGV[1]（持有者 token）后再删除，避免误删他人持有的锁。
 var releaseScript = goredis.NewScript(`
@@ -156,8 +199,17 @@ func (m *Mutex) Unlock(ctx context.Context) error {
 	return nil
 }
 
-// stopWatchdog 在 Task 6 中实现完整逻辑；此处先占位为空操作。
-func (m *Mutex) stopWatchdog() {}
+// stopWatchdog 停止续期 goroutine（幂等，可安全重复调用）。
+func (m *Mutex) stopWatchdog() {
+	m.mu.Lock()
+	stop := m.stopCh
+	m.stopCh = nil
+	m.mu.Unlock()
+
+	if stop != nil {
+		close(stop)
+	}
+}
 
 // Lock 阻塞获取锁，直到成功或 ctx 取消。成功后自动启动 watchdog（若启用）。
 func (m *Mutex) Lock(ctx context.Context) error {
