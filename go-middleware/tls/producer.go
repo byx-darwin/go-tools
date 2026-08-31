@@ -51,6 +51,9 @@ type Producer struct {
 	mu      sync.Mutex
 	closeCh chan struct{}
 	done    chan struct{}
+	// closeErr 保存关闭前最终 flush 的结果，仅由 flushLoop 在 close(done) 之前写入，
+	// Close 在 <-done 之后读取，通过 channel 建立 happens-before，无需额外加锁。
+	closeErr error
 }
 
 // NewProducer 创建 TLS Producer。
@@ -158,6 +161,9 @@ func (p *Producer) flushLoop() {
 	for {
 		select {
 		case <-p.closeCh:
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			p.closeErr = p.flush(ctx)
+			cancel()
 			return
 		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -167,9 +173,9 @@ func (p *Producer) flushLoop() {
 	}
 }
 
-// Close 关闭 Producer。
+// Close 关闭 Producer，并在退出前对缓冲区做最终 flush，避免未满批次的日志丢失。
 func (p *Producer) Close() error {
 	close(p.closeCh)
 	<-p.done
-	return nil
+	return p.closeErr
 }

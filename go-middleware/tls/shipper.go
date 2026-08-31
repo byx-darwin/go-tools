@@ -14,6 +14,7 @@ package tls
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -102,6 +103,11 @@ func (s *FileShipper) run() {
 	}
 }
 
+// shipSince 从 offset 开始读取新增的完整日志行并上报。
+//
+// 逐行读取而不是一次性 Scan 完整个新增区间：一旦某行 SendLog 失败，
+// 立即停止并返回该行之前的 offset，使这一行在下次 tick 时被重新读取，
+// 避免像之前那样无条件推进到文件末尾、静默丢弃发送失败的日志行。
 func (s *FileShipper) shipSince(offset int64) (int64, error) {
 	f, err := os.Open(s.config.FilePath)
 	if err != nil {
@@ -117,18 +123,31 @@ func (s *FileShipper) shipSince(offset int64) (int64, error) {
 		return offset, nil
 	}
 
-	_, _ = f.Seek(offset, io.SeekStart)
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, s.config.MaxLineSize), s.config.MaxLineSize)
-
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		fields := parseJSONLine(line)
-		if fields != nil {
-			_ = s.producer.SendLog(s.ctx, fields)
-		}
+	if _, err := f.Seek(offset, io.SeekStart); err != nil {
+		return offset, err
 	}
-	return fi.Size(), nil
+
+	reader := bufio.NewReaderSize(f, s.config.MaxLineSize)
+	pos := offset
+	for {
+		line, readErr := reader.ReadBytes('\n')
+		if readErr == io.EOF {
+			// 末尾不完整的行（可能仍在被写入），留到下次 tick 重新读取。
+			break
+		}
+		if readErr != nil {
+			return pos, readErr
+		}
+
+		fields := parseJSONLine(bytes.TrimRight(line, "\n"))
+		if fields != nil {
+			if err := s.producer.SendLog(s.ctx, fields); err != nil {
+				return pos, nil
+			}
+		}
+		pos += int64(len(line))
+	}
+	return pos, nil
 }
 
 func parseJSONLine(line []byte) map[string]string {

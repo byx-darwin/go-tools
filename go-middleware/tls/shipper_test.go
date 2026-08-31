@@ -80,3 +80,36 @@ func TestFileShipper_Defaults(t *testing.T) {
 	assert.Equal(t, 64*1024, shipper.config.MaxLineSize)
 	_ = shipper.Close()
 }
+
+func TestFileShipper_ShipSince_StopsBeforeFailedLine(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/app.log"
+	line1 := `{"level":"info","msg":"line1"}` + "\n"
+	line2 := `{"level":"info","msg":"line2"}` + "\n"
+	require.NoError(t, os.WriteFile(path, []byte(line1+line2), 0o644))
+
+	// BatchSize=1 makes every SendLog call flush immediately, and the fake
+	// endpoint makes that flush fail — so the very first line should fail.
+	shipper, err := NewFileShipper(FileShipperConfig{
+		ProducerConfig: ProducerConfig{
+			Endpoint:        "tls.example.com",
+			AccessKeyID:     "ak",
+			AccessKeySecret: "sk",
+			Region:          "cn-beijing",
+			TopicID:         "topic-123",
+			BatchSize:       1,
+			FlushInterval:   time.Hour,
+		},
+		FilePath:      path,
+		CheckInterval: time.Hour,
+	})
+	require.NoError(t, err)
+	defer func() { _ = shipper.Close() }()
+
+	newOffset, shipErr := shipper.shipSince(0)
+	assert.NoError(t, shipErr)
+	// The failed first line must not be skipped: offset stays at 0 so it is
+	// retried on the next tick, instead of jumping past it (previous behavior
+	// silently dropped the line and advanced to fi.Size()).
+	assert.Equal(t, int64(0), newOffset)
+}
