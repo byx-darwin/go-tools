@@ -111,3 +111,42 @@ func TestLimiter_AllowN_ZeroRate(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, ok, "zero-rate limiter must deny once the initial burst is exhausted")
 }
+
+func TestLimiter_Wait_SucceedsAfterRefill(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	ctx := context.Background()
+	l := NewLimiter(client, "limiter:wait", 100, 1, WithWaitPollInterval(5*time.Millisecond)) // fast refill for test speed
+
+	ok, err := l.Allow(ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	waitCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+	defer cancel()
+
+	err = l.Wait(waitCtx)
+
+	assert.NoError(t, err, "Wait should succeed once tokens refill at rate=100/s")
+}
+
+func TestLimiter_Wait_ContextTimeout(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	ctx := context.Background()
+	// rate=0: refill is always exactly 0 regardless of elapsed time, so tokens
+	// never leave the hash in scientific-notation form (e.g. "7e-06"), which
+	// miniredis's embedded Lua interpreter fails to parse back via tonumber()
+	// for integer-mantissa exponents — that parser gap would otherwise reset
+	// the bucket to full and make Wait spuriously succeed.
+	l := NewLimiter(client, "limiter:wait-timeout", 0, 1, WithWaitPollInterval(5*time.Millisecond)) // never refills
+
+	ok, err := l.Allow(ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Millisecond)
+	defer cancel()
+
+	err = l.Wait(waitCtx)
+
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}

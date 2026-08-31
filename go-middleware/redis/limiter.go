@@ -102,6 +102,25 @@ func (l *Limiter) AllowN(ctx context.Context, n int) (bool, error) {
 	return res == 1, nil
 }
 
+// Wait 阻塞直到成功获取 1 个令牌，或 ctx 取消/超时返回其错误。
+func (l *Limiter) Wait(ctx context.Context) error {
+	for {
+		ok, err := l.Allow(ctx)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(l.waitPollInterval):
+		}
+	}
+}
+
 // ttlMillis 计算 bucket key 的过期时间（约为完全补满所需时间的 2 倍，至少 1 秒），
 // 避免闲置 key 常驻内存。rate <= 0 时无法计算有意义的补满时间，回退到 1 秒下限，
 // 避免除以零导致 +Inf/NaN 进而使 PEXPIRE 溢出或清空 key。
