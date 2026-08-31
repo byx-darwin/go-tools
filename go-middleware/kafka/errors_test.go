@@ -14,6 +14,9 @@ func TestCodeValues(t *testing.T) {
 	assert.Equal(t, 20201, kafka.CodeWrite)
 	assert.Equal(t, 20202, kafka.CodeRead)
 	assert.Equal(t, 20203, kafka.CodeCommit)
+	assert.Equal(t, 20204, kafka.CodeDLQForward)
+	assert.Equal(t, 20205, kafka.CodeOffsetQuery)
+	assert.Equal(t, 20206, kafka.CodeSeek)
 }
 
 // TestPredefinedErrors 构造器 code + public 消息符合预期。
@@ -29,6 +32,18 @@ func TestPredefinedErrors(t *testing.T) {
 	code, public = goerror.Extract(kafka.ErrCommit.Wrap(errors.New("x")))
 	assert.Equal(t, 20203, code)
 	assert.Equal(t, "kafka_commit_error", public)
+
+	code, public = goerror.Extract(kafka.ErrDLQForward.Wrap(errors.New("x")))
+	assert.Equal(t, 20204, code)
+	assert.Equal(t, "kafka_dlq_forward_error", public)
+
+	code, public = goerror.Extract(kafka.ErrOffsetQuery.Wrap(errors.New("x")))
+	assert.Equal(t, 20205, code)
+	assert.Equal(t, "kafka_offset_query_error", public)
+
+	code, public = goerror.Extract(kafka.ErrSeek.Wrap(errors.New("x")))
+	assert.Equal(t, 20206, code)
+	assert.Equal(t, "kafka_seek_error", public)
 }
 
 // TestHTTPStatusRegistration init() 注册的 HTTP 状态映射。
@@ -36,4 +51,7 @@ func TestHTTPStatusRegistration(t *testing.T) {
 	assert.Equal(t, 500, goerror.HTTPStatus(kafka.ErrWrite.Wrap(errors.New("x"))))
 	assert.Equal(t, 500, goerror.HTTPStatus(kafka.ErrRead.Wrap(errors.New("x"))))
 	assert.Equal(t, 500, goerror.HTTPStatus(kafka.ErrCommit.Wrap(errors.New("x"))))
+	assert.Equal(t, 500, goerror.HTTPStatus(kafka.ErrDLQForward.Wrap(errors.New("x"))))
+	assert.Equal(t, 500, goerror.HTTPStatus(kafka.ErrOffsetQuery.Wrap(errors.New("x"))))
+	assert.Equal(t, 500, goerror.HTTPStatus(kafka.ErrSeek.Wrap(errors.New("x"))))
 }
