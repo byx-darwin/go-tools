@@ -20,6 +20,19 @@ func (r fakeRow) Err() error           { return r.err }
 func (r fakeRow) Scan(...any) error    { return r.err }
 func (r fakeRow) ScanStruct(any) error { return r.err }
 
+// fakeRows 是 driver.Rows 的最小实现，仅用于测试 tracedConn 的透传行为。
+type fakeRows struct{ closed bool }
+
+func (r *fakeRows) Next() bool                       { return false }
+func (r *fakeRows) Scan(...any) error                { return nil }
+func (r *fakeRows) ScanStruct(any) error             { return nil }
+func (r *fakeRows) ColumnTypes() []driver.ColumnType { return nil }
+func (r *fakeRows) Totals(...any) error              { return nil }
+func (r *fakeRows) Columns() []string                { return nil }
+func (r *fakeRows) Close() error                     { r.closed = true; return nil }
+func (r *fakeRows) Err() error                       { return nil }
+func (r *fakeRows) HasData() bool                    { return false }
+
 // fakeConn 是 driver.Conn 的最小实现，记录调用参数并返回预设结果，
 // 用于验证 tracedConn 是否正确透传到内层 Conn。
 type fakeConn struct {
@@ -50,7 +63,7 @@ func (c *fakeConn) Query(_ context.Context, query string, _ ...any) (driver.Rows
 	if c.err != nil {
 		return nil, c.err
 	}
-	return nil, nil
+	return &fakeRows{}, nil
 }
 
 func (c *fakeConn) QueryRow(_ context.Context, query string, _ ...any) driver.Row {
@@ -104,9 +117,10 @@ func TestTracedConn_Success(t *testing.T) {
 	require.NoError(t, conn.Select(ctx, nil, "SELECT 1"))
 	assert.True(t, inner.selectCalled)
 
-	_, err := conn.Query(ctx, "SELECT 2")
+	rows, err := conn.Query(ctx, "SELECT 2")
 	require.NoError(t, err)
 	assert.True(t, inner.queryCalled)
+	require.NoError(t, rows.Close())
 
 	row := conn.QueryRow(ctx, "SELECT 3")
 	require.NoError(t, row.Err())
