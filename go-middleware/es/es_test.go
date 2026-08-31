@@ -105,3 +105,17 @@ func TestNewClient_Defaults(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 }
+
+func TestClientOption_WithTrace(t *testing.T) {
+	o := &clientOptions{}
+	WithTrace()(o)
+	assert.True(t, o.trace)
+}
+
+func TestNewClient_WithTrace(t *testing.T) {
+	client, err := NewClient(Config{
+		Addresses: []string{"http://localhost:9200"},
+	}, WithTrace())
+	assert.NoError(t, err)
+	assert.NotNil(t, client)
+}
