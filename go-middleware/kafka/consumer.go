@@ -16,6 +16,11 @@ import (
 type Consumer struct {
 	r      *kafka.Reader
 	tracer trace.Tracer
+
+	dlqSender      DLQSender
+	dlqTopic       string
+	dlqMaxAttempts int
+	failureCounter FailureCounter
 }
 
 // NewConsumer 创建 Kafka Consumer，可选 OpenTelemetry 追踪（WithTrace）。
@@ -55,6 +60,10 @@ func NewConsumer(cfg ReaderConfig, opts ...ClientOption) *Consumer {
 	if o.trace {
 		c.tracer = otel.Tracer(instrumentationName)
 	}
+	c.dlqSender = o.dlqSender
+	c.dlqTopic = o.dlqTopic
+	c.dlqMaxAttempts = o.dlqMaxAttempts
+	c.failureCounter = o.failureCounter
 	return c
 }
 
