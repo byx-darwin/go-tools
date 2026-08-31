@@ -158,3 +158,25 @@ func (m *Mutex) Unlock(ctx context.Context) error {
 
 // stopWatchdog 在 Task 6 中实现完整逻辑；此处先占位为空操作。
 func (m *Mutex) stopWatchdog() {}
+
+// Lock 阻塞获取锁，直到成功或 ctx 取消。成功后自动启动 watchdog（若启用）。
+func (m *Mutex) Lock(ctx context.Context) error {
+	ticker := time.NewTicker(m.retryInterval)
+	defer ticker.Stop()
+
+	for {
+		ok, err := m.TryLock(ctx)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ErrLockAcquire.Wrap(ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}

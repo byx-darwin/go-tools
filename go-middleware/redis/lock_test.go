@@ -131,3 +131,47 @@ func TestMutex_Unlock_HeldByOther(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), exists, "owner's lock must remain untouched")
 }
+
+func TestMutex_Lock_WaitsForRelease(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	ctx := context.Background()
+	holder := NewMutex(client, "lock:wait", WithWatchdog(false), WithRetryInterval(10*time.Millisecond))
+	waiter := NewMutex(client, "lock:wait", WithWatchdog(false), WithRetryInterval(10*time.Millisecond))
+
+	ok, err := holder.TryLock(ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- waiter.Lock(ctx)
+	}()
+
+	time.Sleep(30 * time.Millisecond)
+	require.NoError(t, holder.Unlock(ctx))
+
+	select {
+	case err := <-done:
+		assert.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("waiter.Lock did not return after holder released the lock")
+	}
+}
+
+func TestMutex_Lock_ContextCanceled(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	holder := NewMutex(client, "lock:cancel", WithWatchdog(false))
+	waiter := NewMutex(client, "lock:cancel", WithWatchdog(false), WithRetryInterval(10*time.Millisecond))
+
+	ok, err := holder.TryLock(context.Background())
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+
+	err = waiter.Lock(ctx)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeLockAcquire, code)
+}
