@@ -1,6 +1,8 @@
 // Package db 提供数据库配置结构体。
 package db
 
+import "time"
+
 // Config 数据库配置结构体
 type Config struct {
 	// 数据库驱动类型 (mysql, postgres, sqlite3, mongodb)
@@ -17,8 +19,8 @@ type Config struct {
 	MaxOpenCons int `json:"max_open_cons"  yaml:"max_open_cons"`
 	// 最大空闲连接数
 	MaxIdleCons int `json:"max_idle_cons"  yaml:"max_idle_cons"`
-	// 连接最大生命周期（秒）
-	ConMaxLifetime int `json:"con_max_lifetime" yaml:"con_max_lifetime"`
-	// 空闲连接最大存活时间（秒）
-	MaxIdleTime int `json:"max_idle_time" yaml:"max_idle_time"`
+	// 连接最大生命周期（time.Duration per D2，YAML 如 "1h"）
+	ConMaxLifetime time.Duration `json:"con_max_lifetime" yaml:"con_max_lifetime"`
+	// 空闲连接最大存活时间（time.Duration per D2，YAML 如 "10m"）
+	MaxIdleTime time.Duration `json:"max_idle_time" yaml:"max_idle_time"`
 }

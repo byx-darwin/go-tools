@@ -2,6 +2,7 @@ package db
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -23,8 +24,8 @@ func TestConfig_Fields(t *testing.T) {
 		SqlLog:         true,
 		MaxOpenCons:    100,
 		MaxIdleCons:    10,
-		ConMaxLifetime: 3600,
-		MaxIdleTime:    600,
+		ConMaxLifetime: time.Hour,
+		MaxIdleTime:    10 * time.Minute,
 	}
 
 	assert.Equal(t, "mysql", c.Driver)
@@ -34,8 +35,8 @@ func TestConfig_Fields(t *testing.T) {
 	assert.True(t, c.SqlLog)
 	assert.Equal(t, 100, c.MaxOpenCons)
 	assert.Equal(t, 10, c.MaxIdleCons)
-	assert.Equal(t, 3600, c.ConMaxLifetime)
-	assert.Equal(t, 600, c.MaxIdleTime)
+	assert.Equal(t, time.Hour, c.ConMaxLifetime)
+	assert.Equal(t, 10*time.Minute, c.MaxIdleTime)
 }
 
 func TestConfig_Drivers(t *testing.T) {
