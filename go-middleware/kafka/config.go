@@ -21,6 +21,13 @@ type WriterConfig struct {
 		User     string `json:"user" yaml:"user"`
 		Password string `json:"password" yaml:"password"`
 	} `json:"sasl" yaml:"sasl"`
+
+	// MaxAttempts 单条消息写入失败后的最大重试次数（0 表示使用 kafka-go 默认值 10）。
+	MaxAttempts int `json:"max_attempts" yaml:"max_attempts"`
+	// WriteBackoffMin 重试前等待的最小退避时间（0 表示使用 kafka-go 默认值 100ms）。
+	WriteBackoffMin time.Duration `json:"write_backoff_min" yaml:"write_backoff_min"`
+	// WriteBackoffMax 重试前等待的最大退避时间（0 表示使用 kafka-go 默认值 1s）。
+	WriteBackoffMax time.Duration `json:"write_backoff_max" yaml:"write_backoff_max"`
 }
 
 // ReaderConfig Kafka Reader（消费者）配置
@@ -44,4 +51,11 @@ type ReaderConfig struct {
 		User     string `json:"user" yaml:"user"`
 		Password string `json:"password" yaml:"password"`
 	} `json:"sasl" yaml:"sasl"`
+
+	// MaxAttempts 单次读取失败后的最大重试次数（0 表示使用 kafka-go 默认值 3）。
+	MaxAttempts int `json:"max_attempts" yaml:"max_attempts"`
+	// ReadBackoffMin 重试前等待的最小退避时间（0 表示使用 kafka-go 默认值 100ms）。
+	ReadBackoffMin time.Duration `json:"read_backoff_min" yaml:"read_backoff_min"`
+	// ReadBackoffMax 重试前等待的最大退避时间（0 表示使用 kafka-go 默认值 1s）。
+	ReadBackoffMax time.Duration `json:"read_backoff_max" yaml:"read_backoff_max"`
 }

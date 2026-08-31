@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -80,4 +81,34 @@ func TestWriter_Close(t *testing.T) {
 	if err != nil {
 		t.Logf("Close error (expected without Kafka): %v", err)
 	}
+}
+
+func TestNewWriter_RetryBackoffWired(t *testing.T) {
+	w := NewWriter(WriterConfig{
+		Broker:          []string{"localhost:9092"},
+		MaxAttempts:     5,
+		WriteBackoffMin: 50 * time.Millisecond,
+		WriteBackoffMax: 2 * time.Second,
+	})
+	defer func() { _ = w.Close() }()
+
+	assert.Equal(t, 5, w.w.MaxAttempts)
+	assert.Equal(t, 50*time.Millisecond, w.w.WriteBackoffMin)
+	assert.Equal(t, 2*time.Second, w.w.WriteBackoffMax)
+}
+
+func TestNewConsumer_RetryBackoffWired(t *testing.T) {
+	c := NewConsumer(ReaderConfig{
+		Broker:         []string{"localhost:9092"},
+		Topic:          "test",
+		MaxAttempts:    7,
+		ReadBackoffMin: 20 * time.Millisecond,
+		ReadBackoffMax: 3 * time.Second,
+	})
+	defer func() { _ = c.Close() }()
+
+	cfg := c.r.Config()
+	assert.Equal(t, 7, cfg.MaxAttempts)
+	assert.Equal(t, 20*time.Millisecond, cfg.ReadBackoffMin)
+	assert.Equal(t, 3*time.Second, cfg.ReadBackoffMax)
 }
