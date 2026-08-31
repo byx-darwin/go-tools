@@ -91,3 +91,23 @@ func TestLimiter_Refill_OverTime(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ok, "token should have refilled after 200ms at rate=10/s")
 }
+
+func TestLimiter_AllowN_ZeroRate(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	ctx := context.Background()
+	l := NewLimiter(client, "limiter:zerorate", 0, 5)
+
+	// Burst-many requests succeed from the initial token pool (never refilled
+	// since rate=0), then every subsequent request is denied. Critically,
+	// none of these calls should error: ttlMillis() must not divide by zero
+	// and produce a pathological PEXPIRE value.
+	for i := 0; i < 5; i++ {
+		ok, err := l.Allow(ctx)
+		require.NoError(t, err)
+		assert.True(t, ok, "request %d within initial burst should be allowed", i)
+	}
+
+	ok, err := l.Allow(ctx)
+	require.NoError(t, err)
+	assert.False(t, ok, "zero-rate limiter must deny once the initial burst is exhausted")
+}

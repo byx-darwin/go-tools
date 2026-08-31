@@ -103,8 +103,12 @@ func (l *Limiter) AllowN(ctx context.Context, n int) (bool, error) {
 }
 
 // ttlMillis 计算 bucket key 的过期时间（约为完全补满所需时间的 2 倍，至少 1 秒），
-// 避免闲置 key 常驻内存。
+// 避免闲置 key 常驻内存。rate <= 0 时无法计算有意义的补满时间，回退到 1 秒下限，
+// 避免除以零导致 +Inf/NaN 进而使 PEXPIRE 溢出或清空 key。
 func (l *Limiter) ttlMillis() int64 {
+	if l.rate <= 0 {
+		return 1000
+	}
 	seconds := 2 * (float64(l.burst) / l.rate)
 	if seconds < 1 {
 		seconds = 1
