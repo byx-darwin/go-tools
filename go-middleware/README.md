@@ -15,7 +15,7 @@ go get github.com/byx-darwin/go-tools/go-middleware
 | 包 | 说明 |
 |----|------|
 | `redis` | Redis 客户端（支持 Sentinel，UniversalClient，OTel 追踪） |
-| `kafka` | Kafka 生产者和消费者（基于 `github.com/segmentio/kafka-go`；OTel 追踪，可选） |
+| `kafka` | Kafka 生产者和消费者（基于 `github.com/segmentio/kafka-go`；OTel 追踪，可选；DLQ 转发 + offset/lag 查询；含包内错误码 20201-20206） |
 | `db` | 数据库配置 + 连接池工厂（OTel 追踪，可选） |
 | `es` | Elasticsearch v8 客户端（OTel 追踪，可选） |
 | `clickhouse` | ClickHouse 原生协议客户端（基于 `clickhouse-go/v2`；含包内错误码 20401-20403；OTel 追踪，可选） |
