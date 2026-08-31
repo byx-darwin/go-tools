@@ -82,10 +82,10 @@ func (f *fakeDLQSender) SendToDLQ(_ context.Context, dlqTopic string, msg kafka.
 	return f.err
 }
 
-func newTestConsumerWithDLQ(sender DLQSender, dlqTopic string, maxAttempts int) *Consumer {
+func newTestConsumerWithDLQ(sender DLQSender, maxAttempts int) *Consumer {
 	return &Consumer{
 		dlqSender:      sender,
-		dlqTopic:       dlqTopic,
+		dlqTopic:       "orders-dlq",
 		dlqMaxAttempts: maxAttempts,
 		failureCounter: newMemFailureCounter(),
 	}
@@ -103,7 +103,7 @@ func TestFailureKey_FallsBackToTopicPartitionOffsetWhenKeyEmpty(t *testing.T) {
 
 func TestHandleMessage_SuccessResetsCounterAndReturnsNil(t *testing.T) {
 	sender := &fakeDLQSender{}
-	c := newTestConsumerWithDLQ(sender, "orders-dlq", 2)
+	c := newTestConsumerWithDLQ(sender, 2)
 	msg := kafka.Message{Key: []byte("k1")}
 
 	err := c.HandleMessage(context.Background(), msg, func(context.Context, kafka.Message) error {
@@ -116,7 +116,7 @@ func TestHandleMessage_SuccessResetsCounterAndReturnsNil(t *testing.T) {
 
 func TestHandleMessage_BelowThresholdReturnsOriginalError(t *testing.T) {
 	sender := &fakeDLQSender{}
-	c := newTestConsumerWithDLQ(sender, "orders-dlq", 3)
+	c := newTestConsumerWithDLQ(sender, 3)
 	msg := kafka.Message{Key: []byte("k1")}
 	wantErr := errors.New("boom")
 
@@ -130,7 +130,7 @@ func TestHandleMessage_BelowThresholdReturnsOriginalError(t *testing.T) {
 
 func TestHandleMessage_ThresholdReachedForwardsToDLQAndReturnsNil(t *testing.T) {
 	sender := &fakeDLQSender{}
-	c := newTestConsumerWithDLQ(sender, "orders-dlq", 2)
+	c := newTestConsumerWithDLQ(sender, 2)
 	msg := kafka.Message{Key: []byte("k1")}
 	handlerErr := errors.New("boom")
 	handler := func(context.Context, kafka.Message) error { return handlerErr }
@@ -148,7 +148,7 @@ func TestHandleMessage_ThresholdReachedForwardsToDLQAndReturnsNil(t *testing.T) 
 
 func TestHandleMessage_ThresholdReachedResetsCounterAfterForward(t *testing.T) {
 	sender := &fakeDLQSender{}
-	c := newTestConsumerWithDLQ(sender, "orders-dlq", 2)
+	c := newTestConsumerWithDLQ(sender, 2)
 	msg := kafka.Message{Key: []byte("k1")}
 	handler := func(context.Context, kafka.Message) error { return errors.New("boom") }
 
@@ -164,7 +164,7 @@ func TestHandleMessage_ThresholdReachedResetsCounterAfterForward(t *testing.T) {
 
 func TestHandleMessage_DLQForwardFailureWrapsBothErrors(t *testing.T) {
 	sender := &fakeDLQSender{err: errors.New("dlq unreachable")}
-	c := newTestConsumerWithDLQ(sender, "orders-dlq", 1)
+	c := newTestConsumerWithDLQ(sender, 1)
 	msg := kafka.Message{Key: []byte("k1")}
 	handlerErr := errors.New("boom")
 
