@@ -67,6 +67,9 @@ func NewConsumer(cfg ReaderConfig, opts ...ClientOption) *Consumer {
 	c.dlqTopic = o.dlqTopic
 	c.dlqMaxAttempts = o.dlqMaxAttempts
 	c.failureCounter = o.failureCounter
+	if c.dlqSender != nil && c.failureCounter == nil {
+		c.failureCounter = newMemFailureCounter()
+	}
 	return c
 }
 

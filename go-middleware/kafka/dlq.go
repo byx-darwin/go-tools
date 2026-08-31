@@ -74,10 +74,6 @@ func (c *Consumer) HandleMessage(ctx context.Context, msg kafka.Message, handler
 	}
 
 	counter := c.failureCounter
-	if counter == nil {
-		counter = newMemFailureCounter()
-		c.failureCounter = counter
-	}
 	if counter.Incr(key) < c.dlqMaxAttempts {
 		return err
 	}

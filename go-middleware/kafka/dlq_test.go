@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/segmentio/kafka-go"
@@ -186,4 +187,33 @@ func TestHandleMessage_NoDLQConfiguredReturnsHandlerErrorDirectly(t *testing.T) 
 	})
 
 	assert.ErrorIs(t, err, wantErr)
+}
+
+func TestNewConsumer_WithDLQWithoutFailureCounter_InitializesCounterEagerly(t *testing.T) {
+	c := NewConsumer(ReaderConfig{Broker: []string{"127.0.0.1:1"}, Topic: "orders"},
+		WithDLQ(&fakeDLQSender{}, "orders-dlq", 3))
+	defer func() { _ = c.Close() }()
+
+	assert.NotNil(t, c.failureCounter, "NewConsumer 必须在构造期就补全默认 FailureCounter，"+
+		"不能延迟到 HandleMessage 首次失败时再赋值——否则并发调用 HandleMessage 会在"+
+		"该字段上产生数据竞争")
+}
+
+func TestHandleMessage_ConcurrentFailuresDoNotRace(t *testing.T) {
+	c := NewConsumer(ReaderConfig{Broker: []string{"127.0.0.1:1"}, Topic: "orders"},
+		WithDLQ(&fakeDLQSender{}, "orders-dlq", 1000))
+	defer func() { _ = c.Close() }()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			msg := kafka.Message{Key: []byte("k1")}
+			_ = c.HandleMessage(context.Background(), msg, func(context.Context, kafka.Message) error {
+				return errors.New("boom")
+			})
+		}()
+	}
+	wg.Wait()
 }
