@@ -9,6 +9,8 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 )
 
 func newTestRedisClient(t *testing.T) (*miniredis.Miniredis, goredis.UniversalClient) {
@@ -77,4 +79,55 @@ func TestMutex_TryLock_AlreadyHeld(t *testing.T) {
 
 	assert.NoError(t, err2)
 	assert.False(t, ok2)
+}
+
+func TestMutex_Unlock_Success(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	m := NewMutex(client, "lock:unlock", WithWatchdog(false))
+	ctx := context.Background()
+
+	ok, err := m.TryLock(ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	err = m.Unlock(ctx)
+
+	assert.NoError(t, err)
+
+	exists, err := client.Exists(ctx, "lock:unlock").Result()
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), exists)
+}
+
+func TestMutex_Unlock_NotHeld(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	m := NewMutex(client, "lock:notheld", WithWatchdog(false))
+
+	err := m.Unlock(context.Background())
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeLockRelease, code)
+}
+
+func TestMutex_Unlock_HeldByOther(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	owner := NewMutex(client, "lock:other", WithWatchdog(false))
+	intruder := NewMutex(client, "lock:other", WithWatchdog(false))
+	ctx := context.Background()
+
+	ok, err := owner.TryLock(ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+	intruder.mu.Lock()
+	intruder.token = "not-the-real-token"
+	intruder.mu.Unlock()
+
+	err = intruder.Unlock(ctx)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeLockRelease, code)
+
+	exists, err := client.Exists(ctx, "lock:other").Result()
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), exists, "owner's lock must remain untouched")
 }

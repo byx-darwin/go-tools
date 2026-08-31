@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"sync"
 	"time"
 
@@ -118,3 +119,42 @@ func (m *Mutex) TryLock(ctx context.Context) (bool, error) {
 
 // startWatchdog 在 Task 6 中实现；此处先占位为空操作以保证 TryLock 可编译独立测试。
 func (m *Mutex) startWatchdog() {}
+
+// releaseScript 校验 KEYS[1] 的值等于 ARGV[1]（持有者 token）后再删除，避免误删他人持有的锁。
+var releaseScript = goredis.NewScript(`
+if redis.call('get', KEYS[1]) == ARGV[1] then
+	return redis.call('del', KEYS[1])
+else
+	return 0
+end
+`)
+
+// Unlock 释放锁：停止 watchdog，Lua 脚本校验 token 匹配后删除 key。
+// 若锁未持有、已过期，或被其他持有者持有，返回 ErrLockRelease。
+func (m *Mutex) Unlock(ctx context.Context) error {
+	m.stopWatchdog()
+
+	m.mu.Lock()
+	token := m.token
+	m.mu.Unlock()
+
+	if token == "" {
+		return ErrLockRelease.Wrap(errors.New("lock not held"))
+	}
+
+	res, err := releaseScript.Run(ctx, m.client, []string{m.key}, token).Int64()
+	if err != nil {
+		return ErrLockRelease.Wrap(err)
+	}
+	if res == 0 {
+		return ErrLockRelease.Wrap(errors.New("lock not held or already expired"))
+	}
+
+	m.mu.Lock()
+	m.token = ""
+	m.mu.Unlock()
+	return nil
+}
+
+// stopWatchdog 在 Task 6 中实现完整逻辑；此处先占位为空操作。
+func (m *Mutex) stopWatchdog() {}
