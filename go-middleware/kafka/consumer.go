@@ -21,6 +21,9 @@ type Consumer struct {
 	dlqTopic       string
 	dlqMaxAttempts int
 	failureCounter FailureCounter
+
+	brokers []string
+	topic   string
 }
 
 // NewConsumer 创建 Kafka Consumer，可选 OpenTelemetry 追踪（WithTrace）。
@@ -56,7 +59,7 @@ func NewConsumer(cfg ReaderConfig, opts ...ClientOption) *Consumer {
 		rCfg.Dialer = dialer
 	}
 
-	c := &Consumer{r: kafka.NewReader(rCfg)}
+	c := &Consumer{r: kafka.NewReader(rCfg), brokers: cfg.Broker, topic: cfg.Topic}
 	if o.trace {
 		c.tracer = otel.Tracer(instrumentationName)
 	}
