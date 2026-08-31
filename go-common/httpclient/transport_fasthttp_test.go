@@ -30,3 +30,21 @@ func TestFasthttpTransportDoNetworkError(t *testing.T) {
 	_, err := tr.Do(ctx, &Request{Method: MethodGet, URL: "http://127.0.0.1:1"})
 	require.Error(t, err)
 }
+
+func TestFasthttpTransportDoCanceledContext(t *testing.T) {
+	tr := newFasthttpTransport()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := tr.Do(ctx, &Request{Method: MethodGet, URL: "http://127.0.0.1:1"})
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestFasthttpTransportDoExpiredDeadlineContext(t *testing.T) {
+	tr := newFasthttpTransport()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Hour))
+	defer cancel()
+
+	_, err := tr.Do(ctx, &Request{Method: MethodGet, URL: "http://127.0.0.1:1"})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
