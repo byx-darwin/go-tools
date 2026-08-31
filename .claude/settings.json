@@ -39,28 +39,6 @@
     ]
   },
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "tokenless hook rewrite --target claude --project go-tools --user-name baoyx"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "^(?!Bash$).*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "tokenless hook compress --semantic --target claude --project go-tools --user-name baoyx"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "matcher": "gitflow",
