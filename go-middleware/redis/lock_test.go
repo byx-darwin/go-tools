@@ -36,8 +36,8 @@ func TestNewMutex_CustomOptions(t *testing.T) {
 	_, client := newTestRedisClient(t)
 
 	m := NewMutex(client, "lock:test",
-		WithTTL(5*time.Second),
-		WithRetryInterval(20*time.Millisecond),
+		WithMutexTTL(5*time.Second),
+		WithMutexRetryInterval(20*time.Millisecond),
 		WithWatchdog(false),
 	)
 
@@ -49,7 +49,7 @@ func TestNewMutex_CustomOptions(t *testing.T) {
 func TestMutexOption_IgnoresInvalidValues(t *testing.T) {
 	_, client := newTestRedisClient(t)
 
-	m := NewMutex(client, "lock:test", WithTTL(0), WithRetryInterval(-1))
+	m := NewMutex(client, "lock:test", WithMutexTTL(0), WithMutexRetryInterval(-1))
 
 	assert.Equal(t, defaultMutexTTL, m.ttl)
 	assert.Equal(t, defaultRetryInterval, m.retryInterval)
@@ -135,8 +135,8 @@ func TestMutex_Unlock_HeldByOther(t *testing.T) {
 func TestMutex_Lock_WaitsForRelease(t *testing.T) {
 	_, client := newTestRedisClient(t)
 	ctx := context.Background()
-	holder := NewMutex(client, "lock:wait", WithWatchdog(false), WithRetryInterval(10*time.Millisecond))
-	waiter := NewMutex(client, "lock:wait", WithWatchdog(false), WithRetryInterval(10*time.Millisecond))
+	holder := NewMutex(client, "lock:wait", WithWatchdog(false), WithMutexRetryInterval(10*time.Millisecond))
+	waiter := NewMutex(client, "lock:wait", WithWatchdog(false), WithMutexRetryInterval(10*time.Millisecond))
 
 	ok, err := holder.TryLock(ctx)
 	require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestMutex_Lock_WaitsForRelease(t *testing.T) {
 func TestMutex_Lock_ContextCanceled(t *testing.T) {
 	_, client := newTestRedisClient(t)
 	holder := NewMutex(client, "lock:cancel", WithWatchdog(false))
-	waiter := NewMutex(client, "lock:cancel", WithWatchdog(false), WithRetryInterval(10*time.Millisecond))
+	waiter := NewMutex(client, "lock:cancel", WithWatchdog(false), WithMutexRetryInterval(10*time.Millisecond))
 
 	ok, err := holder.TryLock(context.Background())
 	require.NoError(t, err)
@@ -179,7 +179,7 @@ func TestMutex_Lock_ContextCanceled(t *testing.T) {
 func TestMutex_Watchdog_RenewsBeforeExpiry(t *testing.T) {
 	mr, client := newTestRedisClient(t)
 	ctx := context.Background()
-	m := NewMutex(client, "lock:watchdog", WithTTL(90*time.Millisecond), WithWatchdog(true))
+	m := NewMutex(client, "lock:watchdog", WithMutexTTL(90*time.Millisecond), WithWatchdog(true))
 
 	ok, err := m.TryLock(ctx)
 	require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestMutex_Watchdog_RenewsBeforeExpiry(t *testing.T) {
 func TestMutex_Watchdog_StopsAfterUnlock(t *testing.T) {
 	mr, client := newTestRedisClient(t)
 	ctx := context.Background()
-	m := NewMutex(client, "lock:watchdog-stop", WithTTL(50*time.Millisecond), WithWatchdog(true))
+	m := NewMutex(client, "lock:watchdog-stop", WithMutexTTL(50*time.Millisecond), WithWatchdog(true))
 
 	ok, err := m.TryLock(ctx)
 	require.NoError(t, err)
@@ -226,7 +226,7 @@ func TestMutex_Watchdog_StopsAfterUnlock(t *testing.T) {
 func TestMutex_Watchdog_Disabled_LockExpires(t *testing.T) {
 	mr, client := newTestRedisClient(t)
 	ctx := context.Background()
-	m := NewMutex(client, "lock:no-watchdog", WithTTL(50*time.Millisecond), WithWatchdog(false))
+	m := NewMutex(client, "lock:no-watchdog", WithMutexTTL(50*time.Millisecond), WithWatchdog(false))
 
 	ok, err := m.TryLock(ctx)
 	require.NoError(t, err)

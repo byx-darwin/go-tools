@@ -18,6 +18,23 @@ const (
 
 // Mutex 基于 Redis 的分布式互斥锁（单实例 SET NX PX 方案），不支持可重入。
 // 一个 Mutex 实例代表一次加锁会话：Lock/TryLock 成功后必须调用 Unlock 才能再次加锁。
+//
+// 用法示例：
+//
+//	m := redis.NewMutex(client, "lock:order:123")
+//	if err := m.Lock(ctx); err != nil {
+//		return err
+//	}
+//	defer func() {
+//		if err := m.Unlock(ctx); err != nil {
+//			// ErrLockRelease：锁未持有 / 已过期 / 被其他持有者持有，
+//			// 通常只需记录日志，不应视为业务失败。
+//			log.Warn("unlock failed", "err", err)
+//		}
+//	}()
+//	// 临界区业务逻辑
+//
+// 关于 watchdog 续期失败的可观测性限制，见 WithWatchdog 的文档说明。
 type Mutex struct {
 	client        goredis.UniversalClient
 	key           string
@@ -39,8 +56,8 @@ type mutexOptions struct {
 	watchdog      bool
 }
 
-// WithTTL 设置锁的过期时间（必须 > 0，否则忽略，保留默认值）。
-func WithTTL(ttl time.Duration) MutexOption {
+// WithMutexTTL 设置锁的过期时间（必须 > 0，否则忽略，保留默认值）。
+func WithMutexTTL(ttl time.Duration) MutexOption {
 	return func(o *mutexOptions) {
 		if ttl > 0 {
 			o.ttl = ttl
@@ -48,8 +65,8 @@ func WithTTL(ttl time.Duration) MutexOption {
 	}
 }
 
-// WithRetryInterval 设置 Lock 阻塞重试的轮询间隔（必须 > 0，否则忽略）。
-func WithRetryInterval(interval time.Duration) MutexOption {
+// WithMutexRetryInterval 设置 Lock 阻塞重试的轮询间隔（必须 > 0，否则忽略）。
+func WithMutexRetryInterval(interval time.Duration) MutexOption {
 	return func(o *mutexOptions) {
 		if interval > 0 {
 			o.retryInterval = interval
@@ -58,6 +75,10 @@ func WithRetryInterval(interval time.Duration) MutexOption {
 }
 
 // WithWatchdog 设置是否启用续期 watchdog（默认 true）。
+//
+// 局限性：当 watchdog 续期失败时（锁已被抢占或过期），后台 goroutine 会静默退出，
+// 调用方无法在临界区内感知锁已丢失，只能在下次 Unlock 时通过 ErrLockRelease 得知。
+// 如需更强的锁丢失感知能力，需要额外的通知机制（当前版本未提供）。
 func WithWatchdog(enabled bool) MutexOption {
 	return func(o *mutexOptions) {
 		o.watchdog = enabled
@@ -212,6 +233,9 @@ func (m *Mutex) stopWatchdog() {
 }
 
 // Lock 阻塞获取锁，直到成功或 ctx 取消。成功后自动启动 watchdog（若启用）。
+//
+// ctx 取消时返回 ErrLockAcquire.Wrap(ctx.Err())：errors.Is(err, context.DeadlineExceeded)
+// 或 errors.Is(err, context.Canceled) 仍可通过该 wrap 链正常工作。
 func (m *Mutex) Lock(ctx context.Context) error {
 	ticker := time.NewTicker(m.retryInterval)
 	defer ticker.Stop()

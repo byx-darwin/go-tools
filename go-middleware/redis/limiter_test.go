@@ -20,6 +20,19 @@ func TestNewLimiter_Defaults(t *testing.T) {
 	assert.Equal(t, defaultWaitPollInterval, l.waitPollInterval)
 }
 
+func TestNewLimiter_ClampsNegativeParams(t *testing.T) {
+	_, client := newTestRedisClient(t)
+
+	l := NewLimiter(client, "limiter:negative", -1, -1)
+
+	assert.InDelta(t, 0.0, l.rate, 0.0001)
+	assert.Equal(t, 0, l.burst)
+
+	ok, err := l.Allow(context.Background())
+	require.NoError(t, err)
+	assert.False(t, ok, "burst=0 after clamping negative input must reject immediately")
+}
+
 func TestNewLimiter_CustomOptions(t *testing.T) {
 	_, client := newTestRedisClient(t)
 
@@ -64,6 +77,32 @@ func TestLimiter_AllowN_RejectsWhenInsufficientTokens(t *testing.T) {
 	ok, err = l.AllowN(ctx, 3)
 	require.NoError(t, err)
 	assert.False(t, ok, "only 2 tokens remain, requesting 3 must fail")
+}
+
+func TestLimiter_AllowN_NonPositiveN(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	ctx := context.Background()
+	l := NewLimiter(client, "limiter:nonpositive", 1, 1)
+
+	// Exhaust the single token so a naive implementation (tokens >= n with
+	// n<=0) would otherwise inflate the bucket instead of short-circuiting.
+	ok, err := l.Allow(ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	ok, err = l.AllowN(ctx, 0)
+	require.NoError(t, err)
+	assert.True(t, ok, "n=0 must be permissively allowed without touching the bucket")
+
+	ok, err = l.AllowN(ctx, -5)
+	require.NoError(t, err)
+	assert.True(t, ok, "negative n must be permissively allowed without touching the bucket")
+
+	// Bucket must still be exhausted for positive n — negative n must not
+	// have inflated the stored token count above burst.
+	ok, err = l.Allow(ctx)
+	require.NoError(t, err)
+	assert.False(t, ok, "bucket must remain exhausted after non-positive AllowN calls")
 }
 
 func TestLimiter_Refill_OverTime(t *testing.T) {
