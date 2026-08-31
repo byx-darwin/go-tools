@@ -8,8 +8,25 @@ import (
 )
 
 // NewClient 创建 ClickHouse 原生协议客户端。
-// 使用 clickhouse-go v2 原生接口，支持 DSN 和字段两种配置方式。
-func NewClient(config Config) (clickhouse.Conn, error) {
+// 使用 clickhouse-go v2 原生接口，支持 DSN 和字段两种配置方式，可选 OpenTelemetry 追踪（WithTrace）。
+func NewClient(config Config, opts ...ClientOption) (clickhouse.Conn, error) {
+	o := &clientOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	conn, err := newConn(config)
+	if err != nil {
+		return nil, err
+	}
+	if o.trace {
+		conn = newTracedConn(conn)
+	}
+	return conn, nil
+}
+
+// newConn 按配置打开原生协议连接，不含追踪包装。
+func newConn(config Config) (clickhouse.Conn, error) {
 	// If DSN is provided, use it directly
 	if config.DSN != "" {
 		opts, err := clickhouse.ParseDSN(config.DSN)
