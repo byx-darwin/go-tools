@@ -1,10 +1,12 @@
 package redis
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewLimiter_Defaults(t *testing.T) {
@@ -32,4 +34,60 @@ func TestLimiterOption_IgnoresInvalidValues(t *testing.T) {
 	l := NewLimiter(client, "limiter:test", 10, 5, WithWaitPollInterval(0))
 
 	assert.Equal(t, defaultWaitPollInterval, l.waitPollInterval)
+}
+
+func TestLimiter_AllowN_WithinBurst(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	ctx := context.Background()
+	l := NewLimiter(client, "limiter:burst", 1, 3)
+
+	for i := 0; i < 3; i++ {
+		ok, err := l.Allow(ctx)
+		require.NoError(t, err)
+		assert.True(t, ok, "request %d within burst should be allowed", i)
+	}
+
+	ok, err := l.Allow(ctx)
+	require.NoError(t, err)
+	assert.False(t, ok, "request beyond burst should be rejected")
+}
+
+func TestLimiter_AllowN_RejectsWhenInsufficientTokens(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	ctx := context.Background()
+	l := NewLimiter(client, "limiter:allown", 1, 5)
+
+	ok, err := l.AllowN(ctx, 3)
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	ok, err = l.AllowN(ctx, 3)
+	require.NoError(t, err)
+	assert.False(t, ok, "only 2 tokens remain, requesting 3 must fail")
+}
+
+func TestLimiter_Refill_OverTime(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	ctx := context.Background()
+	l := NewLimiter(client, "limiter:refill", 10, 1) // 10 tokens/sec, burst=1
+
+	ok, err := l.Allow(ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	ok, err = l.Allow(ctx)
+	require.NoError(t, err)
+	require.False(t, ok, "bucket should be empty immediately after consuming the single token")
+
+	// miniredis.FastForward only decrements existing key TTLs; it does not
+	// advance any clock the Lua script or client observes (time.Now() /
+	// redis TIME), so it cannot simulate refill here. Backdate
+	// last_refill_ts directly to deterministically simulate elapsed time:
+	// 10 tokens/sec * 0.2s = 2 tokens refilled, capped at burst=1.
+	past := time.Now().Add(-200 * time.Millisecond).UnixMilli()
+	require.NoError(t, client.HSet(ctx, "limiter:refill", "last_refill_ts", past).Err())
+
+	ok, err = l.Allow(ctx)
+	require.NoError(t, err)
+	assert.True(t, ok, "token should have refilled after 200ms at rate=10/s")
 }
