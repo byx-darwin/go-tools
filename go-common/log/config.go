@@ -64,6 +64,11 @@ type CategoryConfig struct {
 }
 
 // MaskConfig 敏感数据脱敏配置。
+//
+// 经 NewConfig() 构造时默认 Enabled=true 并附带 DefaultMaskedFields()
+// 基线字段；直接使用 MaskConfig{} 零值字面量则默认关闭（Enabled=false）。
+// WithConfigMasking 会整体替换该结构体，若需在默认基础上追加自定义字段，
+// 调用方应显式传入 MaskConfig{Enabled: true, MaskedFields: append(DefaultMaskedFields(), "custom_field"), Mode: "full"}。
 type MaskConfig struct {
 	// Enabled 是否启用脱敏。
 	Enabled bool `yaml:"enabled" json:"enabled"`
@@ -128,7 +133,8 @@ func WithConfigCategories(categories map[string]CategoryConfig) ConfigOption {
 	}
 }
 
-// WithConfigMasking 设置脱敏配置。
+// WithConfigMasking 设置脱敏配置（整体替换，与 WithConfigFile 一致）。
+// 传入 MaskConfig{Enabled: false} 可显式关闭 NewConfig 的默认脱敏基线。
 func WithConfigMasking(masking MaskConfig) ConfigOption {
 	return func(c *Config) {
 		c.Masking = masking
@@ -141,12 +147,22 @@ func WithConfigMasking(masking MaskConfig) ConfigOption {
 //   - level: "info"
 //   - format: "json"
 //   - mode: "console"
+//   - masking: 启用，使用 DefaultMaskedFields() 默认字段列表，mode "full"
+//
+// 注意：仅通过 NewConfig 构造时应用上述默认值；直接使用 Config{} 零值字面量
+// 不会自动启用脱敏（Masking.Enabled 保持 false），与 Level/Format/Mode 的
+// 现有约定一致。
 func NewConfig(opts ...ConfigOption) Config {
 	cfg := Config{
 		Level:  defaultConfigLevel,
 		Format: defaultConfigFormat,
 		Mode:   defaultConfigMode,
 		File:   NewFileConfig(),
+		Masking: MaskConfig{
+			Enabled:      true,
+			MaskedFields: DefaultMaskedFields(),
+			Mode:         defaultMaskMode,
+		},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -236,4 +252,7 @@ const (
 	defaultFileMaxSize    = 100
 	defaultFileMaxBackups = 7
 	defaultFileMaxAge     = 30
+
+	// defaultMaskMode 默认脱敏模式（NewConfig 使用）。
+	defaultMaskMode = "full"
 )

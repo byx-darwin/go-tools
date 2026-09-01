@@ -10,6 +10,22 @@ type Masker struct {
 	config MaskConfig
 }
 
+// defaultMaskedFields 默认脱敏字段基线，仅使用完整词避免误命中
+// task_id / disk_usage / risk_score / bitmask 等无关字段。
+var defaultMaskedFields = []string{
+	"password", "passwd", "secret", "token", "authorization",
+	"credential", "api_key", "apikey", "access_key", "accesskey",
+	"secret_key", "secretkey", "private_key", "privatekey",
+}
+
+// DefaultMaskedFields 返回默认脱敏字段名列表的副本。
+// 用于 NewConfig 的开箱即用脱敏基线，也可供调用方在此基础上追加自定义字段。
+func DefaultMaskedFields() []string {
+	fields := make([]string, len(defaultMaskedFields))
+	copy(fields, defaultMaskedFields)
+	return fields
+}
+
 // NewMasker 创建脱敏器。
 func NewMasker(cfg MaskConfig) *Masker {
 	return &Masker{config: cfg}
