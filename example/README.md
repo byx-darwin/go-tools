@@ -83,7 +83,7 @@ Docker Compose 服务定义（[docker-compose.yml](./docker-compose.yml)）：
 
 | Method | Path | 功能 |
 |--------|------|------|
-| `GET` | `/common/crypto` | MD5、SHA256、SHA512、HMAC、TEA 加密演示 |
+| `GET` | `/common/crypto` | MD5、SHA256、SHA512、HMAC、AES-GCM 加密演示 |
 | `GET` | `/common/cache` | LRU / LFU 缓存操作演示 |
 | `GET` | `/common/captcha` | 生成图形验证码（返回 ID + Base64 图片） |
 | `POST` | `/common/captcha/verify` | 校验验证码 |
