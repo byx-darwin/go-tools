@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
@@ -10,9 +11,11 @@ import (
 	"time"
 
 	gojwt "github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/samber/oops"
 
 	autherror "github.com/byx-darwin/go-tools/go-auth/error"
+	"github.com/byx-darwin/go-tools/go-auth/revocation"
 )
 
 // Sign 签发 JWT，支持任意 Claims 类型。
@@ -157,18 +160,49 @@ func validateKeyType(method gojwt.SigningMethod, key any, forSigning bool) error
 	return nil
 }
 
-// Refresh 刷新 JWT（延长过期时间，保留原有 Claims 数据）。
-// 先验证原 Token 有效性，再使用新选项重新签发。
+// Refresh 刷新 JWT（延长过期时间，保留原有 Claims 数据），并对 refresh token 做
+// 一次性轮换与复用检测：
+//   - 若 Claims 携带 JTI（jti），成功刷新后旧 JTI 会通过 store.Revoke 标记为已
+//     撤销，新 Token 携带全新生成的 JTI；同一旧 JTI 被再次用于 Refresh 时视为
+//     复用攻击，返回 autherror.ErrTokenRevoked，且不签发新 Token。
+//   - 若 Claims 未携带 JTI（ExtractJTI 返回 false），跳过轮换与复用检测，行为
+//     与未启用该机制前完全一致（向后兼容）。
+//   - store 的 IsRevoked/Revoke 调用失败时按 fail-closed 处理：直接返回错误，
+//     不签发新 Token，避免存储故障导致复用检测被绕过。
+//   - 检测到复用后是否触发全设备登出由调用方决定（例如收到 ErrTokenRevoked 后
+//     调用 device.Store.RemoveAllDevices），本函数不感知 device 包。
+//
 // secret 的类型要求与 Sign/Verify 一致，由当前签名算法决定。
 // 原 Claims 中的 ExpiresAt、Issuer 等会被 opts 中的值覆盖；
 // 未显式指定 WithExpiration 时，使用默认 2 小时过期。
-func Refresh[T any](tokenStr string, secret any, opts ...Option) (string, error) {
+func Refresh[T any](ctx context.Context, tokenStr string, secret any, store revocation.Store, opts ...Option) (string, error) {
 	// 先验证原 Token，提取 Claims。opts 透传给 Verify 以复用签名算法校验。
 	claims, err := Verify[T](tokenStr, secret, opts...)
 	if err != nil {
 		return "", oops.With("jwt.Refresh").
 			Code(autherror.CodeJWTRefreshFailed).
 			Wrap(err)
+	}
+
+	if jti, ok := ExtractJTI(claims); ok {
+		revoked, err := store.IsRevoked(ctx, jti)
+		if err != nil {
+			return "", oops.With("jwt.Refresh").
+				Code(autherror.CodeJWTRefreshFailed).
+				Wrap(err)
+		}
+		if revoked {
+			return "", autherror.ErrTokenRevoked.Errorf("jti %s already used for refresh (reuse detected)", jti)
+		}
+
+		rc := extractRegisteredClaims(any(claims).(gojwt.Claims))
+		if err := store.Revoke(ctx, jti, time.Until(rc.ExpiresAt.Time)); err != nil {
+			return "", oops.With("jwt.Refresh").
+				Code(autherror.CodeJWTRefreshFailed).
+				Wrap(err)
+		}
+
+		rc.ID = uuid.NewString()
 	}
 
 	// Refresh 语义：新 Token 不复用旧 Token 的剩余有效期，强制刷新 ExpiresAt。
