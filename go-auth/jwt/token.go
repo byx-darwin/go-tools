@@ -172,9 +172,21 @@ func validateKeyType(method gojwt.SigningMethod, key any, forSigning bool) error
 //   - 检测到复用后是否触发全设备登出由调用方决定（例如收到 ErrTokenRevoked 后
 //     调用 device.Store.RemoveAllDevices），本函数不感知 device 包。
 //
+// 当 Claims 携带 JTI 时，返回的 Token 不仅是新的 access 数据，其本身就是新的
+// refresh token（携带全新 JTI）：调用方必须用它替换旧 token 并持久化保存，
+// 丢弃旧 token —— 旧 JTI 此时已被 Revoke 标记为撤销，再次使用会被判定为复用。
+//
+// IsRevoked 与 Revoke 这两步撤销检查并非原子操作：并发对同一旧 token 发起的
+// 两次 Refresh（例如合法用户与攻击者的竞态）可能都在对方完成 Revoke 之前通过
+// IsRevoked 检查，导致两者都成功刷新并各自拿到独立的新 JTI，复用检测无法捕获
+// 这种窄时间窗口内的竞态。这是当前两步式 revocation.Store 接口（缺少
+// compare-and-set 原语）的已知局限，非本函数实现所能单独解决。
+//
 // secret 的类型要求与 Sign/Verify 一致，由当前签名算法决定。
 // 原 Claims 中的 ExpiresAt、Issuer 等会被 opts 中的值覆盖；
 // 未显式指定 WithExpiration 时，使用默认 2 小时过期。
+// Refresh 仅支持对称（HMAC）签名算法，secret 同时作为验证密钥和签名密钥；
+// 非对称算法（RS256/ES256/EdDSA）不受本函数支持。
 func Refresh[T any](ctx context.Context, tokenStr string, secret any, store revocation.Store, opts ...Option) (string, error) {
 	// 先验证原 Token，提取 Claims。opts 透传给 Verify 以复用签名算法校验。
 	claims, err := Verify[T](tokenStr, secret, opts...)
@@ -185,6 +197,12 @@ func Refresh[T any](ctx context.Context, tokenStr string, secret any, store revo
 	}
 
 	if jti, ok := ExtractJTI(claims); ok {
+		if store == nil {
+			return "", oops.With("jwt.Refresh").
+				Code(autherror.CodeJWTRefreshFailed).
+				Errorf("revocation store is required for tokens carrying jti")
+		}
+
 		revoked, err := store.IsRevoked(ctx, jti)
 		if err != nil {
 			return "", oops.With("jwt.Refresh").

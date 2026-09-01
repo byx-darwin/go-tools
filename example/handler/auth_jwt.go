@@ -5,6 +5,7 @@ import (
 	"time"
 
 	gojwt "github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 
 	"github.com/byx-darwin/go-tools/go-auth/jwt"
 	"github.com/byx-darwin/go-tools/go-auth/revocation"
@@ -80,8 +81,11 @@ func jwtSignHandler(ctx context.Context, c *app.RequestContext) {
 	}
 
 	// 签发 refresh_token（长过期时间，Subject 区分用途）。
+	// 必须携带 JTI，否则 jwt.Refresh 的一次性轮换与复用检测无法触发
+	// （ExtractJTI 返回 false 时会跳过轮换，直接静默放行）。
 	refreshClaims := AppClaims{UserUUID: req.UserID}
 	refreshClaims.Subject = "refresh"
+	refreshClaims.ID = uuid.NewString()
 	refreshToken, err := jwt.Sign(refreshClaims, jwtSecret, append(opts, jwt.WithExpiration(jwtRefreshExpiry))...)
 	if err != nil {
 		hertzresp.Error(ctx, c, err, "sign refresh token failed")
@@ -129,7 +133,9 @@ func jwtVerifyHandler(ctx context.Context, c *app.RequestContext) {
 // jwtRefreshHandler 使用 refresh_token 签发新的 access_token。
 //
 // 请求体：{"refresh_token": "xxx"}
-// 响应：新的 access_token（保留原 claims 中的 UserUUID）。
+// 响应：新 Token（保留原 claims 中的 UserUUID）。由于 refresh_token 携带 JTI，
+// jwt.Refresh 返回的 Token 本身就是新的 refresh token（旧 JTI 已被撤销）：
+// 调用方必须保存它并丢弃旧 refresh_token，否则下次请求会被判定为复用攻击而拒绝。
 func jwtRefreshHandler(ctx context.Context, c *app.RequestContext) {
 	var req struct {
 		RefreshToken string `json:"refresh_token" vd:"len($)>0"`
@@ -150,8 +156,13 @@ func jwtRefreshHandler(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
+	// newToken 同时充当 access_token 与 refresh_token 返回：这是本示例的简化，
+	// 因为 jwtSignHandler 用同一套 Claims 结构签发两者，没有区分 access/refresh
+	// 的签发路径。真实部署应分别签发 access token（短过期、无 JTI）与 refresh
+	// token（长过期、带 JTI），此处仅为演示轮换契约本身。
 	hertzresp.Success(c, map[string]any{
-		"access_token": newToken,
+		"access_token":  newToken,
+		"refresh_token": newToken,
 	})
 }
 

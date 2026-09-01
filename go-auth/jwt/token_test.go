@@ -643,6 +643,24 @@ func TestRefreshRevokeError(t *testing.T) {
 	require.Error(t, err, "Revoke 出错必须 fail-closed，拒绝刷新")
 }
 
+func TestRefreshNilStoreWithJTIFailsClosed(t *testing.T) {
+	// Claims 携带 JTI 但 store 为 nil：必须返回错误而非 panic，且不应签发新 Token。
+	claims := refreshRotationClaims{
+		UserUUID:         "user-nil-store",
+		RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-nil-store"},
+	}
+
+	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
+	require.NoError(t, err)
+
+	newToken, err := Refresh[refreshRotationClaims](context.Background(), token, testSecret, nil, WithExpiration(time.Hour))
+	require.Error(t, err, "携带 JTI 但 store 为 nil 时必须 fail-closed，而不是 panic")
+	assert.Empty(t, newToken, "拒绝刷新时不应签发新 Token")
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTRefreshFailed, code)
+}
+
 func TestRefreshMissingExpiresAtFailsClosed(t *testing.T) {
 	// exp 并非 JWT 规范强制字段。构造一个带 JTI 但不带 ExpiresAt 的 Token：
 	// 必须绕过本包 Sign() 的默认过期填充逻辑，直接用 gojwt 签发。

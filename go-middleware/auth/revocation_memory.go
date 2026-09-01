@@ -17,7 +17,10 @@ var _ revocation.Store = (*MemoryRevocationStore)(nil)
 //
 // 使用 samber/hot 缓存存储已撤销的 JTI，TTL 由调用方在 Revoke 时显式传入
 // （应设置为该 token 的剩余有效期），过期后自动从缓存中清除，避免撤销表无限
-// 增长。适用于开发和测试环境，不适合生产使用。
+// 增长。与 MemoryDeviceStore/MemorySessionStore 不同，那里 LRU 淘汰只是丢失一
+// 条缓存记录（fail-safe）；此处淘汰一条撤销记录意味着对应的旧 JTI 会静默地
+// 重新变为"未撤销"，复用检测将不再能捕获该特定 token 的重放。这正是本类型
+// 不适合生产使用的具体原因，仅适用于开发和测试环境。
 type MemoryRevocationStore struct {
 	cache *hot.HotCache[string, struct{}]
 }
