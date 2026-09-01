@@ -38,19 +38,6 @@
       "Read(./.env.*)"
     ]
   },
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "gitflow",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c 'p=$(git rev-parse --show-toplevel 2>/dev/null) && [ -x \"$p/hooks/auto-report-bug.sh\" ] && bash \"$p/hooks/auto-report-bug.sh\"'"
-          }
-        ]
-      }
-    ]
-  },
   "env": {
     "RTK_SKIP_HOOK_CHECK": "1"
   }
