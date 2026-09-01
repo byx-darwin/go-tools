@@ -1,6 +1,9 @@
 package jwt
 
 import (
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"reflect"
@@ -14,10 +17,12 @@ import (
 
 // Sign 签发 JWT，支持任意 Claims 类型。
 // claims 必须实现 jwt.Claims 接口（通常通过嵌入 jwt.RegisteredClaims）。
+// secret 的具体类型由 WithSigningMethod 指定的算法决定（默认 HS256 需要 []byte，
+// 见包注释）；类型不匹配返回 autherror.ErrJWTKeyTypeMismatch。
 // 默认过期时间为 2 小时，可通过 WithExpiration 覆盖；
 // 若 Claims 已自带 ExpiresAt，则优先保留 Claims 中的显式值。
 // 当 opts 中设置了 WithIssuer 时，自动设置 Issuer。
-func Sign[T any](claims T, secret []byte, opts ...Option) (string, error) {
+func Sign[T any](claims T, secret any, opts ...Option) (string, error) {
 	cfg := applyOptions(opts)
 
 	// 使用指针以便修改 RegisteredClaims（设置过期时间、签发者）。
@@ -26,6 +31,10 @@ func Sign[T any](claims T, secret []byte, opts ...Option) (string, error) {
 		return "", oops.With("jwt.Sign").
 			Code(autherror.CodeJWTSignFailed).
 			Errorf("claims type %T does not implement jwt.Claims", claims)
+	}
+
+	if err := validateKeyType(cfg.signingMethod, secret, true); err != nil {
+		return "", err
 	}
 
 	setClaimsDefaults(jwtClaims, cfg)
@@ -44,8 +53,9 @@ func Sign[T any](claims T, secret []byte, opts ...Option) (string, error) {
 // Verify 验证 JWT，返回指定类型的 Claims 指针。
 // 验证失败时返回认证错误（TokenInvalid 或 TokenExpired）。
 // 支持通过 opts 指定期望的签名算法（默认 HS256），防止算法混淆攻击。
-// 使用 WithSigningMethod 覆盖默认算法（如 RS256、ES256）。
-func Verify[T any](tokenStr string, secret []byte, opts ...Option) (*T, error) {
+// 使用 WithSigningMethod 覆盖默认算法（如 RS256、ES256）；secret 的具体类型
+// 由该算法决定（见包注释），类型不匹配返回 autherror.ErrJWTKeyTypeMismatch。
+func Verify[T any](tokenStr string, secret any, opts ...Option) (*T, error) {
 	var zero T
 	cfg := applyOptions(opts)
 
@@ -57,14 +67,24 @@ func Verify[T any](tokenStr string, secret []byte, opts ...Option) (*T, error) {
 			Errorf("claims type %T does not implement jwt.Claims", zero)
 	}
 
+	var keyTypeErr error
 	token, err := gojwt.ParseWithClaims(tokenStr, claims, func(tok *gojwt.Token) (any, error) {
 		// 验证签名算法，防止算法混淆攻击（如 RS256→HS256）。
+		// 必须先于密钥类型校验执行：算法不匹配是安全防御，优先级高于
+		// 调用方的密钥类型配置错误（保持 CodeTokenInvalid 语义不变）。
 		if tok.Method != cfg.signingMethod {
 			return nil, fmt.Errorf("unexpected signing method: got %v, want %v", tok.Header["alg"], cfg.signingMethod.Alg())
+		}
+		if err := validateKeyType(cfg.signingMethod, secret, false); err != nil {
+			keyTypeErr = err
+			return nil, err
 		}
 		return secret, nil
 	})
 	if err != nil {
+		if keyTypeErr != nil {
+			return nil, keyTypeErr
+		}
 		return nil, mapJWTError(err)
 	}
 
@@ -78,11 +98,71 @@ func Verify[T any](tokenStr string, secret []byte, opts ...Option) (*T, error) {
 		Errorf("invalid claims type")
 }
 
+// validateKeyType 校验密钥类型是否匹配签名算法的族。
+// forSigning 为 true 时按签名场景校验（HMAC 共享密钥或非对称私钥），
+// 为 false 时按验证场景校验（HMAC 共享密钥或非对称公钥）。
+// 密钥类型不匹配时返回 autherror.ErrJWTKeyTypeMismatch，而非交由
+// golang-jwt 在签名/验证阶段做运行时类型断言 panic 或返回底层错误。
+func validateKeyType(method gojwt.SigningMethod, key any, forSigning bool) error {
+	var ok bool
+	var expected string
+
+	switch method.(type) {
+	case *gojwt.SigningMethodHMAC:
+		_, ok = key.([]byte)
+		expected = "[]byte"
+	case *gojwt.SigningMethodRSAPSS:
+		if forSigning {
+			_, ok = key.(*rsa.PrivateKey)
+			expected = "*rsa.PrivateKey"
+		} else {
+			_, ok = key.(*rsa.PublicKey)
+			expected = "*rsa.PublicKey"
+		}
+	case *gojwt.SigningMethodRSA:
+		if forSigning {
+			_, ok = key.(*rsa.PrivateKey)
+			expected = "*rsa.PrivateKey"
+		} else {
+			_, ok = key.(*rsa.PublicKey)
+			expected = "*rsa.PublicKey"
+		}
+	case *gojwt.SigningMethodECDSA:
+		if forSigning {
+			_, ok = key.(*ecdsa.PrivateKey)
+			expected = "*ecdsa.PrivateKey"
+		} else {
+			_, ok = key.(*ecdsa.PublicKey)
+			expected = "*ecdsa.PublicKey"
+		}
+	case *gojwt.SigningMethodEd25519:
+		if forSigning {
+			_, ok = key.(ed25519.PrivateKey)
+			expected = "ed25519.PrivateKey"
+		} else {
+			_, ok = key.(ed25519.PublicKey)
+			expected = "ed25519.PublicKey"
+		}
+	default:
+		// 未识别的签名算法族（如用户自定义 SigningMethod），跳过前置校验，
+		// 交由 golang-jwt 自身的签名/验证逻辑处理。
+		return nil
+	}
+
+	if !ok {
+		return autherror.ErrJWTKeyTypeMismatch.Errorf(
+			"signing method %s expects key type %s, got %T", method.Alg(), expected, key)
+	}
+
+	return nil
+}
+
 // Refresh 刷新 JWT（延长过期时间，保留原有 Claims 数据）。
 // 先验证原 Token 有效性，再使用新选项重新签发。
+// secret 的类型要求与 Sign/Verify 一致，由当前签名算法决定。
 // 原 Claims 中的 ExpiresAt、Issuer 等会被 opts 中的值覆盖；
 // 未显式指定 WithExpiration 时，使用默认 2 小时过期。
-func Refresh[T any](tokenStr string, secret []byte, opts ...Option) (string, error) {
+func Refresh[T any](tokenStr string, secret any, opts ...Option) (string, error) {
 	// 先验证原 Token，提取 Claims。opts 透传给 Verify 以复用签名算法校验。
 	claims, err := Verify[T](tokenStr, secret, opts...)
 	if err != nil {
