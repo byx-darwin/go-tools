@@ -12,40 +12,43 @@ type Builder = goerror.Builder
 
 // 认证错误码 40000-40099。
 const (
-	CodeTokenInvalid     = 40001 // Token 无效
-	CodeTokenExpired     = 40002 // Token 已过期
-	CodeTokenRevoked     = 40003 // Token 已撤销
-	CodeDeviceKicked     = 40004 // 设备已被踢出
-	CodeSessionInvalid   = 40005 // Session 无效
-	CodeSessionExpired   = 40006 // Session 已过期
-	CodeJWTSignFailed    = 40007 // JWT 签名失败
-	CodeJWTVerifyFailed  = 40008 // JWT 验证失败
-	CodeJWTRefreshFailed = 40009 // JWT 刷新失败
+	CodeTokenInvalid       = 40001 // Token 无效
+	CodeTokenExpired       = 40002 // Token 已过期
+	CodeTokenRevoked       = 40003 // Token 已撤销
+	CodeDeviceKicked       = 40004 // 设备已被踢出
+	CodeSessionInvalid     = 40005 // Session 无效
+	CodeSessionExpired     = 40006 // Session 已过期
+	CodeJWTSignFailed      = 40007 // JWT 签名失败
+	CodeJWTVerifyFailed    = 40008 // JWT 验证失败
+	CodeJWTRefreshFailed   = 40009 // JWT 刷新失败
+	CodeJWTKeyTypeMismatch = 40010 // JWT 密钥类型与签名算法不匹配
 )
 
 // 预定义认证错误构造器。
 var (
-	ErrTokenInvalid     = goerror.Code(CodeTokenInvalid).Public("token_invalid")          // Token 无效
-	ErrTokenExpired     = goerror.Code(CodeTokenExpired).Public("token_expired")          // Token 已过期
-	ErrTokenRevoked     = goerror.Code(CodeTokenRevoked).Public("token_revoked")          // Token 已撤销
-	ErrDeviceKicked     = goerror.Code(CodeDeviceKicked).Public("device_kicked")          // 设备已被踢出
-	ErrSessionInvalid   = goerror.Code(CodeSessionInvalid).Public("session_invalid")      // Session 无效
-	ErrSessionExpired   = goerror.Code(CodeSessionExpired).Public("session_expired")      // Session 已过期
-	ErrJWTSignFailed    = goerror.Code(CodeJWTSignFailed).Public("jwt_sign_failed")       // JWT 签名失败
-	ErrJWTVerifyFailed  = goerror.Code(CodeJWTVerifyFailed).Public("jwt_verify_failed")   // JWT 验证失败
-	ErrJWTRefreshFailed = goerror.Code(CodeJWTRefreshFailed).Public("jwt_refresh_failed") // JWT 刷新失败
+	ErrTokenInvalid       = goerror.Code(CodeTokenInvalid).Public("token_invalid")               // Token 无效
+	ErrTokenExpired       = goerror.Code(CodeTokenExpired).Public("token_expired")               // Token 已过期
+	ErrTokenRevoked       = goerror.Code(CodeTokenRevoked).Public("token_revoked")               // Token 已撤销
+	ErrDeviceKicked       = goerror.Code(CodeDeviceKicked).Public("device_kicked")               // 设备已被踢出
+	ErrSessionInvalid     = goerror.Code(CodeSessionInvalid).Public("session_invalid")           // Session 无效
+	ErrSessionExpired     = goerror.Code(CodeSessionExpired).Public("session_expired")           // Session 已过期
+	ErrJWTSignFailed      = goerror.Code(CodeJWTSignFailed).Public("jwt_sign_failed")            // JWT 签名失败
+	ErrJWTVerifyFailed    = goerror.Code(CodeJWTVerifyFailed).Public("jwt_verify_failed")        // JWT 验证失败
+	ErrJWTRefreshFailed   = goerror.Code(CodeJWTRefreshFailed).Public("jwt_refresh_failed")      // JWT 刷新失败
+	ErrJWTKeyTypeMismatch = goerror.Code(CodeJWTKeyTypeMismatch).Public("jwt_key_type_mismatch") // JWT 密钥类型与签名算法不匹配
 )
 
 func init() {
 	goerror.RegisterHTTPStatuses(map[int]int{
-		CodeTokenInvalid:     401,
-		CodeTokenExpired:     401,
-		CodeTokenRevoked:     401,
-		CodeDeviceKicked:     403,
-		CodeSessionInvalid:   401,
-		CodeSessionExpired:   401,
-		CodeJWTSignFailed:    500,
-		CodeJWTVerifyFailed:  500,
-		CodeJWTRefreshFailed: 500,
+		CodeTokenInvalid:       401,
+		CodeTokenExpired:       401,
+		CodeTokenRevoked:       401,
+		CodeDeviceKicked:       403,
+		CodeSessionInvalid:     401,
+		CodeSessionExpired:     401,
+		CodeJWTSignFailed:      500,
+		CodeJWTVerifyFailed:    500,
+		CodeJWTRefreshFailed:   500,
+		CodeJWTKeyTypeMismatch: 500,
 	})
 }

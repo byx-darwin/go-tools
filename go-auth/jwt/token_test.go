@@ -1,6 +1,10 @@
 package jwt
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"testing"
 	"time"
 
@@ -435,4 +439,84 @@ func TestExtractJTI(t *testing.T) {
 		assert.False(t, ok)
 		assert.Empty(t, jti)
 	})
+}
+
+// ── 非对称算法（RS256/ES256）真实签发/验证 ──
+
+func generateTestRSAKey(t *testing.T) (*rsa.PrivateKey, *rsa.PublicKey) {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	return key, &key.PublicKey
+}
+
+func generateTestECDSAKey(t *testing.T) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	return key, &key.PublicKey
+}
+
+func TestSignAndVerifyRS256(t *testing.T) {
+	priv, pub := generateTestRSAKey(t)
+	claims := UserClaims{UserUUID: "user-rs256"}
+
+	token, err := Sign(claims, priv,
+		WithExpiration(time.Hour),
+		WithSigningMethod(gojwt.SigningMethodRS256),
+	)
+	require.NoError(t, err)
+	assert.NotEmpty(t, token)
+
+	parsed, err := Verify[UserClaims](token, pub, WithSigningMethod(gojwt.SigningMethodRS256))
+	require.NoError(t, err)
+	assert.Equal(t, "user-rs256", parsed.UserUUID)
+}
+
+func TestSignAndVerifyES256(t *testing.T) {
+	priv, pub := generateTestECDSAKey(t)
+	claims := UserClaims{UserUUID: "user-es256"}
+
+	token, err := Sign(claims, priv,
+		WithExpiration(time.Hour),
+		WithSigningMethod(gojwt.SigningMethodES256),
+	)
+	require.NoError(t, err)
+	assert.NotEmpty(t, token)
+
+	parsed, err := Verify[UserClaims](token, pub, WithSigningMethod(gojwt.SigningMethodES256))
+	require.NoError(t, err)
+	assert.Equal(t, "user-es256", parsed.UserUUID)
+}
+
+// ── 密钥类型不匹配 ──
+
+func TestSignKeyTypeMismatch(t *testing.T) {
+	// RS256 要求 *rsa.PrivateKey，传入 []byte 应返回明确错误而非 panic。
+	claims := UserClaims{UserUUID: "user-mismatch-sign"}
+
+	_, err := Sign(claims, testSecret, WithSigningMethod(gojwt.SigningMethodRS256))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTKeyTypeMismatch, code)
+}
+
+func TestVerifyKeyTypeMismatch(t *testing.T) {
+	// Token 确实用 RS256 签发、调用方也声明期望 RS256，
+	// 但传入了错误类型的密钥（[]byte 而非 *rsa.PublicKey）。
+	priv, _ := generateTestRSAKey(t)
+	claims := UserClaims{UserUUID: "user-mismatch-verify"}
+
+	token, err := Sign(claims, priv,
+		WithExpiration(time.Hour),
+		WithSigningMethod(gojwt.SigningMethodRS256),
+	)
+	require.NoError(t, err)
+
+	_, err = Verify[UserClaims](token, testSecret, WithSigningMethod(gojwt.SigningMethodRS256))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTKeyTypeMismatch, code)
 }
