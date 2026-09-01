@@ -34,8 +34,10 @@ go-auth/error/
 go-middleware/auth/
   └── revocation_redis.go     (新增) RedisRevocationStore，实现 revocation.Checker + Revoker
 go-framework/hertz/middleware/
-  ├── jwt_auth.go              新增 WithRevocationChecker Option；错误响应改用 Responder.ErrorWithCode
-  └── device_auth.go           错误响应改用 Responder.ErrorWithCode，区分 kicked/internal
+  ├── jwt_auth.go              新增 WithRevocationChecker Option；错误响应改用 c.AbortWithError
+  └── device_auth.go           错误响应改用 c.AbortWithError，区分 kicked/internal
+go-framework/hertz/
+  └── response.go              Responder.Middleware() 收尾补齐 c.Errors 的内容协商重写（见 3.1）
 ```
 
 **数据流**：请求 → `JWTAuth` 验证签名（复用 `jwt.Verify`）→ 若配置了 `WithRevocationChecker`，用 `jwt.ExtractJTI` 取出 jti → `checker.IsRevoked(ctx, jti)` → 命中返回 `ErrTokenRevoked`（401）→ 未命中放行，claims 注入 context → `DeviceAuth`（如启用）调用 `CheckDevice`，失败返回 `ErrDeviceKicked`（403）。
@@ -108,23 +110,23 @@ func JWTAuth[T any](secret []byte, opts ...Option) app.HandlerFunc {
     return func(ctx context.Context, c *app.RequestContext) {
         token := extractBearerToken(c)
         if token == "" {
-            writeAuthError(ctx, c, autherror.ErrTokenInvalid)
+            writeAuthError(c, autherror.ErrTokenInvalid.Errorf("missing bearer token"))
             return
         }
         claims, err := gojwt.Verify[T](token, secret)
         if err != nil {
-            writeAuthError(ctx, c, err)
+            writeAuthError(c, err)
             return
         }
         if cfg.revocationChecker != nil {
             if jti, ok := gojwt.ExtractJTI(claims); ok {
                 revoked, rerr := cfg.revocationChecker.IsRevoked(ctx, jti)
                 if rerr != nil {
-                    writeAuthError(ctx, c, oops.Code(autherror.CodeJWTVerifyFailed).Wrap(rerr))
+                    writeAuthError(c, oops.Code(autherror.CodeJWTVerifyFailed).Wrap(rerr))
                     return
                 }
                 if revoked {
-                    writeAuthError(ctx, c, autherror.ErrTokenRevoked)
+                    writeAuthError(c, autherror.ErrTokenRevoked.Errorf("token revoked"))
                     return
                 }
             }
@@ -134,19 +136,45 @@ func JWTAuth[T any](secret []byte, opts ...Option) app.HandlerFunc {
     }
 }
 
-// writeAuthError 写鉴权错误响应，跳过 ErrorRouter，直接使用 err 对应的 httpCode/bizCode。
-// 复用 Responder.ErrorWithCode 以保留内容协商（JSON/Protobuf）与 i18n 能力；
-// 若上游未通过 Middleware() 注入 Responder，RespondFrom 退化为 defaultResponder，
-// 仍能正确写出 httpCode/bizCode（ErrorWithCode 本身不依赖 ErrorRouter）。
-func writeAuthError(ctx context.Context, c *app.RequestContext, err error) {
-    code, msg := goerror.Extract(err)
-    hertz.RespondFrom(c).ErrorWithCode(ctx, c, goerror.HTTPStatus(err), code, msg)
+// writeAuthError 中断请求并记录错误。不依赖 go-framework/hertz 包——
+// hertz 包（server.go）已经 import 了 hertz/middleware（挂载 middleware.Cors()），
+// 若 middleware 反过来 import hertz 会形成循环 import，编译失败。
+// AbortWithError 是 Hertz 框架自带方法，立即写出正确的 HTTP 状态码
+// （goerror.HTTPStatus(err)）并把 err 压入 c.Errors；未配置 Responder 时
+// body 为空，状态码已经正确（与当前 AbortWithStatus 行为等价，无回归）。
+func writeAuthError(c *app.RequestContext, err error) {
+    c.AbortWithError(goerror.HTTPStatus(err), err)
 }
 ```
 
 `JWTAuth[T any](secret []byte, opts ...Option)` 新增变参 `opts`，属于向后兼容的签名扩展（原调用 `JWTAuth[UserClaims](secret)` 不受影响）。
 
-**device_auth.go**：`CheckDevice` 返回 `false` → `writeAuthError(ctx, c, autherror.ErrDeviceKicked)`；`CheckDevice` 返回 `err != nil` → 包一层 `CodeJWTVerifyFailed`（内部错误，非鉴权语义错误）后 `writeAuthError`。
+**device_auth.go**：`CheckDevice` 返回 `false` → `writeAuthError(c, autherror.ErrDeviceKicked.Errorf("device kicked"))`；`CheckDevice` 返回 `err != nil` → 包一层 `CodeJWTVerifyFailed`（内部错误，非鉴权语义错误）后 `writeAuthError`。
+
+### 3.1 修正：`hertz.Responder.Middleware()` 收尾补齐内容协商（避免循环依赖）
+
+初版设计里 `writeAuthError` 直接调用 `hertz.RespondFrom(c).ErrorWithCode(...)`，规划阶段发现这会造成 `hertz → middleware → hertz` 循环 import（`go-framework/hertz/server.go` 已经 import 了 `hertz/middleware` 用于挂载 `middleware.Cors()`）。修正为：
+
+1. `middleware` 包完全不依赖 `hertz` 包，`writeAuthError` 只用 Hertz 框架自带的 `c.AbortWithError`（见上）。
+2. `go-framework/hertz/response.go` 的 `Responder.Middleware()`（改动仅限 `hertz` 包内部，不引入新依赖方向）在 `c.Next(ctx)` 之后新增收尾逻辑：
+
+```go
+c.Next(ctx)
+
+// 下游中间件（如 JWTAuth/DeviceAuth）可能只调用了 AbortWithError 记录错误、
+// 写了空 body。这里统一补齐：用 Responder 重写响应体，保留 Protobuf/JSON
+// 内容协商与 i18n 能力。状态码计算方式与 baseline 一致（都是
+// goerror.HTTPStatus），不依赖 ErrorRouter 是否配置，避免状态码不一致。
+if len(c.Errors) > 0 {
+    last := c.Errors.Last()
+    if last != nil {
+        code, msg := goerror.Extract(last.Err)
+        r.ErrorWithCode(ctx, c, goerror.HTTPStatus(last.Err), code, msg)
+    }
+}
+```
+
+效果：未注册 `Responder.Middleware()` 的应用——状态码正确，body 为空（与当前行为等价）；注册了的应用——状态码正确且 body 是完整协商后的 JSON/Protobuf + i18n 消息。两种场景下状态码计算方式完全一致，不会因为是否配置 `ErrorRouter` 产生歧义。
 
 ### 4. go-middleware/auth 的 Redis 实现
 
@@ -180,5 +208,5 @@ func NewRedisRevocationStore(client redis.UniversalClient, opts ...Option) *Redi
 ## 依赖影响
 
 - `go-auth` 新增 `revocation` 包，不引入新的第三方依赖，不反向依赖 go-framework/go-middleware（符合模块边界约束）。
-- `go-framework/hertz/middleware` 依赖 `go-auth/revocation`（已在依赖范围内）与 `go-framework/hertz`（同模块内部依赖，已存在）。
+- `go-framework/hertz/middleware` 依赖 `go-auth/revocation`（已在依赖范围内）；**不依赖 `go-framework/hertz`**（避免与 `hertz → hertz/middleware` 的既有依赖方向形成循环，见 3.1）。
 - `go-middleware/auth` 新文件复用现有 `redis.UniversalClient`/`samber/oops` 依赖，无新增。
