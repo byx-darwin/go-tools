@@ -32,3 +32,14 @@
   - 启用 `WithTrace()`：产生 `tls.flush` span，`status=Error`（PutLogs 网络失败被正确记录）、属性 `tls.topic_id=topic-dogfood`、`tls.batch_size=1`、`links=1` 且 Link 目标即调用方 `handle-request` span——与设计文档"仅 flush 起 span + Link 关联调用方"的方案完全一致
   - 全程无 panic，错误信息可读、可定位（`unsupported protocol scheme`，符合 fake endpoint 预期）
 - 结论：✅ 通过
+
+### #84 (Issue #74) — jwt.Refresh Refresh Token 轮换与复用检测
+
+- 验证方式：临时外部测试文件 `package jwt_test`（`go-auth/jwt/dogfood_external_test.go`，运行后删除，未提交），只使用导出符号 `jwt.Sign`/`jwt.Verify`/`jwt.Refresh`/`jwt.ExtractJTI` 与导出接口 `revocation.Store`（自建内存实现），覆盖四个场景
+- 结果：
+  - 公共 API 端到端可用：`Sign` → `Refresh`（带 `ctx`+自建 `store`）→ `Verify` 全链路通过，`ExtractJTI` 确认新 token 携带全新 JTI（`ff07e1b3-...` ≠ 旧 `jti-dogfood-1`）
+  - 默认行为不变：Claims 不带 JTI 时 `Refresh` 成功签发新 token，且 `store.revoked` 始终为空——与"无 JTI 完全跳过轮换"的文档描述一致
+  - 新特性按文档生效：用同一旧 token 二次 `Refresh` 返回 `"jti jti-dogfood-2 already used for refresh (reuse detected)"`，与复用检测设计一致
+  - 错误路径可观察：`store` 传 `nil` 且 Claims 带 JTI 时，返回清晰错误 `"revocation store is required for tokens carrying jti"`，全程无 panic（`recover()` 断言确认）
+  - 文档与实际行为一致：`go-auth/jwt/options.go` 包注释中的新签名用法示例（`ctx`/`store` 参数顺序）与本次实测调用完全一致
+- 结论：✅ 通过
