@@ -196,6 +196,13 @@ func Refresh[T any](ctx context.Context, tokenStr string, secret any, store revo
 		}
 
 		rc := extractRegisteredClaims(any(claims).(gojwt.Claims))
+		if rc.ExpiresAt == nil {
+			// exp 并非 JWT 规范强制字段；没有 exp 就无法计算撤销记录的 ttl，
+			// fail-closed 拒绝刷新，而不是对 rc.ExpiresAt.Time 做空指针解引用。
+			return "", oops.With("jwt.Refresh").
+				Code(autherror.CodeJWTRefreshFailed).
+				Errorf("jti %s has no exp claim, cannot compute revocation ttl", jti)
+		}
 		if err := store.Revoke(ctx, jti, time.Until(rc.ExpiresAt.Time)); err != nil {
 			return "", oops.With("jwt.Refresh").
 				Code(autherror.CodeJWTRefreshFailed).

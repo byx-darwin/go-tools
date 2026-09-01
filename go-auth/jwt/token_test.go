@@ -642,3 +642,23 @@ func TestRefreshRevokeError(t *testing.T) {
 	_, err = Refresh[refreshRotationClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
 	require.Error(t, err, "Revoke 出错必须 fail-closed，拒绝刷新")
 }
+
+func TestRefreshMissingExpiresAtFailsClosed(t *testing.T) {
+	// exp 并非 JWT 规范强制字段。构造一个带 JTI 但不带 ExpiresAt 的 Token：
+	// 必须绕过本包 Sign() 的默认过期填充逻辑，直接用 gojwt 签发。
+	claims := &refreshRotationClaims{
+		UserUUID:         "user-no-exp",
+		RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-no-exp"},
+	}
+	require.Nil(t, claims.ExpiresAt)
+
+	rawToken := gojwt.NewWithClaims(gojwt.SigningMethodHS256, claims)
+	token, err := rawToken.SignedString(testSecret)
+	require.NoError(t, err)
+
+	store := newFakeRevocationStore()
+	newToken, err := Refresh[refreshRotationClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
+	require.Error(t, err, "缺少 ExpiresAt 时必须 fail-closed，而不是 panic")
+	assert.Empty(t, newToken, "拒绝刷新时不应签发新 Token")
+	assert.Empty(t, store.revoked, "Revoke 不应被调用")
+}
