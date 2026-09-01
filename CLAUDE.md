@@ -12,7 +12,7 @@ The 5-module → 3-library split (2026-06-23) is **complete**. ncgo generated pr
 
 ```text
                     go-common    ← 最底层，零框架依赖
-                        ↑          (crypto, cache, httpclient, log, timeutil, netutil, captcha, error)
+                        ↑          (crypto, cache, httpclient, log, timeutil, netutil, captcha, error, auth, astutil, executil, templateutil)
                      go-auth       ← 认证工具 (JWT, Session/Device 接口, 错误码)
                     ↑       ↑
           ┌─────────┘       └─────────┐
@@ -26,7 +26,7 @@ The 5-module → 3-library split (2026-06-23) is **complete**. ncgo generated pr
 
 | Module | Import Path | Purpose |
 |--------|------------|---------|
-| `go-common` | `github.com/byx-darwin/go-tools/go-common` | Pure utilities: crypto, cache, log, error, timeutil, netutil, httpclient, captcha |
+| `go-common` | `github.com/byx-darwin/go-tools/go-common` | Pure utilities: crypto, cache, log, error, timeutil, netutil, httpclient, captcha, auth, astutil, executil, templateutil |
 | `go-auth` | `github.com/byx-darwin/go-tools/go-auth` | Auth utilities: JWT Sign/Verify/Refresh, Session/Device interfaces |
 | `go-middleware` | `github.com/byx-darwin/go-tools/go-middleware` | Middleware clients: redis, kafka, db, es, clickhouse, tls, auth |
 | `go-framework` | `github.com/byx-darwin/go-tools/go-framework` | Framework adapters: hertz, kitex, config |
@@ -109,12 +109,15 @@ go.work                    → Workspace root (go 1.25.8)
 go-common/                 → Zero-dependency utilities
   cache/                   → Generic cache (samber/hot wrapper): LRU/LFU/FIFO/TwoQueue/ARC
   captcha/                 → CAPTCHA generation with cache
-  crypto/                  → Encryption (MD5/SHA/HMAC/TEA)
+  crypto/                  → Encryption (MD5/SHA/HMAC/AES-GCM)
   httpclient/              → HTTP client with retry, m3u8 support
   log/                     → Structured logging (slog + lumberjack + OTel)
   netutil/                 → Network utilities
   timeutil/                → Time formatting helpers
   auth/                    → Auth helpers (AK/SK)
+  astutil/                 → Go AST manipulation (dave/dst-based, codegen helper)
+  executil/                → Enhanced command execution wrapper
+  templateutil/            → Pluggable template helper functions
   error/                   → Error mechanism (oops Builder/Extract + band boundaries + HTTP status registry)
 go-middleware/             → Middleware clients (no Hertz/Kitex dependency)
   redis/                   → Redis client (go-redis v9, UniversalClient)
