@@ -439,6 +439,9 @@ const (
 //  1. 提取/生成 Request ID → 设置响应头 + 注入 ctx
 //  2. 提取语言偏好 → 注入 ctx
 //  3. 注入 Responder 实例 → 注入 ctx
+//  4. 链路收尾：若下游通过 c.Error/c.AbortWithError 记录了错误但只写了
+//     空 body（如认证中间件），用完整的内容协商（JSON/Protobuf）+ i18n
+//     重写响应体
 func (r *Responder) Middleware() app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		// 1. 提取 Request ID
@@ -464,6 +467,24 @@ func (r *Responder) Middleware() app.HandlerFunc {
 		}()
 
 		c.Next(ctx)
+
+		// 下游中间件（如认证中间件）可能通过 AbortWithError 中断了请求、记录了
+		// 错误，但只写出了空 body。这里统一补齐：仅在请求已被 Abort 且响应体仍为
+		// 空时才重写——避免误伤"仅用 c.Error 记录日志、自己已经写过响应"的场景。
+		// 状态码优先取下游已经写出的显式状态码（如果 ≥400），goerror.HTTPStatus
+		// 只在缺失错误码时兜底，避免把一个有明确状态码但无 oops code 的错误
+		// 降级成 200。
+		if len(c.Errors) > 0 && c.IsAborted() && len(c.Response.Body()) == 0 {
+			last := c.Errors.Last()
+			if last != nil {
+				status := goerror.HTTPStatus(last.Err)
+				if existing := c.Response.StatusCode(); existing >= 400 && status < 400 {
+					status = existing
+				}
+				code, msg := goerror.Extract(last.Err)
+				r.ErrorWithCode(ctx, c, status, code, msg)
+			}
+		}
 	}
 }
 

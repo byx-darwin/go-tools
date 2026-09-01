@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/cloudwego/hertz/pkg/app"
 
 	"github.com/byx-darwin/go-tools/go-auth/device"
+	autherror "github.com/byx-darwin/go-tools/go-auth/error"
 )
 
 // DeviceClaims 提取函数类型。
@@ -30,23 +30,23 @@ func DeviceAuth(store device.Store, extract DeviceClaims) app.HandlerFunc {
 	return func(ctx context.Context, c *app.RequestContext) {
 		claims, ok := c.Get(string(ctxKeyClaims))
 		if !ok || extract == nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			writeAuthError(c, autherror.ErrTokenInvalid.Errorf("missing claims in context"))
 			return
 		}
 
 		userUUID, deviceID, jti := extract(claims)
 		if userUUID == "" || deviceID == "" || jti == "" {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			writeAuthError(c, autherror.ErrTokenInvalid.Errorf("incomplete device claims"))
 			return
 		}
 
 		valid, err := store.CheckDevice(ctx, userUUID, deviceID, jti)
 		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
+			writeAuthError(c, autherror.ErrJWTVerifyFailed.Wrap(err))
 			return
 		}
 		if !valid {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			writeAuthError(c, autherror.ErrDeviceKicked.Errorf("device kicked"))
 			return
 		}
 

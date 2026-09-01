@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -135,7 +136,7 @@ func TestDeviceAuth_DeviceNotFound(t *testing.T) {
 	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
 		ut.Header{Key: "Authorization", Value: "Bearer " + token})
 	res := w.Result()
-	assert.Equal(t, http.StatusUnauthorized, res.StatusCode())
+	assert.Equal(t, http.StatusForbidden, res.StatusCode())
 }
 
 func TestDeviceAuth_JTIMismatch(t *testing.T) {
@@ -160,7 +161,7 @@ func TestDeviceAuth_JTIMismatch(t *testing.T) {
 	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
 		ut.Header{Key: "Authorization", Value: "Bearer " + token})
 	res := w.Result()
-	assert.Equal(t, http.StatusUnauthorized, res.StatusCode())
+	assert.Equal(t, http.StatusForbidden, res.StatusCode())
 }
 
 func TestDeviceAuth_NoClaimsInContext(t *testing.T) {
@@ -203,4 +204,45 @@ func TestDeviceAuth_ExtractReturnsEmptyFields(t *testing.T) {
 		ut.Header{Key: "Authorization", Value: "Bearer " + token})
 	res := w.Result()
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode())
+}
+
+type errorDeviceStore struct{}
+
+func (errorDeviceStore) AddDevice(context.Context, string, string, string, int) ([]device.Device, error) {
+	return nil, nil
+}
+
+func (errorDeviceStore) CheckDevice(context.Context, string, string, string) (bool, error) {
+	return false, errors.New("redis down")
+}
+
+func (errorDeviceStore) RemoveDevice(context.Context, string, string) error { return nil }
+
+func (errorDeviceStore) RemoveAllDevices(context.Context, string) error { return nil }
+
+func (errorDeviceStore) ListDevices(context.Context, string) ([]device.Device, error) {
+	return nil, nil
+}
+
+func TestDeviceAuth_StoreError(t *testing.T) {
+	secret := []byte("test-secret-key-32bytes-long!!!!!")
+	store := errorDeviceStore{}
+	token := issueDeviceToken(t, secret, "user-1", "dev-1", "jti-1")
+
+	extract := func(claims any) (string, string, string) {
+		c := claims.(*deviceTestClaims)
+		return c.Subject, c.DeviceID, c.JTI
+	}
+
+	engine := newDeviceTestEngine()
+	engine.Use(JWTAuth[deviceTestClaims](secret))
+	engine.Use(DeviceAuth(store, extract))
+	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
+	})
+
+	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
+		ut.Header{Key: "Authorization", Value: "Bearer " + token})
+	res := w.Result()
+	assert.Equal(t, http.StatusInternalServerError, res.StatusCode())
 }

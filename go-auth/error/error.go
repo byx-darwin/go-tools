@@ -35,3 +35,17 @@ var (
 	ErrJWTVerifyFailed  = goerror.Code(CodeJWTVerifyFailed).Public("jwt_verify_failed")   // JWT 验证失败
 	ErrJWTRefreshFailed = goerror.Code(CodeJWTRefreshFailed).Public("jwt_refresh_failed") // JWT 刷新失败
 )
+
+func init() {
+	goerror.RegisterHTTPStatuses(map[int]int{
+		CodeTokenInvalid:     401,
+		CodeTokenExpired:     401,
+		CodeTokenRevoked:     401,
+		CodeDeviceKicked:     403,
+		CodeSessionInvalid:   401,
+		CodeSessionExpired:   401,
+		CodeJWTSignFailed:    500,
+		CodeJWTVerifyFailed:  500,
+		CodeJWTRefreshFailed: 500,
+	})
+}

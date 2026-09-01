@@ -395,3 +395,44 @@ func TestSignNonClaimsType(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not implement jwt.Claims")
 }
+
+// ── ExtractJTI ──
+
+type extractJTIClaims struct {
+	gojwt.RegisteredClaims
+}
+
+func TestExtractJTI(t *testing.T) {
+	t.Run("direct embed with ID", func(t *testing.T) {
+		claims := &extractJTIClaims{RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-123"}}
+		jti, ok := ExtractJTI(claims)
+		assert.True(t, ok)
+		assert.Equal(t, "jti-123", jti)
+	})
+
+	t.Run("no ID set", func(t *testing.T) {
+		claims := &extractJTIClaims{}
+		jti, ok := ExtractJTI(claims)
+		assert.False(t, ok)
+		assert.Empty(t, jti)
+	})
+
+	t.Run("not a claims type", func(t *testing.T) {
+		jti, ok := ExtractJTI("not-claims")
+		assert.False(t, ok)
+		assert.Empty(t, jti)
+	})
+
+	t.Run("nil claims", func(t *testing.T) {
+		jti, ok := ExtractJTI(nil)
+		assert.False(t, ok)
+		assert.Empty(t, jti)
+	})
+
+	t.Run("MapClaims not supported", func(t *testing.T) {
+		mc := gojwt.MapClaims{"jti": "abc"}
+		jti, ok := ExtractJTI(&mc)
+		assert.False(t, ok)
+		assert.Empty(t, jti)
+	})
+}

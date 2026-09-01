@@ -6,15 +6,19 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/common/config"
 	"github.com/cloudwego/hertz/pkg/common/ut"
 	"github.com/cloudwego/hertz/pkg/route"
+	gojwt "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	authjwt "github.com/byx-darwin/go-tools/go-auth/jwt"
 	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
+	"github.com/byx-darwin/go-tools/go-framework/hertz/middleware"
 )
 
 // setupHertzEngine 创建测试用 Hertz engine。
@@ -42,6 +46,10 @@ func setupHertzEngine(t *testing.T, r *Responder) *route.Engine {
 	engine.GET("/error-with-code", func(ctx context.Context, c *app.RequestContext) {
 		resp := RespondFrom(c)
 		resp.ErrorWithCode(ctx, c, http.StatusForbidden, 40300, "禁止访问")
+	})
+	engine.GET("/error-via-context", func(ctx context.Context, c *app.RequestContext) {
+		err := frameworkerror.ErrParamInvalid.Wrap(errors.New("via context"))
+		_ = c.AbortWithError(http.StatusBadRequest, err)
 	})
 	engine.GET("/request-id", func(ctx context.Context, c *app.RequestContext) {
 		id := RequestIDFrom(c)
@@ -277,4 +285,94 @@ func TestResponder_Success_ProtoData_AnyExpansion(t *testing.T) {
 	// 不应包含 type_url 和 value 字段（未展开的 anypb.Any 格式）
 	assert.NotContains(t, body, `"type_url"`)
 	assert.NotContains(t, body, `"value"`)
+}
+
+func TestResponder_Middleware_RewritesContextError(t *testing.T) {
+	r := NewResponder()
+	engine := setupHertzEngine(t, r)
+
+	w := ut.PerformRequest(engine, http.MethodGet, "/error-via-context", nil)
+
+	// AbortWithError 已经写出正确状态码；Middleware() 收尾后 body 应变成
+	// 完整协商后的 JSON（而不是空 body）。
+	require.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, float64(frameworkerror.CodeParamInvalid), resp["code"])
+	assert.Equal(t, "param_invalid", resp["msg"])
+}
+
+func TestResponder_Middleware_NoErrorsNoOverwrite(t *testing.T) {
+	r := NewResponder()
+	engine := setupHertzEngine(t, r)
+
+	w := ut.PerformRequest(engine, http.MethodGet, "/success", nil)
+
+	// 成功路径 c.Errors 为空，收尾逻辑不应有任何影响。
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "ok", resp["msg"])
+}
+
+// ── JWTAuth + Responder.Middleware() 联通测试 ──
+//
+// 验证 go-framework/hertz/middleware 的 JWTAuth（用 c.AbortWithError 记录
+// 错误）与本包 Responder.Middleware()（读取 c.Errors 补齐协商响应体）两者
+// 组合后，能产出正确的状态码 + 业务码 + 消息，而不只是分别测试。
+
+type integrationClaims struct {
+	gojwt.RegisteredClaims
+}
+
+func TestJWTAuthWithResponderMiddleware_TokenInvalid(t *testing.T) {
+	secret := []byte("test-secret-key-32bytes-long!!!!!")
+	r := NewResponder()
+
+	engine := route.NewEngine(config.NewOptions([]config.Option{}))
+	engine.Use(r.Middleware())
+	engine.Use(middleware.JWTAuth[integrationClaims](secret))
+	engine.GET("/protected", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
+	})
+
+	w := ut.PerformRequest(engine, http.MethodGet, "/protected", &ut.Body{Body: nil},
+		ut.Header{Key: "Authorization", Value: "Bearer not-a-valid-token"})
+
+	require.Equal(t, http.StatusUnauthorized, w.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, float64(40001), resp["code"]) // autherror.CodeTokenInvalid
+	assert.Equal(t, "token_invalid", resp["msg"])
+}
+
+func TestJWTAuthWithResponderMiddleware_Success(t *testing.T) {
+	secret := []byte("test-secret-key-32bytes-long!!!!!")
+	r := NewResponder()
+
+	claims := integrationClaims{
+		RegisteredClaims: gojwt.RegisteredClaims{
+			Subject:   "user-1",
+			ExpiresAt: gojwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+	}
+	token, err := authjwt.Sign(claims, secret)
+	require.NoError(t, err)
+
+	engine := route.NewEngine(config.NewOptions([]config.Option{}))
+	engine.Use(r.Middleware())
+	engine.Use(middleware.JWTAuth[integrationClaims](secret))
+	engine.GET("/protected", func(ctx context.Context, c *app.RequestContext) {
+		resp := RespondFrom(c)
+		resp.Success(c, map[string]string{"ok": "true"})
+	})
+
+	w := ut.PerformRequest(engine, http.MethodGet, "/protected", &ut.Body{Body: nil},
+		ut.Header{Key: "Authorization", Value: "Bearer " + token})
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "ok", resp["msg"])
 }

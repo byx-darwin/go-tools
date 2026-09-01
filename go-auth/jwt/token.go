@@ -126,6 +126,24 @@ func setClaimsDefaults(claims gojwt.Claims, cfg config) {
 	}
 }
 
+// ExtractJTI 从已验证的 Claims 中提取 JWT ID（jti）。
+// claims 通常是 Verify 返回的 *T 指针（或任何实现 jwt.Claims 且嵌入了
+// gojwt.RegisteredClaims 的结构体指针）。未找到 RegisteredClaims 或
+// ID 为空时返回 ("", false)。
+func ExtractJTI(claims any) (string, bool) {
+	jwtClaims, ok := claims.(gojwt.Claims)
+	if !ok {
+		return "", false
+	}
+
+	rc := extractRegisteredClaims(jwtClaims)
+	if rc == nil || rc.ID == "" {
+		return "", false
+	}
+
+	return rc.ID, true
+}
+
 // extractRegisteredClaims 从 Claims 中提取嵌入的 RegisteredClaims 指针。
 // 支持以下类型：
 //   - *gojwt.RegisteredClaims（直接返回）

@@ -132,3 +132,14 @@ shipper, _ := tls.NewFileShipper(tls.FileShipperConfig{
 shipper.Start()
 defer shipper.Close()
 ```
+
+### 7. `DeviceAuth` 中间件踢出状态码由 401 变为 403（破坏性变更，Issue #72）
+
+`go-framework/hertz/middleware.DeviceAuth` 在设备被踢出/JTI 不匹配时，HTTP 状态码从 **401** 改为 **403**（`JWTAuth` 本身的 token 无效/过期/撤销仍是 401，未变）。
+
+同时 `JWTAuth`/`DeviceAuth` 鉴权失败的响应体不再是空 body：若应用配置了 `hertz.NewResponder(...).Middleware()`，响应体会是协商后的 JSON/Protobuf，形如 `{"code":40004,"msg":"device_kicked"}`；若未配置 `Responder.Middleware()`，body 仍为空，只有状态码变化。
+
+**下游影响**：如果客户端（尤其是移动端）用 401 触发"重新登录"逻辑、用其它状态码触发别的处理，需要同步把"设备被踢出"场景从 401 分支迁移到 403 分支。
+
+`JWTAuth` 新增可选的 `WithRevocationChecker` 选项用于接入 Token 撤销机制（`go-auth/revocation` + `go-middleware/auth.RedisRevocationStore`），不使用该选项时行为不变。
+

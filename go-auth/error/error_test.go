@@ -68,3 +68,28 @@ func TestPredefinedErrors_NonAuthError(t *testing.T) {
 	code, _ := goerror.Extract(nonAuthErr)
 	assert.Equal(t, 0, code)
 }
+
+// TestHTTPStatusRegistration 验证 init() 注册的 HTTP 状态码映射。
+func TestHTTPStatusRegistration(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"token invalid", ErrTokenInvalid.Wrap(errors.New("x")), 401},
+		{"token expired", ErrTokenExpired.Wrap(errors.New("x")), 401},
+		{"token revoked", ErrTokenRevoked.Wrap(errors.New("x")), 401},
+		{"device kicked", ErrDeviceKicked.Wrap(errors.New("x")), 403},
+		{"session invalid", ErrSessionInvalid.Wrap(errors.New("x")), 401},
+		{"session expired", ErrSessionExpired.Wrap(errors.New("x")), 401},
+		{"jwt sign failed", ErrJWTSignFailed.Wrap(errors.New("x")), 500},
+		{"jwt verify failed", ErrJWTVerifyFailed.Wrap(errors.New("x")), 500},
+		{"jwt refresh failed", ErrJWTRefreshFailed.Wrap(errors.New("x")), 500},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, goerror.HTTPStatus(tt.err))
+		})
+	}
+}
