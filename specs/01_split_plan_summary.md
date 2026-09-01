@@ -39,7 +39,7 @@ go-middleware              go-framework
 
 | 来源 | 目标路径 | 说明 |
 |------|---------|------|
-| `tools/crypto/*` | `go-common/crypto/` | MD5/SHA/HMAC/TEA |
+| `tools/crypto/*` | `go-common/crypto/` | MD5/SHA/HMAC/AES-GCM |
 | `tools/cache/*` | `go-common/cache/` | 缓存封装 — 底层使用 `github.com/samber/hot`（替代自定义 FIFO/LRU/LFU/CLOCK/MRU 实现） |
 | `tools/http_client/*` | `go-common/httpclient/` | fasthttp 客户端 + 重试 |
 | `tools/time/*` | `go-common/timeutil/` | 时间格式化/月份 |
@@ -143,7 +143,6 @@ func NewCache[K comparable, V any](policy hot.Policy, size int) *hot.HotCache[K,
 func MD5(data []byte) string
 func SHA256(data []byte) string
 func HMACSHA256(data, key []byte) string
-func TEAEncrypt(data, key []byte) ([]byte, error)
 
 // go-common/log/logger.go — 基于 Go 标准库 log/slog，零外部日志依赖
 type Logger struct { *slog.Logger; config *Config }

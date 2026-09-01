@@ -35,7 +35,7 @@
 | `log` | 结构化日志（基于 slog + OTel TraceID/SpanID + 文件轮转） |
 | `log/adapters` | Hertz/Kitex 日志适配器 |
 | `netutil` | 网络工具（内网 IP 获取） |
-| `crypto` | 加密（MD5/SHA/HMAC/TEA） |
+| `crypto` | 加密（MD5/SHA/HMAC/AES-GCM） |
 | `httpclient` | HTTP 客户端（重试/M3U8） |
 | `auth` | AK/SK 生成 |
 | `timeutil` | 时间工具 |
