@@ -1,6 +1,14 @@
 // Package jwt 提供泛型 JWT 签发、验证和刷新工具。
 //
-// 基于 golang-jwt/jwt/v5，支持任意 Claims 类型。
+// 基于 golang-jwt/jwt/v5，支持任意 Claims 类型，密钥参数为 any，
+// 具体类型由签名算法决定：
+//   - HMAC 族（HS256/384/512，默认）：secret 为 []byte 共享密钥
+//   - RSA 族（RS256/384/512、PS256/384/512）：签名用 *rsa.PrivateKey，验证用 *rsa.PublicKey
+//   - ECDSA 族（ES256/384/512）：签名用 *ecdsa.PrivateKey，验证用 *ecdsa.PublicKey
+//   - EdDSA：签名用 ed25519.PrivateKey，验证用 ed25519.PublicKey
+//
+// 密钥类型与签名算法不匹配时，Sign/Verify 返回 autherror.ErrJWTKeyTypeMismatch，
+// 而非在底层库中触发运行时类型断言错误。
 //
 // 用法：
 //
@@ -12,6 +20,10 @@
 //	token, err := jwt.Sign(UserClaims{UserUUID: "123"}, secret, jwt.WithExpiration(time.Hour))
 //	claims, err := jwt.Verify[UserClaims](token, secret)
 //	newToken, err := jwt.Refresh[UserClaims](token, secret, jwt.WithExpiration(24*time.Hour))
+//
+//	// 非对称算法示例（RS256）：
+//	token, err := jwt.Sign(UserClaims{UserUUID: "123"}, rsaPrivateKey, jwt.WithSigningMethod(gojwt.SigningMethodRS256))
+//	claims, err := jwt.Verify[UserClaims](token, rsaPublicKey, jwt.WithSigningMethod(gojwt.SigningMethodRS256))
 package jwt
 
 import (
@@ -66,6 +78,8 @@ func WithIssuer(issuer string) Option {
 
 // WithSigningMethod 设置 JWT 签名算法。nil 值忽略。
 // 默认值为 jwt.SigningMethodHS256。
+// 切换到 RS256/ES256/EdDSA 等非对称算法时，Sign/Verify 的 secret 参数
+// 必须传入对应的私钥/公钥类型（见包注释），否则返回 autherror.ErrJWTKeyTypeMismatch。
 func WithSigningMethod(method gojwt.SigningMethod) Option {
 	return func(c *config) {
 		if method != nil {
