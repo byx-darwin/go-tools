@@ -19,7 +19,7 @@ go get github.com/byx-darwin/go-tools/go-middleware
 | `db` | 数据库配置 + 连接池工厂（OTel 追踪，可选） |
 | `es` | Elasticsearch v8 客户端（OTel 追踪，可选） |
 | `clickhouse` | ClickHouse 原生协议客户端（基于 `clickhouse-go/v2`；含包内错误码 20401-20403；OTel 追踪，可选） |
-| `tls` | 火山引擎日志服务（Producer + FileShipper；含包内错误码 20501-20504） |
+| `tls` | 火山引擎日志服务（Producer + FileShipper；含包内错误码 20501-20504；OTel 追踪，可选） |
 
 ## 配置对齐
 
