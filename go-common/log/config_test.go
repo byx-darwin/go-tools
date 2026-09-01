@@ -14,7 +14,30 @@ func TestConfig_Defaults(t *testing.T) {
 	require.Equal(t, "console", cfg.Mode)
 	require.False(t, cfg.AddSource)
 	require.Empty(t, cfg.Categories)
+	require.True(t, cfg.Masking.Enabled)
+	require.NotEmpty(t, cfg.Masking.MaskedFields)
+	require.Equal(t, "full", cfg.Masking.Mode)
+}
+
+func TestNewConfig_DefaultMaskingEnabled(t *testing.T) {
+	cfg := log.NewConfig()
+	require.True(t, cfg.Masking.Enabled)
+	require.Equal(t, log.DefaultMaskedFields(), cfg.Masking.MaskedFields)
+	require.Equal(t, "full", cfg.Masking.Mode)
+}
+
+func TestWithConfigMasking_ExplicitDisable(t *testing.T) {
+	cfg := log.NewConfig(
+		log.WithConfigMasking(log.MaskConfig{Enabled: false}),
+	)
 	require.False(t, cfg.Masking.Enabled)
+	require.Empty(t, cfg.Masking.MaskedFields)
+}
+
+func TestMaskConfig_ZeroValueUnaffected(t *testing.T) {
+	var cfg log.Config
+	require.False(t, cfg.Masking.Enabled)
+	require.Empty(t, cfg.Masking.MaskedFields)
 }
 
 func TestConfig_CustomValues(t *testing.T) {
