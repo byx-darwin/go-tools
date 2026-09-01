@@ -7,6 +7,7 @@ import (
 	gojwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/byx-darwin/go-tools/go-auth/jwt"
+	"github.com/byx-darwin/go-tools/go-auth/revocation"
 	hertzresp "github.com/byx-darwin/go-tools/go-framework/hertz"
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -35,6 +36,14 @@ func SetJWTConfig(secret, issuer string, accessExpiry, refreshExpiry time.Durati
 	jwtIssuer = issuer
 	jwtAccessExpiry = accessExpiry
 	jwtRefreshExpiry = refreshExpiry
+}
+
+// revocationStore Token 撤销存储实例（由 main 通过 SetRevocationStore 注入）。
+var revocationStore revocation.Store
+
+// SetRevocationStore 注入撤销存储（在 main 中调用）。
+func SetRevocationStore(s revocation.Store) {
+	revocationStore = s
 }
 
 // RegisterJWTRoutes 注册 JWT 示例路由。
@@ -130,8 +139,9 @@ func jwtRefreshHandler(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	// Refresh 内部先验证原 Token，再以新过期时间重新签发。
-	newToken, err := jwt.Refresh[AppClaims](req.RefreshToken, jwtSecret,
+	// Refresh 内部先验证原 Token，再以新过期时间重新签发；同时对携带 JTI 的
+	// Claims 做一次性轮换与复用检测（见 revocationStore）。
+	newToken, err := jwt.Refresh[AppClaims](ctx, req.RefreshToken, jwtSecret, revocationStore,
 		jwt.WithIssuer(jwtIssuer),
 		jwt.WithExpiration(jwtAccessExpiry),
 	)

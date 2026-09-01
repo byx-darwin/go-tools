@@ -20,6 +20,7 @@ import (
 	examplemw "github.com/byx-darwin/go-tools/example/middleware"
 	"github.com/byx-darwin/go-tools/example/rpc"
 	"github.com/byx-darwin/go-tools/go-auth/device"
+	"github.com/byx-darwin/go-tools/go-auth/revocation"
 	"github.com/byx-darwin/go-tools/go-auth/session"
 	"github.com/byx-darwin/go-tools/go-common/log"
 	hertzresp "github.com/byx-darwin/go-tools/go-framework/hertz"
@@ -124,6 +125,9 @@ type Deps struct {
 	// DeviceStore Device 存储（内存或 Redis 实现）。
 	DeviceStore device.Store
 
+	// RevocationStore Token 撤销存储（内存或 Redis 实现）。
+	RevocationStore revocation.Store
+
 	// RPCClient Kitex DemoService 客户端。
 	RPCClient demoservice.Client
 
@@ -145,11 +149,13 @@ func initDeps(cfg *AppConfig) *Deps {
 	default:
 		deps.SessionStore = mwauth.NewMemorySessionStore()
 		deps.DeviceStore = mwauth.NewMemoryDeviceStore()
+		deps.RevocationStore = mwauth.NewMemoryRevocationStore()
 	}
 
 	// 注入到 handler 包（供 auth handlers 使用）。
 	handler.SetSessionStore(deps.SessionStore)
 	handler.SetDeviceStore(deps.DeviceStore)
+	handler.SetRevocationStore(deps.RevocationStore)
 
 	// 注入 JWT 配置。
 	handler.SetJWTConfig(
