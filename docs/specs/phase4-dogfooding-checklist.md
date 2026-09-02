@@ -33,6 +33,15 @@
   - 全程无 panic，错误信息可读、可定位（`unsupported protocol scheme`，符合 fake endpoint 预期）
 - 结论：✅ 通过
 
+### Issue #76 — go-auth/jwt HMAC 密钥强度校验 + GenerateSecret helper
+
+- 验证方式：临时外部测试文件 `package jwt_test`（`go-auth/jwt/dogfood_external_test.go`，运行后删除，未提交），只使用导出符号 `jwt.Sign`/`jwt.Verify`/`jwt.GenerateSecret`，覆盖三个场景
+- 结果：
+  - 弱密钥被拒绝：9 字节密钥调用 `Sign` 返回 `code=40011 public="jwt_weak_secret"`，错误信息 `"HMAC signing method HS256 requires key length >= 32 bytes, got 9"`，可读、可定位，全程无 panic
+  - 新特性按文档生效：`GenerateSecret(gojwt.SigningMethodHS256)` 生成 32 字节密钥，直接用于 `Sign`→`Verify` 全链路往返成功，与设计文档描述一致
+  - 默认行为不变：手写的合规长度密钥（未使用 `GenerateSecret`）签发/验证行为与变更前一致，未受影响
+- 结论：✅ 通过
+
 ### #84 (Issue #74) — jwt.Refresh Refresh Token 轮换与复用检测
 
 - 验证方式：临时外部测试文件 `package jwt_test`（`go-auth/jwt/dogfood_external_test.go`，运行后删除，未提交），只使用导出符号 `jwt.Sign`/`jwt.Verify`/`jwt.Refresh`/`jwt.ExtractJTI` 与导出接口 `revocation.Store`（自建内存实现），覆盖四个场景
