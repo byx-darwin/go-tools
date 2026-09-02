@@ -841,3 +841,43 @@ func TestSignRejectsWeakHS512Secret(t *testing.T) {
 	code, _ := goerror.Extract(err)
 	assert.Equal(t, autherror.CodeJWTWeakSecret, code)
 }
+
+// ── GenerateSecret ──
+
+func TestGenerateSecretLengths(t *testing.T) {
+	tests := []struct {
+		name       string
+		method     *gojwt.SigningMethodHMAC
+		wantLength int
+	}{
+		{"HS256", gojwt.SigningMethodHS256, 32},
+		{"HS384", gojwt.SigningMethodHS384, 48},
+		{"HS512", gojwt.SigningMethodHS512, 64},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			secret, err := GenerateSecret(tt.method)
+			require.NoError(t, err)
+			assert.Len(t, secret, tt.wantLength)
+		})
+	}
+}
+
+func TestGenerateSecretUsableForSignAndVerify(t *testing.T) {
+	secret, err := GenerateSecret(gojwt.SigningMethodHS256)
+	require.NoError(t, err)
+
+	claims := UserClaims{UserUUID: "user-generated-secret"}
+	token, err := Sign(claims, secret, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](token, secret)
+	require.NoError(t, err)
+	assert.Equal(t, "user-generated-secret", parsed.UserUUID)
+}
+
+func TestGenerateSecretNilMethod(t *testing.T) {
+	_, err := GenerateSecret(nil)
+	require.Error(t, err)
+}

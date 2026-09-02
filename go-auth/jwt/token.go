@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/rsa"
 	"errors"
 	"fmt"
@@ -181,6 +182,27 @@ func validateHMACSecretLength(method *gojwt.SigningMethodHMAC, secret []byte) er
 			"HMAC signing method %s requires key length >= %d bytes, got %d", method.Alg(), minLen, len(secret))
 	}
 	return nil
+}
+
+// GenerateSecret 使用 crypto/rand 生成满足 method 密钥强度要求的 HMAC 共享密钥。
+// 生成长度等于 method 对应哈希算法的输出长度（如 HS256 返回 32 字节），可直接
+// 用作 Sign/Verify 的 secret 参数。仅支持 HMAC 族签名算法；非对称算法
+// （RS256/ES256/EdDSA）请使用各自的密钥生成方式（如 rsa.GenerateKey）。
+func GenerateSecret(method *gojwt.SigningMethodHMAC) ([]byte, error) {
+	if method == nil {
+		return nil, oops.With("jwt.GenerateSecret").
+			Code(autherror.CodeJWTSignFailed).
+			Errorf("method must not be nil")
+	}
+
+	secret := make([]byte, method.Hash.Size())
+	if _, err := rand.Read(secret); err != nil {
+		return nil, oops.With("jwt.GenerateSecret").
+			Code(autherror.CodeJWTSignFailed).
+			Wrap(err)
+	}
+
+	return secret, nil
 }
 
 // Refresh 刷新 JWT（延长过期时间，保留原有 Claims 数据），并对 refresh token 做
