@@ -24,6 +24,7 @@ func TestCodeConstants(t *testing.T) {
 		{"CodeJWTVerifyFailed", CodeJWTVerifyFailed},
 		{"CodeJWTRefreshFailed", CodeJWTRefreshFailed},
 		{"CodeJWTKeyTypeMismatch", CodeJWTKeyTypeMismatch},
+		{"CodeJWTWeakSecret", CodeJWTWeakSecret},
 	}
 
 	for _, tt := range tests {
@@ -52,6 +53,7 @@ func TestPredefinedErrors(t *testing.T) {
 		{"ErrJWTVerifyFailed", ErrJWTVerifyFailed, CodeJWTVerifyFailed, "jwt_verify_failed"},
 		{"ErrJWTRefreshFailed", ErrJWTRefreshFailed, CodeJWTRefreshFailed, "jwt_refresh_failed"},
 		{"ErrJWTKeyTypeMismatch", ErrJWTKeyTypeMismatch, CodeJWTKeyTypeMismatch, "jwt_key_type_mismatch"},
+		{"ErrJWTWeakSecret", ErrJWTWeakSecret, CodeJWTWeakSecret, "jwt_weak_secret"},
 	}
 
 	for _, tt := range tests {
@@ -88,6 +90,7 @@ func TestHTTPStatusRegistration(t *testing.T) {
 		{"jwt verify failed", ErrJWTVerifyFailed.Wrap(errors.New("x")), 500},
 		{"jwt refresh failed", ErrJWTRefreshFailed.Wrap(errors.New("x")), 500},
 		{"jwt key type mismatch", ErrJWTKeyTypeMismatch.Wrap(errors.New("x")), 500},
+		{"jwt weak secret", ErrJWTWeakSecret.Wrap(errors.New("x")), 500},
 	}
 
 	for _, tt := range tests {
