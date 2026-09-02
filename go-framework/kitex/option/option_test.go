@@ -145,6 +145,92 @@ func TestNewClientOption_CustomCBKeyFuncApplied(t *testing.T) {
 	assert.NotEmpty(t, opts)
 }
 
+func TestNewClientOption_BackOffNone(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{Enable: true, MaxRetryTimes: 2},
+		},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_BackOffFixed(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "fixed", FixedMS: 50},
+			},
+		},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_BackOffFixedInvalid(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "fixed", FixedMS: 0},
+			},
+		},
+	}
+	_, err := NewClientOption(t.Context(), cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "fixed_ms")
+}
+
+func TestNewClientOption_BackOffRandom(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "random", MinMS: 10, MaxMS: 100},
+			},
+		},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_BackOffRandomInvalid(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "random", MinMS: 100, MaxMS: 10},
+			},
+		},
+	}
+	_, err := NewClientOption(t.Context(), cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "max_ms")
+}
+
+func TestNewClientOption_BackOffUnknownType(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "exponential"},
+			},
+		},
+	}
+	_, err := NewClientOption(t.Context(), cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "backoff")
+}
+
 func TestResolveAddr(t *testing.T) {
 	tests := []struct {
 		name string

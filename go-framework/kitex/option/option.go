@@ -20,6 +20,7 @@ package option
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"time"
 
@@ -179,6 +180,28 @@ func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig, opts ...Optio
 	if co.Failure.Enable {
 		fp := retry.NewFailurePolicy()
 		fp.WithMaxRetryTimes(co.Failure.MaxRetryTimes)
+
+		switch co.Failure.BackOff.Type {
+		case "":
+			// 不启用退避，保持现状行为
+		case "fixed":
+			if co.Failure.BackOff.FixedMS <= 0 {
+				return nil, frameworkerror.ErrConfigInvalid.With("step", "backoff_fixed").Wrap(
+					fmt.Errorf("failure_retry.backoff.fixed_ms must be > 0, got %d", co.Failure.BackOff.FixedMS))
+			}
+			fp.WithFixedBackOff(co.Failure.BackOff.FixedMS)
+		case "random":
+			if co.Failure.BackOff.MaxMS <= co.Failure.BackOff.MinMS {
+				return nil, frameworkerror.ErrConfigInvalid.With("step", "backoff_random").Wrap(
+					fmt.Errorf("failure_retry.backoff.max_ms(%d) must be > min_ms(%d)",
+						co.Failure.BackOff.MaxMS, co.Failure.BackOff.MinMS))
+			}
+			fp.WithRandomBackOff(co.Failure.BackOff.MinMS, co.Failure.BackOff.MaxMS)
+		default:
+			return nil, frameworkerror.ErrConfigInvalid.With("step", "backoff_type").Wrap(
+				fmt.Errorf("unknown failure_retry.backoff.type %q", co.Failure.BackOff.Type))
+		}
+
 		options = append(options, client.WithFailureRetry(fp))
 	}
 
