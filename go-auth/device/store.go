@@ -1,6 +1,16 @@
 package device
 
-import "context"
+import (
+	"context"
+	"time"
+)
+
+// Store 接口扩展约定：
+//
+// Go 接口没有"默认方法"机制，直接为 Store 添加新方法会立即破坏所有下游实现
+// （go-middleware 的 Redis/Memory 实现）。因此后续新增能力（如批量操作、TTL 续期）
+// 必须通过"新增独立小接口 + 可选类型断言"扩展，而不是修改 Store 本身的方法集。
+// 参见 TTLRefresher 作为示例。
 
 // Store 设备会话存储接口。
 //
@@ -31,4 +41,15 @@ type Store interface {
 
 	// ListDevices 列出用户的所有已注册设备。
 	ListDevices(ctx context.Context, userUUID string) ([]Device, error)
+}
+
+// TTLRefresher 是 Store 的可选扩展接口，用于续期设备会话的过期时间。
+// 存储实现可选择性支持该接口；调用方应使用类型断言检测：
+//
+//	if refresher, ok := store.(device.TTLRefresher); ok {
+//	    err := refresher.RefreshTTL(ctx, userUUID, deviceID, ttl)
+//	}
+type TTLRefresher interface {
+	// RefreshTTL 续期指定用户设备会话的过期时间。
+	RefreshTTL(ctx context.Context, userUUID, deviceID string, ttl time.Duration) error
 }
