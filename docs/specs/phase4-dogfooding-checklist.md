@@ -52,3 +52,13 @@
   - 错误路径可观察：`store` 传 `nil` 且 Claims 带 JTI 时，返回清晰错误 `"revocation store is required for tokens carrying jti"`，全程无 panic（`recover()` 断言确认）
   - 文档与实际行为一致：`go-auth/jwt/options.go` 包注释中的新签名用法示例（`ctx`/`store` 参数顺序）与本次实测调用完全一致
 - 结论：✅ 通过
+
+### #91 (Issue #85) — JWTAuth 中间件透传 WithVerifyOptions
+
+- 验证方式：临时外部测试文件 `package middleware_test`（`go-framework/hertz/middleware/dogfood_external_test.go`，运行后删除，未提交），只使用导出符号 `middleware.JWTAuth`/`middleware.WithVerifyOptions`/`middleware.GetClaims`/`authjwt.Sign`/`authjwt.WithExpectedIssuer`，覆盖三个场景，真实起 Hertz engine 走 HTTP 请求全链路
+- 结果：
+  - 默认行为不变：未配置 `WithVerifyOptions` 时，任意 issuer 的合法签名 token 均放行（200），与变更前行为一致
+  - 新特性按文档生效：配置 `WithVerifyOptions(authjwt.WithExpectedIssuer("expected-issuer"))` 后，issuer 不匹配的 token 被拒绝（401）
+  - 公共 API 可用 + 错误路径可观察：issuer 匹配时正常放行（200）并能通过 `GetClaims` 读回 claims；不匹配时返回标准 401，无 panic
+  - 文档与实际行为一致：godoc 用例中的 `middleware.WithVerifyOptions(gojwt.WithExpectedIssuer("myapp"))` 调用形式与本次实测完全一致
+- 结论：✅ 通过
