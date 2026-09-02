@@ -115,7 +115,7 @@ func jwtVerifyHandler(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	claims, err := jwt.Verify[AppClaims](req.Token, jwtSecret)
+	claims, err := jwt.Verify[AppClaims](req.Token, jwtSecret, jwt.WithExpectedIssuer(jwtIssuer))
 	if err != nil {
 		hertzresp.Error(ctx, c, err, "verify token failed")
 		return

@@ -84,7 +84,8 @@ func WithIssuer(issuer string) Option {
 }
 
 // WithExpectedIssuer 要求 Verify 校验 Token 的 issuer（iss claim）必须等于
-// 给定值。空字符串忽略。
+// 给定值。空字符串忽略（即不做任何 issuer 校验，请确保配置项非空，否则本
+// 选项等同未启用）。
 // 仅在 Verify 时生效；Sign 不会读取此选项。Token 的 iss claim 缺失或与给定
 // 值不匹配时，Verify 返回 autherror.ErrTokenInvalid。与 WithIssuer 语义独立
 // （WithIssuer 只影响 Sign），两者可同时传给 Refresh 而不互相干扰。
