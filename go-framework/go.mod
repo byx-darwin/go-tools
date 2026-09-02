@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/bytedance/gopkg v0.1.4
-	github.com/byx-darwin/go-tools/go-auth v0.1.0
+	github.com/byx-darwin/go-tools/go-auth v0.2.0
 	github.com/byx-darwin/go-tools/go-common v0.1.0
 	github.com/cloudwego/hertz v0.10.5
 	github.com/cloudwego/kitex v0.16.2

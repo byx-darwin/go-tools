@@ -6,7 +6,7 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.46.0
 	github.com/XSAM/otelsql v0.43.0
 	github.com/alicebob/miniredis/v2 v2.38.0
-	github.com/byx-darwin/go-tools/go-auth v0.1.0
+	github.com/byx-darwin/go-tools/go-auth v0.2.0
 	github.com/byx-darwin/go-tools/go-common v0.1.0
 	github.com/elastic/go-elasticsearch/v8 v8.19.6
 	github.com/redis/go-redis/extra/redisotel/v9 v9.21.0
