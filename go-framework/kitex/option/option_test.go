@@ -53,6 +53,35 @@ func TestNewServerOption_WithLimit(t *testing.T) {
 	assert.NotEmpty(t, opts)
 }
 
+func TestNewClientOption_NilConfig(t *testing.T) {
+	_, err := NewClientOption(t.Context(), nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "client config is nil")
+}
+
+func TestNewClientOption_DefaultTimeouts(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_ExplicitTimeoutsOverrideDefaults(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Timeout: kitex.ClientTimeout{
+				RPCTimeout:     10 * time.Second,
+				ConnectTimeOut: 500 * time.Millisecond,
+			},
+		},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
 func TestResolveAddr(t *testing.T) {
 	tests := []struct {
 		name string

@@ -39,6 +39,13 @@ import (
 	"github.com/cloudwego/kitex/transport"
 )
 
+const (
+	// defaultConnectTimeout ConnectTimeout 未显式配置时的默认值。
+	defaultConnectTimeout = 200 * time.Millisecond
+	// defaultRPCTimeout RPCTimeout 未显式配置时的默认值。
+	defaultRPCTimeout = 3 * time.Second
+)
+
 // ── Server ──
 
 // NewServerOption 创建 Kitex 服务端 Option 列表。
@@ -125,11 +132,13 @@ func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig) ([]client.Opt
 	if co.Timeout.ConnectTimeOut > 0 {
 		options = append(options, client.WithConnectTimeout(co.Timeout.ConnectTimeOut))
 	} else {
-		options = append(options, client.WithConnectTimeout(50*time.Millisecond))
+		options = append(options, client.WithConnectTimeout(defaultConnectTimeout))
 	}
 
 	if co.Timeout.RPCTimeout > 0 {
 		options = append(options, client.WithRPCTimeout(co.Timeout.RPCTimeout))
+	} else {
+		options = append(options, client.WithRPCTimeout(defaultRPCTimeout))
 	}
 
 	// 长连接池（替代已废弃的 Mux Connection）
