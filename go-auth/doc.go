@@ -8,5 +8,9 @@
 //
 // 依赖关系：
 //
-//	go-common → go-auth → go-middleware → go-framework
+// 真实拓扑是 DAG，而非线性链：go-framework 与 go-middleware 是互不依赖的兄弟模块，
+// 二者均直接依赖 go-auth + go-common。
+//
+//	go-common → go-auth ─┬→ go-middleware
+//	                      └→ go-framework
 package auth
