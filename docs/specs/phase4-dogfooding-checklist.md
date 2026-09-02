@@ -62,3 +62,14 @@
   - 公共 API 可用 + 错误路径可观察：issuer 匹配时正常放行（200）并能通过 `GetClaims` 读回 claims；不匹配时返回标准 401，无 panic
   - 文档与实际行为一致：godoc 用例中的 `middleware.WithVerifyOptions(gojwt.WithExpectedIssuer("myapp"))` 调用形式与本次实测完全一致
 - 结论：✅ 通过
+
+### #99 (Issue #94) — kitex 侧 JWT/Session/Device 鉴权中间件 + Recovery
+
+- 验证方式：临时外部测试文件 `package auth_test`（`go-framework/kitex/middleware/auth/dogfood_external_test.go`，运行后删除，未提交），只使用导出符号 `auth.JWTAuthClient`/`auth.JWTAuthServer`/`auth.GetClaims`/`auth.Recovery`，配合 `metainfo.TransferForward` 模拟真实 RPC 传输，覆盖 A→B→C 多跳链路 + 错误路径 + panic 路径 + 默认行为不变四个场景
+- 结果：
+  - 公共 API 可用：A（client 注入）→B（server 校验+读 claims）全链路跑通，`GetClaims` 正确读回 `UserID`
+  - 新特性按文档生效：B→C 场景中 B 未调用任何 tokenProvider、未手动转发，C 端仍通过 `metainfo.WithPersistentValue` 的多跳持久语义读到 A 的原始身份——与设计文档"身份沿调用链自动透传"的方案完全一致
+  - 错误路径可观察：缺失 token 时返回 `*rpcerror.OopsStatusAdapter`，`BizStatusCode=10020`（`frameworkerror.CodeTokenMissing`）、`BizMessage="token_missing"`，可读可定位，无 panic
+  - panic 路径：`Recovery()` 捕获测试 panic 后不逃逸出中间件链，转换为 `BizMessage="system_error"` 的标准错误返回
+  - 默认行为不变：未接入本中间件的普通 endpoint 行为完全不受影响
+- 结论：✅ 通过
