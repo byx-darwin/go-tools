@@ -115,10 +115,16 @@ func validateKeyType(method gojwt.SigningMethod, key any, forSigning bool) error
 	var ok bool
 	var expected string
 
-	switch method.(type) {
+	switch m := method.(type) {
 	case *gojwt.SigningMethodHMAC:
-		_, ok = key.([]byte)
+		var secret []byte
+		secret, ok = key.([]byte)
 		expected = "[]byte"
+		if ok {
+			if err := validateHMACSecretLength(m, secret); err != nil {
+				return err
+			}
+		}
 	case *gojwt.SigningMethodRSAPSS:
 		if forSigning {
 			_, ok = key.(*rsa.PrivateKey)
@@ -162,6 +168,18 @@ func validateKeyType(method gojwt.SigningMethod, key any, forSigning bool) error
 			"signing method %s expects key type %s, got %T", method.Alg(), expected, key)
 	}
 
+	return nil
+}
+
+// validateHMACSecretLength 校验 HMAC 密钥长度不低于对应哈希算法的输出长度
+// （RFC 7518 建议：密钥长度 >= 哈希输出长度，如 HS256 要求 >=32 字节）。
+// 不满足时返回 autherror.ErrJWTWeakSecret，防止弱密钥被离线暴力破解伪造 Token。
+func validateHMACSecretLength(method *gojwt.SigningMethodHMAC, secret []byte) error {
+	minLen := method.Hash.Size()
+	if len(secret) < minLen {
+		return autherror.ErrJWTWeakSecret.Errorf(
+			"HMAC signing method %s requires key length >= %d bytes, got %d", method.Alg(), minLen, len(secret))
+	}
 	return nil
 }
 

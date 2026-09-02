@@ -24,7 +24,7 @@ type UserClaims struct {
 	gojwt.RegisteredClaims
 }
 
-var testSecret = []byte("test-secret-key-for-jwt")
+var testSecret = []byte("test-secret-key-for-jwt-tests-must-be-at-least-64-bytes-long-okk")
 
 // ── Sign + Verify 正常流程 ──
 
@@ -147,7 +147,7 @@ func TestVerifySignatureMismatch(t *testing.T) {
 	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
 	require.NoError(t, err)
 
-	wrongSecret := []byte("wrong-secret-key")
+	wrongSecret := []byte("wrong-secret-key-must-also-be-at-least-32-bytes-long")
 	_, err = Verify[UserClaims](token, wrongSecret)
 	require.Error(t, err)
 
@@ -774,4 +774,70 @@ func TestRefreshMissingExpiresAtFailsClosed(t *testing.T) {
 	require.Error(t, err, "缺少 ExpiresAt 时必须 fail-closed，而不是 panic")
 	assert.Empty(t, newToken, "拒绝刷新时不应签发新 Token")
 	assert.Empty(t, store.revoked, "Revoke 不应被调用")
+}
+
+// ── HMAC 密钥强度校验 ──
+
+func TestSignRejectsWeakHMACSecret(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-weak-secret"}
+	weakSecret := []byte("too-short")
+
+	_, err := Sign(claims, weakSecret)
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTWeakSecret, code)
+}
+
+func TestVerifyRejectsWeakHMACSecret(t *testing.T) {
+	// 用合规密钥签发，但调用方随后误用弱密钥去验证：必须在类型/长度校验阶段
+	// 就拒绝，而不是先尝试验证签名。
+	claims := UserClaims{UserUUID: "user-weak-secret-verify"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	weakSecret := []byte("too-short")
+	_, err = Verify[UserClaims](token, weakSecret)
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTWeakSecret, code)
+}
+
+func TestSignAcceptsHMACSecretAtExactMinimumLength(t *testing.T) {
+	// 边界值：长度恰好等于哈希输出长度（HS256=32 字节）应被接受，而不是被拒绝。
+	claims := UserClaims{UserUUID: "user-min-len-secret"}
+	minSecret := make([]byte, 32)
+
+	token, err := Sign(claims, minSecret, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](token, minSecret)
+	require.NoError(t, err)
+	assert.Equal(t, "user-min-len-secret", parsed.UserUUID)
+}
+
+func TestSignRejectsHMACSecretOneByteBelowMinimum(t *testing.T) {
+	// 边界值：长度比哈希输出长度少 1 字节（31 字节）应被拒绝。
+	claims := UserClaims{UserUUID: "user-below-min-secret"}
+	tooShort := make([]byte, 31)
+
+	_, err := Sign(claims, tooShort)
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTWeakSecret, code)
+}
+
+func TestSignRejectsWeakHS512Secret(t *testing.T) {
+	// HS512 要求 >=64 字节；32 字节对 HS256 合规，但对 HS512 不合规。
+	claims := UserClaims{UserUUID: "user-weak-hs512"}
+	secret32 := make([]byte, 32)
+
+	_, err := Sign(claims, secret32, WithSigningMethod(gojwt.SigningMethodHS512))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTWeakSecret, code)
 }
