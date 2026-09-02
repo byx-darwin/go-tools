@@ -19,6 +19,7 @@
 //
 //	token, err := jwt.Sign(UserClaims{UserUUID: "123"}, secret, jwt.WithExpiration(time.Hour))
 //	claims, err := jwt.Verify[UserClaims](token, secret)
+//	claims, err := jwt.Verify[UserClaims](token, secret, jwt.WithExpectedIssuer("myapp")) // 校验 issuer
 //	newToken, err := jwt.Refresh[UserClaims](ctx, token, secret, revocationStore, jwt.WithExpiration(24*time.Hour))
 //
 //	// 非对称算法示例（RS256）：
@@ -46,9 +47,12 @@ const (
 // ignoreClaimsExpiration 仅在 Refresh 路径为 true，表示忽略 Claims 自带的
 // ExpiresAt，强制以默认或显式 expiration 重新设定（Refresh 语义：新 Token
 // 使用新的过期时间，不复用旧 Token 的剩余有效期）。
+// issuer 仅在 Sign 时生效（设置签发的 Issuer）；expectedIssuer 仅在 Verify
+// 时生效（校验 Token 的 Issuer 必须等于该值）——两者语义独立，互不影响。
 type config struct {
 	expiration             *time.Duration
 	issuer                 string
+	expectedIssuer         string
 	signingMethod          gojwt.SigningMethod
 	ignoreClaimsExpiration bool
 }
@@ -68,10 +72,26 @@ func WithExpiration(d time.Duration) Option {
 }
 
 // WithIssuer 设置 JWT 签发者。空字符串忽略。
+// 仅在 Sign 时生效，用于设置签发 Token 的 Issuer；Verify 不会读取此选项，
+// 传给 Verify 时会被静默忽略。若需要在 Verify 时校验 Token 的 issuer，使用
+// WithExpectedIssuer。
 func WithIssuer(issuer string) Option {
 	return func(c *config) {
 		if issuer != "" {
 			c.issuer = issuer
+		}
+	}
+}
+
+// WithExpectedIssuer 要求 Verify 校验 Token 的 issuer（iss claim）必须等于
+// 给定值。空字符串忽略。
+// 仅在 Verify 时生效；Sign 不会读取此选项。Token 的 iss claim 缺失或与给定
+// 值不匹配时，Verify 返回 autherror.ErrTokenInvalid。与 WithIssuer 语义独立
+// （WithIssuer 只影响 Sign），两者可同时传给 Refresh 而不互相干扰。
+func WithExpectedIssuer(issuer string) Option {
+	return func(c *config) {
+		if issuer != "" {
+			c.expectedIssuer = issuer
 		}
 	}
 }

@@ -380,6 +380,59 @@ func TestWithIssuerEmptyIgnored(t *testing.T) {
 	assert.Empty(t, parsed.Issuer)
 }
 
+func TestVerifyWithExpectedIssuerMatch(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-issuer-match"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour), WithIssuer("myapp"))
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](token, testSecret, WithExpectedIssuer("myapp"))
+	require.NoError(t, err)
+	assert.Equal(t, "myapp", parsed.Issuer)
+	assert.Equal(t, "user-issuer-match", parsed.UserUUID)
+}
+
+func TestVerifyWithExpectedIssuerMismatch(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-issuer-mismatch"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour), WithIssuer("other-app"))
+	require.NoError(t, err)
+
+	_, err = Verify[UserClaims](token, testSecret, WithExpectedIssuer("myapp"))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeTokenInvalid, code)
+}
+
+func TestVerifyWithExpectedIssuerMissingClaim(t *testing.T) {
+	// Token signed without WithIssuer carries no iss claim at all.
+	claims := UserClaims{UserUUID: "user-issuer-missing"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	_, err = Verify[UserClaims](token, testSecret, WithExpectedIssuer("myapp"))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeTokenInvalid, code)
+}
+
+func TestVerifyWithoutExpectedIssuerIgnoresTokenIssuer(t *testing.T) {
+	// Backward-compat regression: without WithExpectedIssuer, Verify must not
+	// enforce any issuer check, regardless of what issuer the token carries.
+	claims := UserClaims{UserUUID: "user-issuer-unchecked"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour), WithIssuer("some-app"))
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](token, testSecret)
+	require.NoError(t, err)
+	assert.Equal(t, "some-app", parsed.Issuer)
+	assert.Equal(t, "user-issuer-unchecked", parsed.UserUUID)
+}
+
 func TestWithSigningMethodNilIgnored(t *testing.T) {
 	claims := UserClaims{UserUUID: "user-nil-method"}
 
