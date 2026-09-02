@@ -31,6 +31,20 @@
 //	// 非对称算法示例（RS256）：
 //	token, err := jwt.Sign(UserClaims{UserUUID: "123"}, rsaPrivateKey, jwt.WithSigningMethod(gojwt.SigningMethodRS256))
 //	claims, err := jwt.Verify[UserClaims](token, rsaPublicKey, jwt.WithSigningMethod(gojwt.SigningMethodRS256))
+//
+// 关于 Claims 中 RegisteredClaims 的嵌入方式（重要限制）：
+// 默认过期时间/Issuer 填充（见 Sign）以及 ExtractJTI/Refresh 的 JTI 轮换
+// 逻辑，都依赖通过反射从 Claims 中找到嵌入的 gojwt.RegisteredClaims。
+// 该反射查找只支持 RegisteredClaims 被**直接、单层**嵌入到 Claims 顶层
+// 结构体（如上面 UserClaims 示例）。以下两种写法都不受支持，会被**静默**
+// 忽略（不返回错误、不记录日志），效果等同于 Claims 未携带
+// RegisteredClaims：
+//   - 使用 gojwt.MapClaims 作为 Claims 类型；
+//   - RegisteredClaims 被间接/多层嵌入，例如 Claims 嵌入了另一个中间
+//     结构体，RegisteredClaims 又嵌入在该中间结构体内部，而非直接嵌入
+//     Claims 本身。
+//
+// 详见 extractRegisteredClaims/extractEmbeddedRegisteredClaims 的实现注释。
 package jwt
 
 import (

@@ -321,9 +321,12 @@ func setClaimsDefaults(claims gojwt.Claims, cfg config) {
 }
 
 // ExtractJTI 从已验证的 Claims 中提取 JWT ID（jti）。
-// claims 通常是 Verify 返回的 *T 指针（或任何实现 jwt.Claims 且嵌入了
-// gojwt.RegisteredClaims 的结构体指针）。未找到 RegisteredClaims 或
-// ID 为空时返回 ("", false)。
+// claims 通常是 Verify 返回的 *T 指针（或任何实现 jwt.Claims 且直接
+// （单层）嵌入了 gojwt.RegisteredClaims 的结构体指针）。未找到
+// RegisteredClaims 或 ID 为空时返回 ("", false)。
+// 注意：gojwt.MapClaims 以及 RegisteredClaims 被多层/间接嵌入的情况
+// 都无法被识别，会静默返回 ("", false)，详见 extractRegisteredClaims
+// 的文档。
 func ExtractJTI(claims any) (string, bool) {
 	jwtClaims, ok := claims.(gojwt.Claims)
 	if !ok {
@@ -342,7 +345,20 @@ func ExtractJTI(claims any) (string, bool) {
 // 支持以下类型：
 //   - *gojwt.RegisteredClaims（直接返回）
 //   - *gojwt.MapClaims（不支持，返回 nil）
-//   - 任何嵌入了 RegisteredClaims 的结构体指针（通过反射提取）
+//   - 任何直接（单层）嵌入了 RegisteredClaims 的结构体指针（通过反射提取）
+//
+// 限制（重要，扩展 Claims 结构体时务必注意）：仅支持 RegisteredClaims 被
+// 直接嵌入到顶层 Claims 结构体这一种形态。以下两种情况都会被静默忽略、
+// 返回 nil，不会有任何错误或日志提示：
+//  1. gojwt.MapClaims（不支持反射提取字段）；
+//  2. RegisteredClaims 被间接/多层嵌入，例如顶层结构体嵌入了另一个中间
+//     结构体，RegisteredClaims 又嵌入在该中间结构体内部（见
+//     extractEmbeddedRegisteredClaims 的字段遍历只扫描直接字段，不递归）。
+//
+// 返回 nil 时，setClaimsDefaults 中默认过期时间/Issuer 的填充逻辑会被
+// 静默跳过（不报错），ExtractJTI 也会返回 ("", false)。为避免这个隐式
+// 契约“咬人”，自定义 Claims 类型时应确保 RegisteredClaims 直接嵌入在
+// 最外层结构体中。
 func extractRegisteredClaims(claims gojwt.Claims) *gojwt.RegisteredClaims {
 	if claims == nil {
 		return nil
@@ -360,6 +376,9 @@ func extractRegisteredClaims(claims gojwt.Claims) *gojwt.RegisteredClaims {
 }
 
 // extractEmbeddedRegisteredClaims 通过反射查找嵌入的 RegisteredClaims 字段。
+// 仅遍历顶层结构体的直接（单层）字段，不递归查找嵌套结构体内部的字段；
+// 因此 RegisteredClaims 若被间接嵌入（嵌入在某个中间结构体里，而非直接
+// 嵌入到传入的顶层结构体），本函数会找不到该字段并静默返回 nil。
 func extractEmbeddedRegisteredClaims(claims gojwt.Claims) *gojwt.RegisteredClaims {
 	v := reflect.ValueOf(claims)
 	if v.Kind() == reflect.Pointer {
