@@ -535,6 +535,33 @@ func TestExtractJTI(t *testing.T) {
 		assert.False(t, ok)
 		assert.Empty(t, jti)
 	})
+
+	t.Run("multi-level nested embedding not supported (documented limitation)", func(t *testing.T) {
+		// RegisteredClaims 被间接嵌入：nestedJTIClaims 嵌入了 nestedRegisteredClaims，
+		// 而 RegisteredClaims 又嵌入在 nestedRegisteredClaims 内部，并非直接嵌入
+		// nestedJTIClaims 本身。extractEmbeddedRegisteredClaims 只扫描直接字段，
+		// 不递归，因此这里应静默返回 ("", false)，锁定该已文档化的限制行为。
+		claims := &nestedJTIClaims{
+			nestedRegisteredClaims: nestedRegisteredClaims{
+				RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-nested"},
+			},
+		}
+		jti, ok := ExtractJTI(claims)
+		assert.False(t, ok)
+		assert.Empty(t, jti)
+	})
+}
+
+// nestedRegisteredClaims 是一个中间结构体，直接嵌入 RegisteredClaims。
+type nestedRegisteredClaims struct {
+	gojwt.RegisteredClaims
+}
+
+// nestedJTIClaims 通过中间结构体间接（两层）嵌入 RegisteredClaims，
+// 而非直接嵌入到顶层结构体——用于验证 extractEmbeddedRegisteredClaims
+// 不支持多层嵌入的文档化限制。
+type nestedJTIClaims struct {
+	nestedRegisteredClaims
 }
 
 // ── 非对称算法（RS256/ES256）真实签发/验证 ──
