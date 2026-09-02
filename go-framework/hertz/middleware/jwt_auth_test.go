@@ -280,3 +280,75 @@ func TestJWTAuth_RevocationChecker_NoJTI_FailOpen(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode())
 	assert.Equal(t, 0, checker.calls, "checker 不应在缺失 jti 时被调用")
 }
+
+// ── Verify options passthrough ──
+
+func issueTestTokenWithIssuer(t *testing.T, secret []byte, issuer string) string {
+	t.Helper()
+	claims := testClaims{
+		UserUUID: "user-123",
+		RegisteredClaims: gojwt.RegisteredClaims{
+			Subject:   "user-123",
+			Issuer:    issuer,
+			ExpiresAt: gojwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+	}
+	token, err := authjwt.Sign(claims, secret)
+	require.NoError(t, err)
+	return token
+}
+
+func TestJWTAuth_VerifyOptions_ExpectedIssuer_Mismatch(t *testing.T) {
+	secret := []byte("test-secret-key-32bytes-long!!!!!")
+	token := issueTestTokenWithIssuer(t, secret, "wrong-issuer")
+
+	engine := newTestEngine()
+	engine.Use(JWTAuth[testClaims](secret, WithVerifyOptions(authjwt.WithExpectedIssuer("expected-issuer"))))
+	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
+	})
+
+	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
+		ut.Header{Key: "Authorization", Value: "Bearer " + token})
+	res := w.Result()
+	assert.Equal(t, http.StatusUnauthorized, res.StatusCode())
+}
+
+func TestJWTAuth_VerifyOptions_ExpectedIssuer_Match(t *testing.T) {
+	secret := []byte("test-secret-key-32bytes-long!!!!!")
+	token := issueTestTokenWithIssuer(t, secret, "expected-issuer")
+
+	engine := newTestEngine()
+	engine.Use(JWTAuth[testClaims](secret, WithVerifyOptions(authjwt.WithExpectedIssuer("expected-issuer"))))
+	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
+		claims, ok := GetClaims[testClaims](c)
+		assert.True(t, ok)
+		c.JSON(http.StatusOK, map[string]string{"user": claims.UserUUID})
+	})
+
+	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
+		ut.Header{Key: "Authorization", Value: "Bearer " + token})
+	res := w.Result()
+	assert.Equal(t, http.StatusOK, res.StatusCode())
+	assert.Contains(t, string(res.Body()), "user-123")
+}
+
+func TestJWTAuth_NoVerifyOptions_BehaviorUnchanged(t *testing.T) {
+	// 未配置 WithVerifyOptions 时，行为应与旧版完全一致（回归测试）。
+	secret := []byte("test-secret-key-32bytes-long!!!!!")
+	token := issueTestTokenWithIssuer(t, secret, "any-issuer")
+
+	engine := newTestEngine()
+	engine.Use(JWTAuth[testClaims](secret))
+	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
+		claims, ok := GetClaims[testClaims](c)
+		assert.True(t, ok)
+		c.JSON(http.StatusOK, map[string]string{"user": claims.UserUUID})
+	})
+
+	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
+		ut.Header{Key: "Authorization", Value: "Bearer " + token})
+	res := w.Result()
+	assert.Equal(t, http.StatusOK, res.StatusCode())
+	assert.Contains(t, string(res.Body()), "user-123")
+}

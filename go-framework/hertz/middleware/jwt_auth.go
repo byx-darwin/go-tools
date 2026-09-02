@@ -15,6 +15,7 @@ import (
 // jwtAuthConfig 存储 JWTAuth 配置选项。
 type jwtAuthConfig struct {
 	revocationChecker revocation.Checker
+	verifyOptions     []gojwt.Option
 }
 
 // JWTAuthOption 定义 JWTAuth 配置选项函数。
@@ -32,6 +33,24 @@ func WithRevocationChecker(checker revocation.Checker) JWTAuthOption {
 	return func(c *jwtAuthConfig) { c.revocationChecker = checker }
 }
 
+// WithVerifyOptions 透传 go-auth/jwt 的 Verify 选项（如 WithExpectedIssuer）
+// 给内部 gojwt.Verify 调用，使下游服务可在中间件层启用 issuer 校验等能力。
+// 可多次调用或一次传入多个选项，按顺序追加，语义与直接调用
+// gojwt.Verify(token, secret, opts...) 完全一致。
+//
+// 注意：JWTAuth[T] 的 secret 参数固定为 []byte（HMAC），若通过本选项传入
+// gojwt.WithSigningMethod 切换到 RS256/ES256/EdDSA 等非对称算法，会因密钥
+// 类型不匹配导致每次校验都返回 ErrJWTKeyTypeMismatch（fail-closed，非安全
+// 绕过，但会造成困惑）；本中间件当前不支持非对称算法。
+//
+// 用例：
+//
+//	engine.Use(middleware.JWTAuth[UserClaims](secret,
+//	    middleware.WithVerifyOptions(gojwt.WithExpectedIssuer("myapp"))))
+func WithVerifyOptions(opts ...gojwt.Option) JWTAuthOption {
+	return func(c *jwtAuthConfig) { c.verifyOptions = append(c.verifyOptions, opts...) }
+}
+
 // applyJWTAuthOptions 应用选项并返回配置快照。
 func applyJWTAuthOptions(opts []JWTAuthOption) jwtAuthConfig {
 	var cfg jwtAuthConfig
@@ -43,12 +62,17 @@ func applyJWTAuthOptions(opts []JWTAuthOption) jwtAuthConfig {
 
 // JWTAuth 返回 JWT 认证中间件。
 // 从 Authorization Bearer 头解析 token，验证签名，将 claims 注入 RequestContext。
-// T 必须嵌入 jwt.RegisteredClaims。可通过 WithRevocationChecker 启用撤销检查。
+// T 必须嵌入 jwt.RegisteredClaims。可通过 WithRevocationChecker 启用撤销检查，
+// 通过 WithVerifyOptions 透传 go-auth/jwt 的 Verify 选项（如 issuer 校验）。
 //
 // 使用方式：
 //
 //	engine.Use(middleware.JWTAuth[UserClaims](secret))
 //	claims, ok := middleware.GetClaims[UserClaims](c)
+//
+//	// 启用 issuer 校验：
+//	engine.Use(middleware.JWTAuth[UserClaims](secret,
+//	    middleware.WithVerifyOptions(gojwt.WithExpectedIssuer("myapp"))))
 func JWTAuth[T any](secret []byte, opts ...JWTAuthOption) app.HandlerFunc {
 	cfg := applyJWTAuthOptions(opts)
 
@@ -59,7 +83,7 @@ func JWTAuth[T any](secret []byte, opts ...JWTAuthOption) app.HandlerFunc {
 			return
 		}
 
-		claims, err := gojwt.Verify[T](token, secret)
+		claims, err := gojwt.Verify[T](token, secret, cfg.verifyOptions...)
 		if err != nil {
 			writeAuthError(c, err)
 			return

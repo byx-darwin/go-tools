@@ -142,4 +142,3 @@ defer shipper.Close()
 **下游影响**：如果客户端（尤其是移动端）用 401 触发"重新登录"逻辑、用其它状态码触发别的处理，需要同步把"设备被踢出"场景从 401 分支迁移到 403 分支。
 
 `JWTAuth` 新增可选的 `WithRevocationChecker` 选项用于接入 Token 撤销机制（`go-auth/revocation` + `go-middleware/auth.RedisRevocationStore`），不使用该选项时行为不变。
-
