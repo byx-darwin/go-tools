@@ -38,6 +38,11 @@ func WithRevocationChecker(checker revocation.Checker) JWTAuthOption {
 // 可多次调用或一次传入多个选项，按顺序追加，语义与直接调用
 // gojwt.Verify(token, secret, opts...) 完全一致。
 //
+// 注意：JWTAuth[T] 的 secret 参数固定为 []byte（HMAC），若通过本选项传入
+// gojwt.WithSigningMethod 切换到 RS256/ES256/EdDSA 等非对称算法，会因密钥
+// 类型不匹配导致每次校验都返回 ErrJWTKeyTypeMismatch（fail-closed，非安全
+// 绕过，但会造成困惑）；本中间件当前不支持非对称算法。
+//
 // 用例：
 //
 //	engine.Use(middleware.JWTAuth[UserClaims](secret,
