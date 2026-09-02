@@ -19,7 +19,7 @@
 //
 //	token, err := jwt.Sign(UserClaims{UserUUID: "123"}, secret, jwt.WithExpiration(time.Hour))
 //	claims, err := jwt.Verify[UserClaims](token, secret)
-//	newToken, err := jwt.Refresh[UserClaims](token, secret, jwt.WithExpiration(24*time.Hour))
+//	newToken, err := jwt.Refresh[UserClaims](ctx, token, secret, revocationStore, jwt.WithExpiration(24*time.Hour))
 //
 //	// 非对称算法示例（RS256）：
 //	token, err := jwt.Sign(UserClaims{UserUUID: "123"}, rsaPrivateKey, jwt.WithSigningMethod(gojwt.SigningMethodRS256))

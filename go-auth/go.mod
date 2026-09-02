@@ -5,6 +5,7 @@ go 1.26.5
 require (
 	github.com/byx-darwin/go-tools/go-common v0.1.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/uuid v1.6.0
 	github.com/samber/oops v1.22.0
 	github.com/stretchr/testify v1.11.1
 )

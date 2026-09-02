@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -180,7 +181,7 @@ func TestRefresh(t *testing.T) {
 	require.NoError(t, err)
 
 	// 刷新为长期 Token。
-	newToken, err := Refresh[UserClaims](token, testSecret, WithExpiration(24*time.Hour))
+	newToken, err := Refresh[UserClaims](context.Background(), token, testSecret, newFakeRevocationStore(), WithExpiration(24*time.Hour))
 	require.NoError(t, err)
 	assert.NotEmpty(t, newToken)
 	assert.NotEqual(t, token, newToken)
@@ -204,7 +205,7 @@ func TestRefreshExpiredToken(t *testing.T) {
 	token, err := Sign(claims, testSecret)
 	require.NoError(t, err)
 
-	_, err = Refresh[UserClaims](token, testSecret, WithExpiration(time.Hour))
+	_, err = Refresh[UserClaims](context.Background(), token, testSecret, newFakeRevocationStore(), WithExpiration(time.Hour))
 	require.Error(t, err)
 }
 
@@ -216,7 +217,7 @@ func TestRefreshWithIssuer(t *testing.T) {
 	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
 	require.NoError(t, err)
 
-	newToken, err := Refresh[UserClaims](token, testSecret,
+	newToken, err := Refresh[UserClaims](context.Background(), token, testSecret, newFakeRevocationStore(),
 		WithExpiration(24*time.Hour),
 		WithIssuer("new-issuer"),
 	)
@@ -235,7 +236,7 @@ func TestRefreshCarriesDefaultExpiration(t *testing.T) {
 	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
 	require.NoError(t, err)
 
-	newToken, err := Refresh[UserClaims](token, testSecret)
+	newToken, err := Refresh[UserClaims](context.Background(), token, testSecret, newFakeRevocationStore())
 	require.NoError(t, err)
 
 	parsed, err := Verify[UserClaims](newToken, testSecret)
@@ -252,7 +253,7 @@ func TestRefreshExplicitExpirationOverridesDefault(t *testing.T) {
 	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
 	require.NoError(t, err)
 
-	newToken, err := Refresh[UserClaims](token, testSecret, WithExpiration(24*time.Hour))
+	newToken, err := Refresh[UserClaims](context.Background(), token, testSecret, newFakeRevocationStore(), WithExpiration(24*time.Hour))
 	require.NoError(t, err)
 	assert.NotEmpty(t, newToken)
 	assert.NotEqual(t, token, newToken)
@@ -326,7 +327,7 @@ func TestRefreshWithSigningMethod(t *testing.T) {
 	require.NoError(t, err)
 
 	// Refresh 透传 WithSigningMethod，验证通过后续签。
-	newToken, err := Refresh[UserClaims](token, testSecret,
+	newToken, err := Refresh[UserClaims](context.Background(), token, testSecret, newFakeRevocationStore(),
 		WithExpiration(24*time.Hour),
 		WithSigningMethod(gojwt.SigningMethodHS512),
 	)
@@ -519,4 +520,163 @@ func TestVerifyKeyTypeMismatch(t *testing.T) {
 
 	code, _ := goerror.Extract(err)
 	assert.Equal(t, autherror.CodeJWTKeyTypeMismatch, code)
+}
+
+// ── Refresh 轮换与复用检测 ──
+
+// fakeRevocationStore 是 revocation.Store 的内存测试替身，避免 go-auth 反向依赖
+// go-middleware。
+type fakeRevocationStore struct {
+	revoked map[string]bool
+
+	isRevokedErr error
+	revokeErr    error
+}
+
+func newFakeRevocationStore() *fakeRevocationStore {
+	return &fakeRevocationStore{revoked: make(map[string]bool)}
+}
+
+func (s *fakeRevocationStore) IsRevoked(_ context.Context, jti string) (bool, error) {
+	if s.isRevokedErr != nil {
+		return false, s.isRevokedErr
+	}
+	return s.revoked[jti], nil
+}
+
+func (s *fakeRevocationStore) Revoke(_ context.Context, jti string, _ time.Duration) error {
+	if s.revokeErr != nil {
+		return s.revokeErr
+	}
+	s.revoked[jti] = true
+	return nil
+}
+
+type refreshRotationClaims struct {
+	UserUUID string `json:"user_uuid"`
+	gojwt.RegisteredClaims
+}
+
+func TestRefreshRotatesJTI(t *testing.T) {
+	store := newFakeRevocationStore()
+	claims := refreshRotationClaims{
+		UserUUID:         "user-rotate",
+		RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-original"},
+	}
+
+	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
+	require.NoError(t, err)
+
+	newToken, err := Refresh[refreshRotationClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
+	require.NoError(t, err)
+	assert.NotEmpty(t, newToken)
+
+	parsed, err := Verify[refreshRotationClaims](newToken, testSecret)
+	require.NoError(t, err)
+	assert.Equal(t, "user-rotate", parsed.UserUUID)
+	assert.NotEqual(t, "jti-original", parsed.ID, "刷新后必须生成新 JTI")
+	assert.True(t, store.revoked["jti-original"], "旧 JTI 必须被标记为已撤销")
+}
+
+func TestRefreshReuseDetection(t *testing.T) {
+	store := newFakeRevocationStore()
+	claims := refreshRotationClaims{
+		UserUUID:         "user-reuse",
+		RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-reuse"},
+	}
+
+	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
+	require.NoError(t, err)
+
+	_, err = Refresh[refreshRotationClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	// 用同一个旧 token 再次 Refresh：旧 JTI 已被撤销，必须判定为复用攻击。
+	_, err = Refresh[refreshRotationClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeTokenRevoked, code)
+}
+
+func TestRefreshWithoutJTISkipsRotation(t *testing.T) {
+	// Claims 未携带 JTI 时，行为与变更前一致：不触碰 store，不报错。
+	store := newFakeRevocationStore()
+	claims := UserClaims{UserUUID: "user-no-jti"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
+	require.NoError(t, err)
+
+	newToken, err := Refresh[UserClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
+	require.NoError(t, err)
+	assert.NotEmpty(t, newToken)
+	assert.Empty(t, store.revoked)
+}
+
+func TestRefreshIsRevokedError(t *testing.T) {
+	store := newFakeRevocationStore()
+	store.isRevokedErr = assert.AnError
+	claims := refreshRotationClaims{
+		UserUUID:         "user-isrevoked-err",
+		RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-isrevoked-err"},
+	}
+
+	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
+	require.NoError(t, err)
+
+	_, err = Refresh[refreshRotationClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
+	require.Error(t, err, "IsRevoked 出错必须 fail-closed，拒绝刷新")
+}
+
+func TestRefreshRevokeError(t *testing.T) {
+	store := newFakeRevocationStore()
+	store.revokeErr = assert.AnError
+	claims := refreshRotationClaims{
+		UserUUID:         "user-revoke-err",
+		RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-revoke-err"},
+	}
+
+	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
+	require.NoError(t, err)
+
+	_, err = Refresh[refreshRotationClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
+	require.Error(t, err, "Revoke 出错必须 fail-closed，拒绝刷新")
+}
+
+func TestRefreshNilStoreWithJTIFailsClosed(t *testing.T) {
+	// Claims 携带 JTI 但 store 为 nil：必须返回错误而非 panic，且不应签发新 Token。
+	claims := refreshRotationClaims{
+		UserUUID:         "user-nil-store",
+		RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-nil-store"},
+	}
+
+	token, err := Sign(claims, testSecret, WithExpiration(30*time.Minute))
+	require.NoError(t, err)
+
+	newToken, err := Refresh[refreshRotationClaims](context.Background(), token, testSecret, nil, WithExpiration(time.Hour))
+	require.Error(t, err, "携带 JTI 但 store 为 nil 时必须 fail-closed，而不是 panic")
+	assert.Empty(t, newToken, "拒绝刷新时不应签发新 Token")
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTRefreshFailed, code)
+}
+
+func TestRefreshMissingExpiresAtFailsClosed(t *testing.T) {
+	// exp 并非 JWT 规范强制字段。构造一个带 JTI 但不带 ExpiresAt 的 Token：
+	// 必须绕过本包 Sign() 的默认过期填充逻辑，直接用 gojwt 签发。
+	claims := &refreshRotationClaims{
+		UserUUID:         "user-no-exp",
+		RegisteredClaims: gojwt.RegisteredClaims{ID: "jti-no-exp"},
+	}
+	require.Nil(t, claims.ExpiresAt)
+
+	rawToken := gojwt.NewWithClaims(gojwt.SigningMethodHS256, claims)
+	token, err := rawToken.SignedString(testSecret)
+	require.NoError(t, err)
+
+	store := newFakeRevocationStore()
+	newToken, err := Refresh[refreshRotationClaims](context.Background(), token, testSecret, store, WithExpiration(time.Hour))
+	require.Error(t, err, "缺少 ExpiresAt 时必须 fail-closed，而不是 panic")
+	assert.Empty(t, newToken, "拒绝刷新时不应签发新 Token")
+	assert.Empty(t, store.revoked, "Revoke 不应被调用")
 }
