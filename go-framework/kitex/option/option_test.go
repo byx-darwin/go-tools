@@ -71,6 +71,15 @@ func TestNewClientOption_DefaultTimeouts(t *testing.T) {
 	assert.NotEmpty(t, opts)
 }
 
+func TestNewClientOption_ConnPoolMaxIdleTimeoutDefault(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{}, // zero-value ConnPool
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
 func TestNewClientOption_ExplicitTimeoutsOverrideDefaults(t *testing.T) {
 	cfg := &kitex.ClientConfig{
 		ClientOption: &kitex.ClientOption{

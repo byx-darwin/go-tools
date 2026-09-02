@@ -46,6 +46,9 @@ const (
 	defaultConnectTimeout = 200 * time.Millisecond
 	// defaultRPCTimeout RPCTimeout 未显式配置时的默认值。
 	defaultRPCTimeout = 3 * time.Second
+	// defaultConnPoolMaxIdleTimeout ConnPool.MaxIdleTimeout 未显式配置（<=0）时的默认值，
+	// 避免向 Kitex NewLongPool 传入零值触发 time.NewTicker(0) panic。
+	defaultConnPoolMaxIdleTimeout = 30 * time.Second
 )
 
 // ── Server ──
@@ -167,13 +170,17 @@ func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig, opts ...Optio
 	}
 
 	// 长连接池（替代已废弃的 Mux Connection）
+	maxIdleTimeout := co.ConnPool.MaxIdleTimeout
+	if maxIdleTimeout <= 0 {
+		maxIdleTimeout = defaultConnPoolMaxIdleTimeout
+	}
 	options = append(options, client.WithConnPool(remoteConnpool.NewLongPool(
 		co.Resolver.Name,
 		connpool.IdleConfig{
 			MinIdlePerAddress: co.ConnPool.MinIdlePerAddress,
 			MaxIdlePerAddress: co.ConnPool.MaxIdlePerAddress,
 			MaxIdleGlobal:     co.ConnPool.MaxIdleGlobal,
-			MaxIdleTimeout:    co.ConnPool.MaxIdleTimeout,
+			MaxIdleTimeout:    maxIdleTimeout,
 		},
 	)))
 
