@@ -18,7 +18,7 @@ log:
     masked_fields: ["password", "token", "secret"]
 
 jwt:
-  secret: "example-secret-key"
+  secret: "example-secret-key-min-32-bytes-long"
   issuer: "go-tools-example"
   access_expiration: 30s
   refresh_expiration: 24h
