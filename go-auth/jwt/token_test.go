@@ -229,6 +229,48 @@ func TestRefreshWithIssuer(t *testing.T) {
 	assert.Equal(t, "user-issuer-refresh", parsed.UserUUID)
 }
 
+func TestRefreshWithIssuerAndExpectedIssuerCoexist(t *testing.T) {
+	// WithIssuer（作用于 Refresh 内部 Sign）与 WithExpectedIssuer（作用于
+	// Refresh 内部 Verify）语义独立：同时传入不应互相干扰。
+	claims := UserClaims{UserUUID: "user-issuer-coexist"}
+
+	oldToken, err := Sign(claims, testSecret, WithExpiration(time.Hour), WithIssuer("old-app"))
+	require.NoError(t, err)
+
+	newToken, err := Refresh[UserClaims](context.Background(), oldToken, testSecret, newFakeRevocationStore(),
+		WithExpectedIssuer("old-app"),
+		WithIssuer("new-app"),
+	)
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](newToken, testSecret)
+	require.NoError(t, err)
+	assert.Equal(t, "new-app", parsed.Issuer)
+	assert.Equal(t, "user-issuer-coexist", parsed.UserUUID)
+}
+
+func TestRefreshWithExpectedIssuerMismatchFails(t *testing.T) {
+	// WithExpectedIssuer 校验的是旧 Token 的 issuer；不匹配时 Refresh 内部
+	// Verify 先失败。Refresh 用 oops.With("jwt.Refresh").Code(CodeJWTRefreshFailed).Wrap(err)
+	// 包装该错误，但 goerror.Extract 沿错误链返回最内层（原始）错误的 Code，
+	// 而不是外层 Wrap 时设置的 Code——因此顶层观测到的仍是 Verify 产生的
+	// CodeTokenInvalid，而非 CodeJWTRefreshFailed。此行为此前未被任何测试
+	// 验证过，本用例把它钉住。
+	claims := UserClaims{UserUUID: "user-issuer-coexist-mismatch"}
+
+	oldToken, err := Sign(claims, testSecret, WithExpiration(time.Hour), WithIssuer("old-app"))
+	require.NoError(t, err)
+
+	_, err = Refresh[UserClaims](context.Background(), oldToken, testSecret, newFakeRevocationStore(),
+		WithExpectedIssuer("wrong-app"),
+		WithIssuer("new-app"),
+	)
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeTokenInvalid, code)
+}
+
 func TestRefreshCarriesDefaultExpiration(t *testing.T) {
 	// Refresh 不传 WithExpiration 时，新 Token 也应使用默认 2h。
 	claims := UserClaims{UserUUID: "user-refresh-default"}
@@ -378,6 +420,59 @@ func TestWithIssuerEmptyIgnored(t *testing.T) {
 	parsed, err := Verify[UserClaims](token, testSecret)
 	require.NoError(t, err)
 	assert.Empty(t, parsed.Issuer)
+}
+
+func TestVerifyWithExpectedIssuerMatch(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-issuer-match"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour), WithIssuer("myapp"))
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](token, testSecret, WithExpectedIssuer("myapp"))
+	require.NoError(t, err)
+	assert.Equal(t, "myapp", parsed.Issuer)
+	assert.Equal(t, "user-issuer-match", parsed.UserUUID)
+}
+
+func TestVerifyWithExpectedIssuerMismatch(t *testing.T) {
+	claims := UserClaims{UserUUID: "user-issuer-mismatch"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour), WithIssuer("other-app"))
+	require.NoError(t, err)
+
+	_, err = Verify[UserClaims](token, testSecret, WithExpectedIssuer("myapp"))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeTokenInvalid, code)
+}
+
+func TestVerifyWithExpectedIssuerMissingClaim(t *testing.T) {
+	// Token signed without WithIssuer carries no iss claim at all.
+	claims := UserClaims{UserUUID: "user-issuer-missing"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour))
+	require.NoError(t, err)
+
+	_, err = Verify[UserClaims](token, testSecret, WithExpectedIssuer("myapp"))
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeTokenInvalid, code)
+}
+
+func TestVerifyWithoutExpectedIssuerIgnoresTokenIssuer(t *testing.T) {
+	// Backward-compat regression: without WithExpectedIssuer, Verify must not
+	// enforce any issuer check, regardless of what issuer the token carries.
+	claims := UserClaims{UserUUID: "user-issuer-unchecked"}
+
+	token, err := Sign(claims, testSecret, WithExpiration(time.Hour), WithIssuer("some-app"))
+	require.NoError(t, err)
+
+	parsed, err := Verify[UserClaims](token, testSecret)
+	require.NoError(t, err)
+	assert.Equal(t, "some-app", parsed.Issuer)
+	assert.Equal(t, "user-issuer-unchecked", parsed.UserUUID)
 }
 
 func TestWithSigningMethodNilIgnored(t *testing.T) {

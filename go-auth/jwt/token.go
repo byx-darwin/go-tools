@@ -70,6 +70,11 @@ func Verify[T any](tokenStr string, secret any, opts ...Option) (*T, error) {
 			Errorf("claims type %T does not implement jwt.Claims", zero)
 	}
 
+	var parserOpts []gojwt.ParserOption
+	if cfg.expectedIssuer != "" {
+		parserOpts = append(parserOpts, gojwt.WithIssuer(cfg.expectedIssuer))
+	}
+
 	var keyTypeErr error
 	token, err := gojwt.ParseWithClaims(tokenStr, claims, func(tok *gojwt.Token) (any, error) {
 		// 验证签名算法，防止算法混淆攻击（如 RS256→HS256）。
@@ -83,7 +88,7 @@ func Verify[T any](tokenStr string, secret any, opts ...Option) (*T, error) {
 			return nil, err
 		}
 		return secret, nil
-	})
+	}, parserOpts...)
 	if err != nil {
 		if keyTypeErr != nil {
 			return nil, keyTypeErr
