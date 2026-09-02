@@ -881,3 +881,33 @@ func TestGenerateSecretNilMethod(t *testing.T) {
 	_, err := GenerateSecret(nil)
 	require.Error(t, err)
 }
+
+// ── 不可用哈希（自定义 HMAC 方法未设置 Hash） ──
+
+func TestSignVerifyWithUnavailableHashSigningMethodDoesNotPanic(t *testing.T) {
+	// 自定义 HMAC 签名方法，Hash 字段保持零值（未注册的哈希算法），
+	// 模拟调用方通过 WithSigningMethod 传入一个未正确初始化的自定义方法。
+	customMethod := &gojwt.SigningMethodHMAC{Name: "HS-custom-unavailable"}
+	secret := make([]byte, 64)
+
+	require.NotPanics(t, func() {
+		claims := UserClaims{UserUUID: "user-unavailable-hash"}
+		_, err := Sign(claims, secret, WithSigningMethod(customMethod))
+		require.Error(t, err)
+	})
+
+	require.NotPanics(t, func() {
+		_, err := Verify[UserClaims]("dummy.token.value", secret, WithSigningMethod(customMethod))
+		require.Error(t, err)
+	})
+}
+
+func TestGenerateSecretWithUnavailableHashReturnsError(t *testing.T) {
+	customMethod := &gojwt.SigningMethodHMAC{Name: "HS-custom-unavailable"}
+
+	_, err := GenerateSecret(customMethod)
+	require.Error(t, err)
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, autherror.CodeJWTSignFailed, code)
+}

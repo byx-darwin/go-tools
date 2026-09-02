@@ -176,6 +176,11 @@ func validateKeyType(method gojwt.SigningMethod, key any, forSigning bool) error
 // （RFC 7518 建议：密钥长度 >= 哈希输出长度，如 HS256 要求 >=32 字节）。
 // 不满足时返回 autherror.ErrJWTWeakSecret，防止弱密钥被离线暴力破解伪造 Token。
 func validateHMACSecretLength(method *gojwt.SigningMethodHMAC, secret []byte) error {
+	if !method.Hash.Available() {
+		// 哈希不可用（自定义方法未设置 Hash 等）：跳过长度校验，
+		// 交由 golang-jwt 返回 ErrHashUnavailable。
+		return nil
+	}
 	minLen := method.Hash.Size()
 	if len(secret) < minLen {
 		return autherror.ErrJWTWeakSecret.Errorf(
@@ -193,6 +198,11 @@ func GenerateSecret(method *gojwt.SigningMethodHMAC) ([]byte, error) {
 		return nil, oops.With("jwt.GenerateSecret").
 			Code(autherror.CodeJWTSignFailed).
 			Errorf("method must not be nil")
+	}
+	if !method.Hash.Available() {
+		return nil, oops.With("jwt.GenerateSecret").
+			Code(autherror.CodeJWTSignFailed).
+			Errorf("hash for signing method %s is not available", method.Alg())
 	}
 
 	secret := make([]byte, method.Hash.Size())
