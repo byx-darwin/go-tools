@@ -10,6 +10,12 @@
 // 密钥类型与签名算法不匹配时，Sign/Verify 返回 autherror.ErrJWTKeyTypeMismatch，
 // 而非在底层库中触发运行时类型断言错误。
 //
+// HMAC 密钥强度要求（RFC 7518）：密钥长度必须不低于对应哈希算法的输出长度，
+// 即 HS256 >= 32 字节、HS384 >= 48 字节、HS512 >= 64 字节，否则 Sign/Verify
+// 返回 autherror.ErrJWTWeakSecret。使用 GenerateSecret 生成合规密钥：
+//
+//	secret, err := jwt.GenerateSecret(gojwt.SigningMethodHS256) // 32 字节
+//
 // 用法：
 //
 //	type UserClaims struct {

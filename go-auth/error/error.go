@@ -22,6 +22,7 @@ const (
 	CodeJWTVerifyFailed    = 40008 // JWT 验证失败
 	CodeJWTRefreshFailed   = 40009 // JWT 刷新失败
 	CodeJWTKeyTypeMismatch = 40010 // JWT 密钥类型与签名算法不匹配
+	CodeJWTWeakSecret      = 40011 // JWT HMAC 密钥强度不足（长度低于哈希算法输出长度）
 )
 
 // 预定义认证错误构造器。
@@ -36,6 +37,7 @@ var (
 	ErrJWTVerifyFailed    = goerror.Code(CodeJWTVerifyFailed).Public("jwt_verify_failed")        // JWT 验证失败
 	ErrJWTRefreshFailed   = goerror.Code(CodeJWTRefreshFailed).Public("jwt_refresh_failed")      // JWT 刷新失败
 	ErrJWTKeyTypeMismatch = goerror.Code(CodeJWTKeyTypeMismatch).Public("jwt_key_type_mismatch") // JWT 密钥类型与签名算法不匹配
+	ErrJWTWeakSecret      = goerror.Code(CodeJWTWeakSecret).Public("jwt_weak_secret")            // JWT HMAC 密钥强度不足
 )
 
 func init() {
@@ -50,5 +52,6 @@ func init() {
 		CodeJWTVerifyFailed:    500,
 		CodeJWTRefreshFailed:   500,
 		CodeJWTKeyTypeMismatch: 500,
+		CodeJWTWeakSecret:      500,
 	})
 }
