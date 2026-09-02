@@ -27,6 +27,7 @@ import (
 	"github.com/byx-darwin/go-tools/go-framework/config/kitex"
 	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
 	"github.com/cloudwego/kitex/client"
+	"github.com/cloudwego/kitex/pkg/circuitbreak"
 	"github.com/cloudwego/kitex/pkg/connpool"
 	"github.com/cloudwego/kitex/pkg/limit"
 	"github.com/cloudwego/kitex/pkg/loadbalance"
@@ -111,13 +112,36 @@ func resolveAddr(ip, port string) string {
 
 // ── Client ──
 
+// clientOptionConfig 保存 NewClientOption 的可选配置（Functional Options）。
+type clientOptionConfig struct {
+	cbKeyFunc circuitbreak.GenServiceCBKeyFunc
+}
+
+// Option 定义 NewClientOption 的配置选项函数。
+type Option func(*clientOptionConfig)
+
+// WithCircuitBreakerKeyFunc 自定义熔断器 key 生成函数。
+// 未设置（或传入 nil）时回退到 SDK 默认的 circuitbreak.RPCInfo2Key。
+func WithCircuitBreakerKeyFunc(f circuitbreak.GenServiceCBKeyFunc) Option {
+	return func(c *clientOptionConfig) {
+		if f != nil {
+			c.cbKeyFunc = f
+		}
+	}
+}
+
 // NewClientOption 创建 Kitex 客户端 Option 列表。
-func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig) ([]client.Option, error) {
+func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig, opts ...Option) ([]client.Option, error) {
 	if cfg == nil || cfg.ClientOption == nil {
 		return nil, frameworkerror.ErrConfigInvalid.With("step", "NewClientOption").Wrap(
 			errors.New("client config is nil"))
 	}
 	co := cfg.ClientOption
+
+	occ := &clientOptionConfig{cbKeyFunc: circuitbreak.RPCInfo2Key}
+	for _, opt := range opts {
+		opt(occ)
+	}
 
 	options := []client.Option{
 		client.WithPayloadCodec(thrift.NewThriftCodec()),
@@ -166,6 +190,10 @@ func NewClientOption(ctx context.Context, cfg *kitex.ClientConfig) ([]client.Opt
 				}
 				return ""
 			}))))
+	}
+
+	if co.CBSuite.Enable {
+		options = append(options, client.WithCircuitBreaker(circuitbreak.NewCBSuite(occ.cbKeyFunc)))
 	}
 
 	options = append(options, client.WithClientBasicInfo(&rpcinfo.EndpointBasicInfo{

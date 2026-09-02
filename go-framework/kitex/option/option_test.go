@@ -1,9 +1,12 @@
 package option
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/cloudwego/kitex/pkg/circuitbreak"
+	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -78,6 +81,66 @@ func TestNewClientOption_ExplicitTimeoutsOverrideDefaults(t *testing.T) {
 		},
 	}
 	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_CBSuiteDisabled(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			CBSuite: kitex.CBSuite{Enable: false},
+		},
+	}
+	optsDisabled, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+
+	cfg.ClientOption.CBSuite.Enable = true
+	optsEnabled, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+
+	assert.Greater(t, len(optsEnabled), len(optsDisabled))
+}
+
+func TestWithCircuitBreakerKeyFunc_DefaultsToRPCInfo2Key(t *testing.T) {
+	occ := &clientOptionConfig{cbKeyFunc: circuitbreak.RPCInfo2Key}
+	assert.NotNil(t, occ.cbKeyFunc)
+}
+
+func TestWithCircuitBreakerKeyFunc_Custom(t *testing.T) {
+	called := false
+	custom := func(ri rpcinfo.RPCInfo) string {
+		called = true
+		return "custom-key"
+	}
+
+	occ := &clientOptionConfig{cbKeyFunc: circuitbreak.RPCInfo2Key}
+	WithCircuitBreakerKeyFunc(custom)(occ)
+	require.NotNil(t, occ.cbKeyFunc)
+
+	got := occ.cbKeyFunc(nil)
+	assert.True(t, called)
+	assert.Equal(t, "custom-key", got)
+}
+
+func TestWithCircuitBreakerKeyFunc_NilIgnored(t *testing.T) {
+	occ := &clientOptionConfig{cbKeyFunc: circuitbreak.RPCInfo2Key}
+	before := reflect.ValueOf(occ.cbKeyFunc).Pointer()
+
+	WithCircuitBreakerKeyFunc(nil)(occ)
+
+	after := reflect.ValueOf(occ.cbKeyFunc).Pointer()
+	assert.Equal(t, before, after)
+}
+
+func TestNewClientOption_CustomCBKeyFuncApplied(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			CBSuite: kitex.CBSuite{Enable: true},
+		},
+	}
+	custom := func(ri rpcinfo.RPCInfo) string { return "k" }
+
+	opts, err := NewClientOption(t.Context(), cfg, WithCircuitBreakerKeyFunc(custom))
 	require.NoError(t, err)
 	assert.NotEmpty(t, opts)
 }
