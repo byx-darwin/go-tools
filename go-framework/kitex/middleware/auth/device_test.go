@@ -35,7 +35,8 @@ func (m *memoryDeviceStore) ListDevices(_ context.Context, _ string) ([]device.D
 	return nil, nil
 }
 
-func withDeviceMetainfo(ctx context.Context, userUUID, deviceID, jti string) context.Context {
+func withDeviceMetainfo(ctx context.Context, userUUID, deviceID, jti string) context.Context { //nolint:unparam // 测试辅助函数，userUUID 参数保留通用性以便未来用例覆盖不同 userUUID 场景
+
 	if userUUID != "" {
 		ctx = metainfo.WithPersistentValue(ctx, metaKeyDeviceUserUUID, userUUID)
 	}

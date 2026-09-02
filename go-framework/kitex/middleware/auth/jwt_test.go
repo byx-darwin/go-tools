@@ -35,7 +35,8 @@ func signTestToken(t *testing.T, userID string) string {
 	return token
 }
 
-func noopEndpoint(gotCtx *context.Context) func(ctx context.Context, req, resp any) error {
+func noopEndpoint(gotCtx *context.Context) func(ctx context.Context, req, resp any) error { //nolint:gocritic // *context.Context 用作测试输出参数，捕获中间件传递给 next 的 ctx，非常规业务代码
+
 	return func(ctx context.Context, req, resp any) error {
 		if gotCtx != nil {
 			*gotCtx = ctx

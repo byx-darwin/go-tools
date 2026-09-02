@@ -1,14 +1,4 @@
-// Package auth 提供 Kitex RPC 鉴权中间件：JWT / Session / Device 三种鉴权
-// （各含 Server 端校验 + Client 端注入身份，对称实现）以及独立的 panic
-// recovery 中间件。
-//
-// 身份信息通过 github.com/bytedance/gopkg/cloud/metainfo 的
-// WithPersistentValue/GetPersistentValue 在 RPC 调用链路中传递，
-// 天然支持多跳自动持久透传（无需业务代码在中间服务手动转发）。
-//
-// 鉴权失败统一通过 rpcerror.OopsStatusAdapter 包装为 Kitex
-// BizStatusErrorIface 返回，错误码复用 go-auth/error 与 go-framework/error
-// 已有的鉴权错误码。
+// Package auth 提供 Kitex RPC 鉴权中间件。完整包文档见 doc.go。
 package auth
 
 import (
