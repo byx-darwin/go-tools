@@ -168,3 +168,63 @@ func TestStoreInterface(t *testing.T) {
 		assert.False(t, ok)
 	})
 }
+
+// ── TTLRefresher 可选接口检查 ──
+
+type mockStoreWithTTL struct {
+	mockStore
+	refreshTTLFn func(ctx context.Context, sessionID string, ttl time.Duration) error
+}
+
+func (m *mockStoreWithTTL) RefreshTTL(ctx context.Context, sessionID string, ttl time.Duration) error {
+	return m.refreshTTLFn(ctx, sessionID, ttl)
+}
+
+// TestTTLRefresherOptionalInterface 验证 TTLRefresher 作为可选接口的类型断言行为。
+func TestTTLRefresherOptionalInterface(t *testing.T) {
+	t.Run("store implementing TTLRefresher asserts ok", func(t *testing.T) {
+		var calledID string
+		var calledTTL time.Duration
+		var store Store = &mockStoreWithTTL{
+			refreshTTLFn: func(_ context.Context, sessionID string, ttl time.Duration) error {
+				calledID = sessionID
+				calledTTL = ttl
+				return nil
+			},
+		}
+
+		refresher, ok := store.(TTLRefresher)
+		assert.True(t, ok)
+
+		err := refresher.RefreshTTL(context.Background(), "sid-1", 5*time.Minute)
+		assert.NoError(t, err)
+		assert.Equal(t, "sid-1", calledID)
+		assert.Equal(t, 5*time.Minute, calledTTL)
+	})
+
+	t.Run("store implementing TTLRefresher propagates error", func(t *testing.T) {
+		var store Store = &mockStoreWithTTL{
+			refreshTTLFn: func(_ context.Context, _ string, _ time.Duration) error {
+				return errors.New("refresh error")
+			},
+		}
+
+		refresher, ok := store.(TTLRefresher)
+		assert.True(t, ok)
+
+		err := refresher.RefreshTTL(context.Background(), "sid-1", time.Minute)
+		assert.Error(t, err)
+	})
+
+	t.Run("store not implementing TTLRefresher asserts not ok", func(t *testing.T) {
+		var store Store = &mockStore{}
+
+		_, ok := store.(TTLRefresher)
+		assert.False(t, ok)
+	})
+}
+
+var (
+	_ Store        = (*mockStoreWithTTL)(nil)
+	_ TTLRefresher = (*mockStoreWithTTL)(nil)
+)

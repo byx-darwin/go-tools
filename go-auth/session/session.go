@@ -17,6 +17,13 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
+// Store 接口扩展约定：
+//
+// Go 接口没有"默认方法"机制，直接为 Store 添加新方法会立即破坏所有下游实现
+// （go-middleware 的 Redis/Memory 实现）。因此后续新增能力（如批量操作、TTL 续期）
+// 必须通过"新增独立小接口 + 可选类型断言"扩展，而不是修改 Store 本身的方法集。
+// 参见 TTLRefresher 作为示例。
+
 // Store Session 存储接口。
 //
 // 实现方必须满足以下安全要求：
@@ -38,4 +45,15 @@ type Store interface {
 
 	// Exists 检查指定 sessionID 的会话是否存在。
 	Exists(ctx context.Context, sessionID string) (bool, error)
+}
+
+// TTLRefresher 是 Store 的可选扩展接口，用于续期会话 TTL 而不更新会话数据本身。
+// 存储实现可选择性支持该接口；调用方应使用类型断言检测：
+//
+//	if refresher, ok := store.(session.TTLRefresher); ok {
+//	    err := refresher.RefreshTTL(ctx, sessionID, ttl)
+//	}
+type TTLRefresher interface {
+	// RefreshTTL 续期指定 sessionID 的过期时间，不修改会话数据本身。
+	RefreshTTL(ctx context.Context, sessionID string, ttl time.Duration) error
 }
