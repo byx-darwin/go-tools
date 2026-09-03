@@ -9,9 +9,15 @@ import (
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/app/server"
+	"github.com/cloudwego/hertz/pkg/common/hlog"
 
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	// 屏蔽测试用真实 Hertz server 的启动/关闭日志噪音，只保留 Error 及以上。
+	hlog.SetLevel(hlog.LevelError)
+}
 
 // startTestServer 启动一个监听本地随机端口的真实 Hertz server，注册
 // GET /sse -> handler。
