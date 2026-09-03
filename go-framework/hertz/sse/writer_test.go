@@ -21,9 +21,9 @@ func TestNewWriter_SetsSSEHeaders(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	out := readAllWithTimeout(t, conn, 2*time.Second)
+	out := readAllWithTimeout(t, conn)
 
 	assert.Contains(t, out, "Content-Type: text/event-stream; charset=utf-8")
 	assert.Contains(t, out, "Cache-Control: no-cache")
@@ -37,9 +37,9 @@ func TestWriter_WriteEvent_Success(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	body := readAllWithTimeout(t, conn, 2*time.Second)
+	body := readAllWithTimeout(t, conn)
 
 	assert.Contains(t, body, "id: 1\n")
 	assert.Contains(t, body, "event: message\n")
@@ -57,9 +57,9 @@ func TestWriter_WriteEvent_AfterClose_ReturnsErrWriterClosed(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	_ = readAllWithTimeout(t, conn, 2*time.Second)
+	_ = readAllWithTimeout(t, conn)
 }
 
 func TestWriter_Close_Idempotent(t *testing.T) {
@@ -70,9 +70,9 @@ func TestWriter_Close_Idempotent(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	_ = readAllWithTimeout(t, conn, 2*time.Second)
+	_ = readAllWithTimeout(t, conn)
 }
 
 func TestNewWriter_RequestIDRequiresResponderMiddleware(t *testing.T) {
@@ -86,9 +86,9 @@ func TestNewWriter_RequestIDRequiresResponderMiddleware(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	_ = readAllWithTimeout(t, conn, 2*time.Second)
+	_ = readAllWithTimeout(t, conn)
 }
 
 func TestWriter_Run_HandlerCompletesNormally(t *testing.T) {
@@ -101,9 +101,9 @@ func TestWriter_Run_HandlerCompletesNormally(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	body := readAllWithTimeout(t, conn, 2*time.Second)
+	body := readAllWithTimeout(t, conn)
 	assert.Contains(t, body, "data: hi\n")
 }
 
@@ -116,9 +116,9 @@ func TestWriter_Run_HandlerError_Propagates(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	_ = readAllWithTimeout(t, conn, 2*time.Second)
+	_ = readAllWithTimeout(t, conn)
 }
 
 func TestWriter_Run_PanicRecovered_WritesErrorEvent(t *testing.T) {
@@ -135,9 +135,9 @@ func TestWriter_Run_PanicRecovered_WritesErrorEvent(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	body := readAllWithTimeout(t, conn, 2*time.Second)
+	body := readAllWithTimeout(t, conn)
 
 	assert.Contains(t, body, "event: error\n")
 	assert.Contains(t, body, `"code":500`)
@@ -155,9 +155,9 @@ func TestWriter_Run_HeartbeatWritesKeepAlive(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
-	body := readAllWithTimeout(t, conn, 2*time.Second)
+	body := readAllWithTimeout(t, conn)
 	assert.True(t, strings.Contains(body, ":keep-alive\n"), "expected at least one keep-alive comment, got: %q", body)
 }
 
@@ -177,7 +177,7 @@ func TestWriter_Run_ContextCancel_ClosesWriter(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
 
 	<-handlerStarted

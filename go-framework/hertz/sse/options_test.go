@@ -23,7 +23,7 @@ func TestWithHeartbeatInterval(t *testing.T) {
 	assert.Equal(t, time.Duration(0), c.heartbeatInterval)
 
 	WithHeartbeatInterval(-1 * time.Second)(&c)
-	assert.Equal(t, time.Duration(-1*time.Second), c.heartbeatInterval)
+	assert.Equal(t, -1*time.Second, c.heartbeatInterval)
 }
 
 func TestWithRecoverHandler(t *testing.T) {

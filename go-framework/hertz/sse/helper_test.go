@@ -68,22 +68,22 @@ func startTestServer(t *testing.T, handler app.HandlerFunc) (addr string, stop f
 	return hostPort, stopFn
 }
 
-// rawHTTPGet 通过原始 TCP 连接发起 GET 请求，返回底层连接以便按需持续
-// 读取 chunked SSE 响应体（不使用 net/http 客户端，避免其对 chunked
+// rawHTTPGet 通过原始 TCP 连接向 /sse 发起 GET 请求，返回底层连接以便按需
+// 持续读取 chunked SSE 响应体（不使用 net/http 客户端，避免其对 chunked
 // body 的缓冲/重试语义掩盖了我们要观察的原始字节流时序）。
-func rawHTTPGet(t *testing.T, addr, path string) net.Conn {
+func rawHTTPGet(t *testing.T, addr string) net.Conn {
 	t.Helper()
 	conn, err := net.DialTimeout("tcp", addr, time.Second)
 	require.NoError(t, err)
-	_, err = conn.Write([]byte("GET " + path + " HTTP/1.1\r\nHost: " + addr + "\r\nConnection: close\r\n\r\n"))
+	_, err = conn.Write([]byte("GET /sse HTTP/1.1\r\nHost: " + addr + "\r\nConnection: close\r\n\r\n"))
 	require.NoError(t, err)
 	return conn
 }
 
-// readAllWithTimeout 在 deadline 内尽量读满 conn 直到 EOF 或超时。
-func readAllWithTimeout(t *testing.T, conn net.Conn, timeout time.Duration) string {
+// readAllWithTimeout 在 2 秒 deadline 内尽量读满 conn 直到 EOF 或超时。
+func readAllWithTimeout(t *testing.T, conn net.Conn) string {
 	t.Helper()
-	_ = conn.SetReadDeadline(time.Now().Add(timeout))
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	buf := make([]byte, 0, 4096)
 	tmp := make([]byte, 4096)
 	for {

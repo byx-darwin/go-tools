@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	hertzsse "github.com/cloudwego/hertz/pkg/protocol/sse"
@@ -21,10 +20,10 @@ func TestWriteErrorEvent(t *testing.T) {
 	})
 	defer stop()
 
-	conn := rawHTTPGet(t, addr, "/sse")
+	conn := rawHTTPGet(t, addr)
 	defer func() { _ = conn.Close() }()
 
-	out := readAllWithTimeout(t, conn, 2*time.Second)
+	out := readAllWithTimeout(t, conn)
 
 	assert.Contains(t, out, "event: error\n")
 
