@@ -20,6 +20,11 @@ var ErrWriterClosed = errors.New("sse: writer closed")
 
 // Writer 封装 Hertz 原生 SSE Writer，集成 Request ID、panic recovery、
 // 心跳保活、断连检测，对齐 Responder 规范。
+//
+// 断连检测的真实机制：标准 Hertz handler 的 ctx 在客户端断连时不会自动
+// cancel，实际生效的检测路径是心跳写失败（见 heartbeatLoop）。禁用心跳
+// （WithHeartbeatInterval(0)）且 handler 纯阻塞等待数据源时，断连检测会
+// 失效，可能导致 goroutine 泄漏，详见包文档「断连检测的真实机制」一节。
 type Writer struct {
 	w         *hertzsse.Writer
 	cfg       config
@@ -87,11 +92,17 @@ func (w *Writer) doClose() error {
 	return w.w.Close()
 }
 
-// Run 包装业务事件循环：内部启动心跳 + 断连检测 goroutine（heartbeatInterval
-// <=0 时跳过心跳），函数返回前自动 Close。handler 内 panic 会被捕获：调用
-// onRecover（若配置）→ 写入 event:error（500, "internal server error"）→
-// 记录结构化日志 → 不重新抛出。handler 的返回值（含 nil）原样返回给调用方；
-// panic 场景固定返回 nil，因为错误已经通过 SSE 事件流交付给客户端。
+// Run 包装业务事件循环：内部启动心跳 goroutine（heartbeatInterval<=0 时
+// 仅监听 ctx.Done()，不发心跳），函数返回前自动 Close。handler 内 panic
+// 会被捕获：调用 onRecover（若配置）→ 写入 event:error（500,
+// "internal server error"）→ 记录结构化日志 → 不重新抛出。handler 的
+// 返回值（含 nil）原样返回给调用方；panic 场景固定返回 nil，因为错误已经
+// 通过 SSE 事件流交付给客户端。
+//
+// 断连检测警告：heartbeatInterval<=0 时，goroutine 只能靠 ctx.Done()
+// 退出——而标准 Hertz handler 的 ctx 不会在客户端断连时自动 cancel。若
+// handler 同时是纯阻塞等待（无自带超时/取消），断连后 goroutine 会无限
+// 阻塞（泄漏）。禁用心跳前务必确认 handler 有其他方式感知断连或超时退出。
 func (w *Writer) Run(handler func(w *Writer) error) (err error) {
 	ctx, cancel := context.WithCancel(w.runCtx())
 	w.cancelHeartbeat = cancel
@@ -117,8 +128,11 @@ func (w *Writer) Run(handler func(w *Writer) error) (err error) {
 	return handler(w)
 }
 
-// heartbeatLoop 后台心跳 + 断连检测 goroutine。
-// heartbeatInterval<=0 时不创建 ticker，仅监听 ctx.Done() 用于断连检测。
+// heartbeatLoop 后台心跳 goroutine，同时是当前唯一可靠的断连检测路径：
+// WriteKeepAlive() 在底层 socket 已断开时返回 error，据此触发 doClose()。
+// 标准 Hertz handler 的 ctx 不会在客户端断连时自动 cancel，因此
+// heartbeatInterval<=0（跳过心跳，仅监听 ctx.Done()）场景下，若无外部
+// cancel 来源，断连不会被感知——见 Run 与包文档的警告。
 func (w *Writer) heartbeatLoop(ctx context.Context) {
 	defer close(w.heartbeatDone)
 

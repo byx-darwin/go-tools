@@ -17,6 +17,12 @@ import (
 // 依次推送 count 个 message 事件（data 为 "<message>-<i>"），
 // 演示 sse.Writer 的基本用法与 Request ID 复用（依赖上游已注册
 // hertz.Responder.Middleware()）。
+//
+// 本示例使用默认心跳配置（15s），这是当前唯一可靠的断连检测路径——标准
+// Hertz handler 的 ctx 不会在客户端断连时自动 cancel，详见
+// go-framework/hertz/sse 包文档「断连检测的真实机制」。若改为
+// WithHeartbeatInterval(0) 且 handler 是阻塞等待数据源（不同于本示例的
+// 有限 for 循环），断连检测会失效，需自行保证 handler 能通过其他方式退出。
 func HandleSSEDemo(ctx context.Context, c *app.RequestContext) {
 	message := string(c.Query("message"))
 	if message == "" {

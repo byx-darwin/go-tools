@@ -7,7 +7,11 @@ import (
 	hertzsse "github.com/cloudwego/hertz/pkg/protocol/sse"
 )
 
-// sseErrorPayload SSE 错误事件负载，对齐 Response 三段式（code/msg/data）。
+// sseErrorPayload SSE 错误事件负载，字段形状对齐 Response 三段式
+// （code/msg/data），但 Code 语义不同：这里是 HTTP 状态码（如 500），
+// 不是 Responder 正常 JSON 响应里的业务错误码（go-framework 10000-10499
+// 段，见 CLAUDE.md D6）。SSE 场景没有走 Responder 的错误路由，客户端解析
+// event:error 时不能按 Responder 响应的 code 语义处理。
 type sseErrorPayload struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
