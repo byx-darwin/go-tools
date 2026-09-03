@@ -1,8 +1,12 @@
 package rpc
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"io"
 
+	demo "github.com/byx-darwin/go-tools/example/kitex_generated/demo"
 	"github.com/byx-darwin/go-tools/example/kitex_generated/demo/demoservice"
 	kitexobs "github.com/byx-darwin/go-tools/go-framework/kitex/observability"
 
@@ -27,4 +31,24 @@ func NewDemoClient(rpcAddr string, obsProvider *kitexobs.Provider) (demoservice.
 		return nil, fmt.Errorf("create kitex client: %w", err)
 	}
 	return c, nil
+}
+
+// CallStreamEcho 演示流式客户端调用：逐帧接收 StreamEcho 响应直至 io.EOF。
+func CallStreamEcho(ctx context.Context, c demoservice.Client, message string) ([]string, error) {
+	stream, err := c.StreamEcho(ctx, &demo.EchoRequest{Message: message})
+	if err != nil {
+		return nil, fmt.Errorf("open StreamEcho: %w", err)
+	}
+	var frames []string
+	for {
+		resp, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return frames, fmt.Errorf("recv StreamEcho frame: %w", err)
+		}
+		frames = append(frames, resp.GetMessage())
+	}
+	return frames, nil
 }
