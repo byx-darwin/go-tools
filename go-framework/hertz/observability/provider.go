@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.36.0"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/byx-darwin/go-tools/go-framework/config"
 	frameworkerror "github.com/byx-darwin/go-tools/go-framework/error"
@@ -40,11 +42,21 @@ type Provider struct {
 //   - Metrics：OTLP gRPC exporter → MeterProvider + Go runtime metrics
 //
 // 通过 cfg.EnableMetrics 控制是否启用 Metrics（默认 true，当 Enabled=true 时）。
-func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider, error) {
+//
+// exporter 的 TLS 凭据按以下优先级选择：
+//  1. WithTLSConfig 提供的自定义 *tls.Config（自定义 CA / mTLS）
+//  2. cfg.Insecure = true → 明文传输
+//  3. 默认：使用系统根证书池建立 TLS 连接
+//
+// 可通过 WithTraceExporter/WithMetricExporter 注入自定义 exporter（跳过 OTLP gRPC
+// 构建，常用于测试隔离），WithSampler/WithPropagator 覆盖默认 sampler/propagator。
+func NewProvider(ctx context.Context, cfg config.ObservabilityConfig, opts ...Option) (*Provider, error) {
 	p := &Provider{cfg: cfg, shutdown: func(context.Context) error { return nil }}
 	if !cfg.Enabled {
 		return p, nil
 	}
+
+	popts := newProviderOptions(opts)
 
 	res, _ := resource.Merge(resource.Default(),
 		resource.NewWithAttributes(
@@ -54,17 +66,26 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 	)
 
 	// ── Tracing ──
-	exp, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(cfg.Endpoint),
-		otlptracegrpc.WithInsecure(),
-	)
-	if err != nil {
-		return nil, frameworkerror.ErrObsTraceExport.Wrap(err)
+	var exp sdktrace.SpanExporter
+	if popts.traceExporter != nil {
+		exp = popts.traceExporter
+	} else {
+		traceDialOpts := []otlptracegrpc.Option{otlptracegrpc.WithEndpoint(cfg.Endpoint)}
+		traceDialOpts = append(traceDialOpts, traceTLSOption(cfg, popts))
+
+		var err error
+		exp, err = otlptracegrpc.New(ctx, traceDialOpts...)
+		if err != nil {
+			return nil, frameworkerror.ErrObsTraceExport.Wrap(err)
+		}
 	}
 
 	sampler := sdktrace.TraceIDRatioBased(1.0)
 	if cfg.SampleRate > 0 {
 		sampler = sdktrace.TraceIDRatioBased(cfg.SampleRate)
+	}
+	if popts.sampler != nil {
+		sampler = popts.sampler
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -74,23 +95,34 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 	)
 
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+
+	propagator := propagation.NewCompositeTextMapPropagator(
 		b3.New(),
 		propagation.TraceContext{},
 		propagation.Baggage{},
-	))
+	)
+	if popts.propagator != nil {
+		propagator = popts.propagator
+	}
+	otel.SetTextMapPropagator(propagator)
 
 	p.tracer = tp.Tracer(cfg.ServiceName)
 	p.shutdown = tp.Shutdown
 
 	// ── Metrics ──
 	if cfg.EnableMetrics {
-		metricExp, err := otlpmetricgrpc.New(ctx,
-			otlpmetricgrpc.WithEndpoint(cfg.Endpoint),
-			otlpmetricgrpc.WithInsecure(),
-		)
-		if err != nil {
-			return nil, frameworkerror.ErrObsMetricExport.Wrap(err)
+		var metricExp sdkmetric.Exporter
+		if popts.metricExporter != nil {
+			metricExp = popts.metricExporter
+		} else {
+			metricDialOpts := []otlpmetricgrpc.Option{otlpmetricgrpc.WithEndpoint(cfg.Endpoint)}
+			metricDialOpts = append(metricDialOpts, metricTLSOption(cfg, popts))
+
+			var err error
+			metricExp, err = otlpmetricgrpc.New(ctx, metricDialOpts...)
+			if err != nil {
+				return nil, frameworkerror.ErrObsMetricExport.Wrap(err)
+			}
 		}
 
 		interval := cfg.MetricsInterval
@@ -124,6 +156,32 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig) (*Provider
 	}
 
 	return p, nil
+}
+
+// traceTLSOption 按优先级（WithTLSConfig > cfg.Insecure > 默认 TLS）返回
+// otlptracegrpc 的凭据 Option。
+func traceTLSOption(cfg config.ObservabilityConfig, popts *providerOptions) otlptracegrpc.Option {
+	switch {
+	case popts.tlsConfig != nil:
+		return otlptracegrpc.WithTLSCredentials(credentials.NewTLS(popts.tlsConfig))
+	case cfg.Insecure:
+		return otlptracegrpc.WithInsecure()
+	default:
+		return otlptracegrpc.WithTLSCredentials(credentials.NewTLS(&tls.Config{}))
+	}
+}
+
+// metricTLSOption 按优先级（WithTLSConfig > cfg.Insecure > 默认 TLS）返回
+// otlpmetricgrpc 的凭据 Option。
+func metricTLSOption(cfg config.ObservabilityConfig, popts *providerOptions) otlpmetricgrpc.Option {
+	switch {
+	case popts.tlsConfig != nil:
+		return otlpmetricgrpc.WithTLSCredentials(credentials.NewTLS(popts.tlsConfig))
+	case cfg.Insecure:
+		return otlpmetricgrpc.WithInsecure()
+	default:
+		return otlpmetricgrpc.WithTLSCredentials(credentials.NewTLS(&tls.Config{}))
+	}
 }
 
 // ServerMiddleware 返回 Hertz 服务端链路追踪中间件（简化版）。
