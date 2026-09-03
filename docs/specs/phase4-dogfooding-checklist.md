@@ -63,6 +63,17 @@
   - 文档与实际行为一致：godoc 用例中的 `middleware.WithVerifyOptions(gojwt.WithExpectedIssuer("myapp"))` 调用形式与本次实测完全一致
 - 结论：✅ 通过
 
+### #103 (Issue #97) — go-framework/hertz/sse SSE(Server-Sent Events)支持
+
+- 验证方式：临时外部测试文件 `package sse_test`（`go-framework/hertz/sse/dogfood_external_test.go`，运行后删除，未提交），只使用导出符号 `sse.NewWriter`/`sse.WithHeartbeatInterval`/`sse.Writer.Run`/`sse.Writer.WriteEvent`/`sse.Writer.Close`/`sse.ErrWriterClosed`，起真实 Hertz server（真实 TCP 端口）+ 原始 TCP 客户端读取 chunked 响应字节流，覆盖四个场景
+- 结果：
+  - 公共 API 可用：`NewWriter` → `Run` → `WriteEvent` 全链路跑通，真实客户端通过原始 TCP 连接观察到 `Content-Type: text/event-stream` 响应头与 3 个 `data: evt-N` 事件帧
+  - 错误路径可观察：`Run` 内 handler panic 后，服务进程未崩溃（`h.Spin()` 继续存活），客户端观察到 `event: error` + `"code":500` 载荷，与 code review 澄清后的语义（HTTP 状态码，非 Responder 业务错误码）一致
+  - 新特性按文档生效：默认/短心跳间隔配置下，客户端在 handler 存活期内观察到 `:keep-alive\n` 注释帧，与心跳保活设计一致
+  - 默认行为不变：`sse` 是独立新包，未接入的现有 `Responder`/中间件行为不受影响（未单独验证，因架构上零耦合）
+  - 文档与实际行为一致：包文档中「断连检测的真实机制」一节描述的心跳写失败驱动路径与 `TestDogfood_HeartbeatKeepsAliveAndDetectsClose` 观察一致；`WriteEvent` 在 `Close()` 后返回可判定的 `sse.ErrWriterClosed`（`errors.Is` 验证），符合 godoc 承诺
+- 结论：✅ 通过（Code Review 发现的"断连检测"文档准确性问题已在 commit `3300f65` 修复：明确心跳写失败才是当前可靠检测路径，ctx.Done() 对标准 Hertz handler 不生效）
+
 ### #99 (Issue #94) — kitex 侧 JWT/Session/Device 鉴权中间件 + Recovery
 
 - 验证方式：临时外部测试文件 `package auth_test`（`go-framework/kitex/middleware/auth/dogfood_external_test.go`，运行后删除，未提交），只使用导出符号 `auth.JWTAuthClient`/`auth.JWTAuthServer`/`auth.GetClaims`/`auth.Recovery`，配合 `metainfo.TransferForward` 模拟真实 RPC 传输，覆盖 A→B→C 多跳链路 + 错误路径 + panic 路径 + 默认行为不变四个场景
