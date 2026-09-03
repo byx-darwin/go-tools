@@ -44,3 +44,13 @@ func TestObservabilityConfig_MetricsDefaults(t *testing.T) {
 	// MetricsInterval 默认 0，由 Provider 补全为 15s
 	assert.Equal(t, time.Duration(0), c.MetricsInterval)
 }
+
+func TestObservabilityConfig_InsecureDefaultsToFalse(t *testing.T) {
+	c := ObservabilityConfig{}
+	assert.False(t, c.Insecure, "Insecure 零值应为 false（默认走 TLS）")
+}
+
+func TestObservabilityConfig_InsecureExplicitTrue(t *testing.T) {
+	c := ObservabilityConfig{Insecure: true}
+	assert.True(t, c.Insecure)
+}

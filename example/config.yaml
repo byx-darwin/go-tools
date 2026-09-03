@@ -84,6 +84,7 @@ kitex:
 observability:
   enabled: true
   endpoint: "${OTEL_ENDPOINT}"
+  insecure: false  # true 才走明文传输；本地裸 gRPC collector（无 TLS）需要设为 true
   app_key: "${OTEL_APP_KEY}"
   service_name: "go-tools-example"
   sample_rate: 1.0

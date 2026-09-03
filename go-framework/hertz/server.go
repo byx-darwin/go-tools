@@ -73,6 +73,7 @@ func NewHTTPServer(ctx context.Context, serverConfig *hertzConfig.ServerConfig) 
 			Enabled:     true,
 			Endpoint:    serverConfig.Jaeger.Endpoint,
 			ServiceName: serverConfig.Registry.Name,
+			Insecure:    serverConfig.Jaeger.Insecure,
 		})
 		if err != nil {
 			return nil, err

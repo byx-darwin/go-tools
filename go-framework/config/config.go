@@ -7,6 +7,8 @@ import "time"
 type JaegerOption struct {
 	Enable   bool   `json:"enable" yaml:"enable"`
 	Endpoint string `json:"endpoint"  yaml:"endpoint"`
+	// Insecure 为 true 时使用明文 gRPC 传输（不走 TLS）。默认 false（TLS-by-default）。
+	Insecure bool `json:"insecure" yaml:"insecure"`
 }
 
 // RegistryOption 服务注册中心配置

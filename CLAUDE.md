@@ -41,6 +41,7 @@ The 5-module → 3-library split (2026-06-23) is **complete**. ncgo generated pr
 | D4 | Release strategy | **Independent versioning** | ✅ active |
 | D5 | Old modules | **Fully removed**, all code migrated to 3 libraries | ✅ done |
 | D6 | Error code ownership | **Owning modules** define their codes; `go-common/error` = mechanism + band boundaries + HTTP registry | ✅ active |
+| D7 | Observability OTLP TLS default | **Default TLS** (system root cert pool); `ObservabilityConfig.Insecure=true` opts back into plaintext (#96) | ✅ active |
 
 ## Error Code Ranges
 

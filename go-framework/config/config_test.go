@@ -55,6 +55,12 @@ func TestRegistryOption(t *testing.T) {
 func TestJaegerOption(t *testing.T) {
 	j := JaegerOption{Enable: true, Endpoint: "http://j:14268"}
 	assert.True(t, j.Enable)
+	assert.False(t, j.Insecure)
+}
+
+func TestJaegerOption_Insecure(t *testing.T) {
+	j := JaegerOption{Enable: true, Endpoint: "http://j:14268", Insecure: true}
+	assert.True(t, j.Insecure)
 }
 
 // ── LoadYAML ──
