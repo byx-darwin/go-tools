@@ -149,3 +149,82 @@ func TestSessionAuth_SessionNotFound(t *testing.T) {
 	res := w.Result()
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode())
 }
+
+func TestSessionAuth_CustomHeaderName(t *testing.T) {
+	store := newMockSessionStore()
+	s := &session.Session{ID: "sess-custom", UserUUID: "user-custom", ExpiresAt: time.Now().Add(time.Hour)}
+	_ = store.Save(context.Background(), s)
+
+	engine := newSessionTestEngine()
+	engine.Use(SessionAuth(store, WithSessionHeader("X-My-Session")))
+	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
+		got, ok := GetSession(c)
+		assert.True(t, ok)
+		c.JSON(http.StatusOK, map[string]string{"user": got.UserUUID})
+	})
+
+	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
+		ut.Header{Key: "X-My-Session", Value: "sess-custom"})
+	res := w.Result()
+	assert.Equal(t, http.StatusOK, res.StatusCode())
+	assert.Contains(t, string(res.Body()), "user-custom")
+}
+
+func TestSessionAuth_CustomHeaderName_DefaultHeaderIgnored(t *testing.T) {
+	store := newMockSessionStore()
+	s := &session.Session{ID: "sess-custom2", UserUUID: "user-custom2", ExpiresAt: time.Now().Add(time.Hour)}
+	_ = store.Save(context.Background(), s)
+
+	engine := newSessionTestEngine()
+	engine.Use(SessionAuth(store, WithSessionHeader("X-My-Session")))
+	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
+		c.JSON(http.StatusOK, map[string]string{"ok": "true"})
+	})
+
+	// 默认头 X-Session-Id 不再生效，应视为未提供 session id。
+	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
+		ut.Header{Key: "X-Session-Id", Value: "sess-custom2"})
+	res := w.Result()
+	assert.Equal(t, http.StatusUnauthorized, res.StatusCode())
+}
+
+func TestSessionAuth_CustomCookieName(t *testing.T) {
+	store := newMockSessionStore()
+	s := &session.Session{ID: "sess-ck", UserUUID: "user-ck", ExpiresAt: time.Now().Add(time.Hour)}
+	_ = store.Save(context.Background(), s)
+
+	engine := newSessionTestEngine()
+	engine.Use(SessionAuth(store, WithSessionCookie("my_sid")))
+	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
+		got, ok := GetSession(c)
+		assert.True(t, ok)
+		c.JSON(http.StatusOK, map[string]string{"user": got.UserUUID})
+	})
+
+	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
+		ut.Header{Key: "Cookie", Value: "my_sid=sess-ck"})
+	res := w.Result()
+	assert.Equal(t, http.StatusOK, res.StatusCode())
+	assert.Contains(t, string(res.Body()), "user-ck")
+}
+
+func TestSessionAuth_EmptyOptionValuesIgnored(t *testing.T) {
+	store := newMockSessionStore()
+	s := &session.Session{ID: "sess-def", UserUUID: "user-def", ExpiresAt: time.Now().Add(time.Hour)}
+	_ = store.Save(context.Background(), s)
+
+	engine := newSessionTestEngine()
+	// 空字符串 Option 不应覆盖默认值。
+	engine.Use(SessionAuth(store, WithSessionHeader(""), WithSessionCookie("")))
+	engine.GET("/test", func(ctx context.Context, c *app.RequestContext) {
+		got, ok := GetSession(c)
+		assert.True(t, ok)
+		c.JSON(http.StatusOK, map[string]string{"user": got.UserUUID})
+	})
+
+	w := ut.PerformRequest(engine, "GET", "/test", &ut.Body{Body: nil},
+		ut.Header{Key: "X-Session-Id", Value: "sess-def"})
+	res := w.Result()
+	assert.Equal(t, http.StatusOK, res.StatusCode())
+	assert.Contains(t, string(res.Body()), "user-def")
+}
