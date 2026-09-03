@@ -63,3 +63,32 @@ func TestClientConfig_DurationFields(t *testing.T) {
 	assert.Equal(t, 5*time.Second, ct.RPCTimeout)
 	assert.Equal(t, 100*time.Millisecond, ct.ConnectTimeOut)
 }
+
+func TestFailureRetry_BackOffDefaults(t *testing.T) {
+	fr := FailureRetry{}
+	assert.Equal(t, "", fr.BackOff.Type)
+	assert.Equal(t, 0, fr.BackOff.FixedMS)
+	assert.Equal(t, 0, fr.BackOff.MinMS)
+	assert.Equal(t, 0, fr.BackOff.MaxMS)
+}
+
+func TestFailureRetry_BackOffFixed(t *testing.T) {
+	fr := FailureRetry{
+		Enable:        true,
+		MaxRetryTimes: 2,
+		BackOff:       BackOff{Type: "fixed", FixedMS: 50},
+	}
+	assert.Equal(t, "fixed", fr.BackOff.Type)
+	assert.Equal(t, 50, fr.BackOff.FixedMS)
+}
+
+func TestFailureRetry_BackOffRandom(t *testing.T) {
+	fr := FailureRetry{
+		Enable:        true,
+		MaxRetryTimes: 2,
+		BackOff:       BackOff{Type: "random", MinMS: 10, MaxMS: 100},
+	}
+	assert.Equal(t, "random", fr.BackOff.Type)
+	assert.Equal(t, 10, fr.BackOff.MinMS)
+	assert.Equal(t, 100, fr.BackOff.MaxMS)
+}

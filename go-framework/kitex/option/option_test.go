@@ -1,9 +1,12 @@
 package option
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/cloudwego/kitex/pkg/circuitbreak"
+	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -51,6 +54,190 @@ func TestNewServerOption_WithLimit(t *testing.T) {
 	opts, err := NewServerOption(t.Context(), cfg)
 	require.NoError(t, err)
 	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_NilConfig(t *testing.T) {
+	_, err := NewClientOption(t.Context(), nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "client config is nil")
+}
+
+func TestNewClientOption_DefaultTimeouts(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_ConnPoolMaxIdleTimeoutDefault(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{}, // zero-value ConnPool
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_ExplicitTimeoutsOverrideDefaults(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Timeout: kitex.ClientTimeout{
+				RPCTimeout:     10 * time.Second,
+				ConnectTimeOut: 500 * time.Millisecond,
+			},
+		},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_CBSuiteDisabled(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			CBSuite: kitex.CBSuite{Enable: false},
+		},
+	}
+	optsDisabled, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+
+	cfg.ClientOption.CBSuite.Enable = true
+	optsEnabled, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+
+	assert.Greater(t, len(optsEnabled), len(optsDisabled))
+}
+
+func TestWithCircuitBreakerKeyFunc_DefaultsToRPCInfo2Key(t *testing.T) {
+	occ := &clientOptionConfig{cbKeyFunc: circuitbreak.RPCInfo2Key}
+	assert.NotNil(t, occ.cbKeyFunc)
+}
+
+func TestWithCircuitBreakerKeyFunc_Custom(t *testing.T) {
+	called := false
+	custom := func(ri rpcinfo.RPCInfo) string {
+		called = true
+		return "custom-key"
+	}
+
+	occ := &clientOptionConfig{cbKeyFunc: circuitbreak.RPCInfo2Key}
+	WithCircuitBreakerKeyFunc(custom)(occ)
+	require.NotNil(t, occ.cbKeyFunc)
+
+	got := occ.cbKeyFunc(nil)
+	assert.True(t, called)
+	assert.Equal(t, "custom-key", got)
+}
+
+func TestWithCircuitBreakerKeyFunc_NilIgnored(t *testing.T) {
+	occ := &clientOptionConfig{cbKeyFunc: circuitbreak.RPCInfo2Key}
+	before := reflect.ValueOf(occ.cbKeyFunc).Pointer()
+
+	WithCircuitBreakerKeyFunc(nil)(occ)
+
+	after := reflect.ValueOf(occ.cbKeyFunc).Pointer()
+	assert.Equal(t, before, after)
+}
+
+func TestNewClientOption_CustomCBKeyFuncApplied(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			CBSuite: kitex.CBSuite{Enable: true},
+		},
+	}
+	custom := func(ri rpcinfo.RPCInfo) string { return "k" }
+
+	opts, err := NewClientOption(t.Context(), cfg, WithCircuitBreakerKeyFunc(custom))
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_BackOffNone(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{Enable: true, MaxRetryTimes: 2},
+		},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_BackOffFixed(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "fixed", FixedMS: 50},
+			},
+		},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_BackOffFixedInvalid(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "fixed", FixedMS: 0},
+			},
+		},
+	}
+	_, err := NewClientOption(t.Context(), cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "fixed_ms")
+}
+
+func TestNewClientOption_BackOffRandom(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "random", MinMS: 10, MaxMS: 100},
+			},
+		},
+	}
+	opts, err := NewClientOption(t.Context(), cfg)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opts)
+}
+
+func TestNewClientOption_BackOffRandomInvalid(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "random", MinMS: 100, MaxMS: 10},
+			},
+		},
+	}
+	_, err := NewClientOption(t.Context(), cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "max_ms")
+}
+
+func TestNewClientOption_BackOffUnknownType(t *testing.T) {
+	cfg := &kitex.ClientConfig{
+		ClientOption: &kitex.ClientOption{
+			Failure: kitex.FailureRetry{
+				Enable:        true,
+				MaxRetryTimes: 2,
+				BackOff:       kitex.BackOff{Type: "exponential"},
+			},
+		},
+	}
+	_, err := NewClientOption(t.Context(), cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "backoff")
 }
 
 func TestResolveAddr(t *testing.T) {
