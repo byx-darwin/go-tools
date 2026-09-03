@@ -4,6 +4,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"time"
 
 	demo "github.com/byx-darwin/go-tools/example/kitex_generated/demo"
 )
@@ -29,4 +30,23 @@ func (s *DemoServiceImpl) Health(_ context.Context, _ *demo.HealthRequest) (*dem
 		Healthy: true,
 		Version: "v1.0.0",
 	}, nil
+}
+
+// StreamEcho 按 req.Message 中的字符逐个发送流式响应，演示 server-streaming。
+// 每帧之间 sleep 10ms，便于客户端观测到多帧到达。
+func (s *DemoServiceImpl) StreamEcho(req *demo.EchoRequest, stream demo.DemoService_StreamEchoServer) error {
+	msg := req.GetMessage()
+	if msg == "" {
+		msg = "hello"
+	}
+	for _, r := range msg {
+		if err := stream.Send(&demo.EchoResponse{
+			Message: string(r),
+			Service: "go-tools-example",
+		}); err != nil {
+			return err
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return nil
 }

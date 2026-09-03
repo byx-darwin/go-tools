@@ -7,6 +7,7 @@ import (
 
 	"github.com/byx-darwin/go-tools/example/kitex_generated/demo/demoservice"
 	"github.com/byx-darwin/go-tools/go-common/log"
+	kitexauth "github.com/byx-darwin/go-tools/go-framework/kitex/middleware/auth"
 	kitexobs "github.com/byx-darwin/go-tools/go-framework/kitex/observability"
 
 	"github.com/cloudwego/kitex/pkg/klog"
@@ -22,6 +23,7 @@ func StartServer(ctx context.Context, addr string, obsProvider *kitexobs.Provide
 
 	var opts []server.Option
 	opts = append(opts, server.WithServiceAddr(&net.TCPAddr{Port: extractPort(addr)}))
+	opts = append(opts, server.WithMiddleware(kitexauth.Recovery()))
 
 	// 注入 OTel 可观测性。
 	if obsProvider != nil && obsProvider.Enabled() {

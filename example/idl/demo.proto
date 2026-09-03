@@ -21,4 +21,5 @@ message HealthResponse {
 service DemoService {
   rpc Echo(EchoRequest) returns (EchoResponse);
   rpc Health(HealthRequest) returns (HealthResponse);
+  rpc StreamEcho(EchoRequest) returns (stream EchoResponse);
 }
