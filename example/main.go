@@ -337,6 +337,9 @@ func createHertzServer(cfg *AppConfig, deps *Deps, provider *observability.Provi
 	// 注册 RPC 示例路由（Task 20：Hertz → Kitex）。
 	registerRPCRoutes(h)
 
+	// 注册 SSE 示例路由（Issue #97）。
+	registerSSERoutes(h)
+
 	// 注册受保护的路由组。
 	examplemw.RegisterProtectedRoutes(h, mwDeps)
 
@@ -390,6 +393,11 @@ func registerConfigRoutes(h *server.Hertz) {
 // registerRPCRoutes 注册 Hertz → Kitex RPC 示例路由。
 func registerRPCRoutes(h *server.Hertz) {
 	handler.RegisterRPCRoutes(h)
+}
+
+// registerSSERoutes 注册 go-framework/hertz/sse 示例路由。
+func registerSSERoutes(h *server.Hertz) {
+	handler.RegisterSSERoutes(h)
 }
 
 // startKitexServer 启动 Kitex RPC 服务。
