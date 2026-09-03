@@ -28,4 +28,10 @@ type ObservabilityConfig struct {
 
 	// EnableGRPCMetadata 启用 gRPC metadata 的 trace context 传播（transport.GRPC 协议时需开启）
 	EnableGRPCMetadata bool `json:"enable_grpc_metadata" yaml:"enable_grpc_metadata"`
+
+	// Insecure 是否允许 OTLP gRPC exporter 使用明文传输（默认 false，即默认走 TLS）。
+	// 零值 false = 默认使用系统根证书池建立 TLS 连接；设为 true 才走明文。
+	// 行为变更提示：升级前版本硬编码明文传输，升级后默认改为 TLS——
+	// 如果你的 collector 未启用 TLS，需要显式设置 insecure: true。
+	Insecure bool `json:"insecure" yaml:"insecure"`
 }
