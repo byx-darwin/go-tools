@@ -1,68 +1,58 @@
 # Issue Triage Report — byx-darwin/go-tools
 
-**Date**: 2026-09-02
-**Scope**: All open Issues (`gf issue list --state open`)
-**Context**: Phase 4 post-delivery step of gf-workflow run for Issue #76 (shipped/merged). Ran full open-Issue triage per the skill's normal idempotent process.
+- **Date**: 2026-09-02
+- **Trigger**: Phase 4 mandatory issue-triage step of a `full`-mode `gf-workflow` run (delivered PR #91, closes Issue #85)
+- **Skill**: `gf-issue-triage`
+- **CLI**: `gf` (GitHub backend, authenticated as `byx-darwin`)
 
-## Summary
+## Scope
 
-- Open Issues found: 8 (#76–#81, #83, #85)
-- Already `triage:done`: 7 (#76–#81, #83 — carried over from the 2026-09-01 triage run, unchanged, idempotently skipped)
-- Newly triaged: 1 (#85)
-- Duplicates found: 0
-- `type:unknown` assigned: 0
+Full scan of currently-open Issues in `byx-darwin/go-tools` via:
 
-## Priority-Ranked Table
+```bash
+gf issue list --state open
+```
 
-| # | Priority | Type | Title | Status |
-|---|----------|------|-------|--------|
-| 🔴 83 | urgent | bug | chore(ci): 修复 go-auth/revocation 未打 tag 导致的 `go mod tidy check` 持续失败 + 核查分支保护规则 | pre-existing |
-| 🟠 85 | high | enhancement | feat(hertz): JWTAuth 中间件需支持透传 WithExpectedIssuer 校验 | newly triaged |
-| 🟠 81 | high | bug | chore(auth): 排查间接依赖 golang-jwt/jwt/v4 v4.0.0 的引入来源 | pre-existing |
-| 🟠 78 | high | docs | docs(auth): Session/Device Store 安全实现要求未在 godoc 中显式化 | pre-existing |
-| 🟠 76 | high | enhancement | feat(auth): JWT 密钥强度缺少最小长度校验 | pre-existing |
-| 🟡 77 | medium | docs | docs(auth): doc.go 依赖关系图与 CLAUDE.md 的 DAG 描述矛盾 | pre-existing |
-| 🟢 80 | low | docs | docs(auth): JWT Claims 反射仅支持一层嵌入 RegisteredClaims，需在文档声明限制 | pre-existing |
-| 🟢 79 | low | enhancement | refactor(auth): Store 接口扩展需预留 optional interface pattern 避免未来 Breaking Change | pre-existing |
+## Result
 
-## Priority Distribution
+| # | Total open issues found | Already `triage:done` | Newly triaged | Skipped (duplicate) | Ambiguous (`type:unknown`) |
+|---|---|---|---|---|---|
+| Count | 1 | 1 | 0 | 0 | 0 |
+
+Only one open Issue currently exists in the repository:
+
+| # | Title | Type | Priority | Triage status |
+|---|-------|------|----------|----------------|
+| [#85](https://github.com/byx-darwin/go-tools/issues/85) | feat(hertz): JWTAuth 中间件需支持透传 WithExpectedIssuer 校验 | `type:enhancement` | `priority:high` | already `triage:done` (idempotent skip) |
+
+Issue #85 already carries `bug`, `enhancement`, `priority:high`, `type:enhancement`, and `triage:done` labels from a prior triage pass. Per the skill's idempotency rule, no relabeling was performed.
+
+Note: PR #91 (delivered this workflow run) is documented as closing Issue #85, but the Issue currently still shows `state: open` in the tracker at the time of this scan (PR may not yet be merged). This does not affect the triage classification itself — it is flagged here only as an observation, not acted upon (out of scope for this skill).
+
+## Priority Distribution (open, triaged)
 
 | Priority | Count | % |
 |----------|-------|---|
-| urgent | 1 | 12.5% |
-| high | 4 | 50.0% |
-| medium | 1 | 12.5% |
-| low | 2 | 25.0% |
+| 🔴 urgent | 0 | 0% |
+| 🟠 high | 1 | 100% |
+| 🟡 medium | 0 | 0% |
+| 🟢 low | 0 | 0% |
 
-## Type Distribution
+## Type Distribution (open, triaged)
 
 | Type | Count | % |
 |------|-------|---|
-| bug | 2 | 25.0% |
-| docs | 3 | 37.5% |
-| enhancement | 3 | 37.5% |
+| bug | 0 | 0% |
+| feature | 0 | 0% |
+| enhancement | 1 | 100% |
+| docs | 0 | 0% |
+| question | 0 | 0% |
+| unknown | 0 | 0% |
 
-## Rationale Notes (newly triaged)
+## Actions Taken
 
-- **#85 (high, enhancement)**: Follow-up gap identified during Issue #75's final review — `go-auth/jwt.Verify`'s new `WithExpectedIssuer` option (#75) cannot be configured through the Hertz `JWTAuth[T]` middleware, which hardcodes a no-options `Verify` call. The issue body itself frames this explicitly as a "fix coverage gap" (spec omission), not an implementation defect, so `type:bug` was rejected in favor of `type:enhancement` (adding option pass-through capability), consistent with how the sibling security-hardening issue #76 was classified. Priority `high` (not `urgent`): `JWTAuth` is described as the primary Hertz consumer of go-auth and the most typical deployment shape for the issuer-validation threat model, but there is a workaround (bypass the middleware and call `Verify` directly with options), so it does not meet the `urgent` bar (no active exploit / no production outage / not fully blocked).
+- No label changes applied — the single open Issue (#85) was already fully triaged (`type:enhancement`, `priority:high`, `triage:done` all present).
 
-All other open Issues (#76–#81, #83) were already `type:*` + `priority:*` + `triage:done` labeled from the 2026-09-01 triage run and were skipped per the skill's idempotency rule; see `2026-09-01-issue-triage.md` for their original rationale.
+## Follow-up / Risk
 
-## Labels Applied
-
-```
-#85  + type:enhancement + priority:high + triage:done   (newly applied)
-#76–#81, #83  (unchanged, already triage:done)
-```
-
-`gf issue add-label 85 --label "type:enhancement" --label "priority:high" --label "triage:done"` returned `"success": true`.
-
-## Duplicates
-
-None identified.
-
-## Follow-up / Anomalies
-
-- The task context named "Issue #76, just merged" as the trigger for this Phase-4 run, but #76 still shows `state: open` at triage time (expected — GitHub close/merge propagation lag, same pattern observed for #74 in the prior triage run). No action taken; out of scope for this skill.
-- Issue #83 (urgent, pre-existing) still documents a live, repo-wide CI blocker (`go mod tidy check` failing on go-middleware/go-framework) plus a possible branch-protection gap — unresolved since the 2026-09-01 report, worth flagging for attention outside this triage flow.
-- No conflicts, ambiguous classifications, or Issues that resisted classification were encountered in this run.
+- None from a triage standpoint. If PR #91 has merged and Issue #85 remains open, that is a repo-hygiene item outside this skill's scope (`gf-issue-triage` does not close Issues).
