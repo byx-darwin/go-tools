@@ -44,8 +44,21 @@ type ResolverOption struct {
 
 // FailureRetry 重试机制
 type FailureRetry struct {
-	Enable        bool `json:"enable"  yaml:"enable"`
-	MaxRetryTimes int  `json:"max_retry_times" yaml:"max_retry_times"`
+	Enable        bool    `json:"enable"  yaml:"enable"`
+	MaxRetryTimes int     `json:"max_retry_times" yaml:"max_retry_times"`
+	BackOff       BackOff `json:"backoff" yaml:"backoff"`
+}
+
+// BackOff 重试退避策略。Type 为空（零值）时保持不启用退避，向后兼容现有配置。
+type BackOff struct {
+	// Type 退避类型："" (不启用，默认) / "fixed" (固定退避) / "random" (随机区间退避)。
+	Type string `json:"type" yaml:"type"`
+	// FixedMS Type="fixed" 时的固定退避毫秒数，必须 > 0。
+	FixedMS int `json:"fixed_ms" yaml:"fixed_ms"`
+	// MinMS Type="random" 时的最小退避毫秒数。
+	MinMS int `json:"min_ms" yaml:"min_ms"`
+	// MaxMS Type="random" 时的最大退避毫秒数，必须大于 MinMS。
+	MaxMS int `json:"max_ms" yaml:"max_ms"`
 }
 
 // LoadBalancer 负载均衡
