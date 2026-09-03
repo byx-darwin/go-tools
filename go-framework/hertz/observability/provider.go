@@ -158,30 +158,39 @@ func NewProvider(ctx context.Context, cfg config.ObservabilityConfig, opts ...Op
 	return p, nil
 }
 
+// tlsDialCredentials 按优先级（WithTLSConfig > cfg.Insecure > 默认 TLS）返回
+// gRPC 传输凭据。insecure=true 时 creds 为 nil，调用方应使用 exporter 包的
+// WithInsecure()；insecure=false 时 creds 非 nil，调用方应使用
+// WithTLSCredentials(creds)。
+func tlsDialCredentials(cfg config.ObservabilityConfig, popts *providerOptions) (creds credentials.TransportCredentials, insecure bool) {
+	switch {
+	case popts.tlsConfig != nil:
+		return credentials.NewTLS(popts.tlsConfig), false
+	case cfg.Insecure:
+		return nil, true
+	default:
+		return credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12}), false
+	}
+}
+
 // traceTLSOption 按优先级（WithTLSConfig > cfg.Insecure > 默认 TLS）返回
 // otlptracegrpc 的凭据 Option。
 func traceTLSOption(cfg config.ObservabilityConfig, popts *providerOptions) otlptracegrpc.Option {
-	switch {
-	case popts.tlsConfig != nil:
-		return otlptracegrpc.WithTLSCredentials(credentials.NewTLS(popts.tlsConfig))
-	case cfg.Insecure:
+	creds, insecure := tlsDialCredentials(cfg, popts)
+	if insecure {
 		return otlptracegrpc.WithInsecure()
-	default:
-		return otlptracegrpc.WithTLSCredentials(credentials.NewTLS(&tls.Config{}))
 	}
+	return otlptracegrpc.WithTLSCredentials(creds)
 }
 
 // metricTLSOption 按优先级（WithTLSConfig > cfg.Insecure > 默认 TLS）返回
 // otlpmetricgrpc 的凭据 Option。
 func metricTLSOption(cfg config.ObservabilityConfig, popts *providerOptions) otlpmetricgrpc.Option {
-	switch {
-	case popts.tlsConfig != nil:
-		return otlpmetricgrpc.WithTLSCredentials(credentials.NewTLS(popts.tlsConfig))
-	case cfg.Insecure:
+	creds, insecure := tlsDialCredentials(cfg, popts)
+	if insecure {
 		return otlpmetricgrpc.WithInsecure()
-	default:
-		return otlpmetricgrpc.WithTLSCredentials(credentials.NewTLS(&tls.Config{}))
 	}
+	return otlpmetricgrpc.WithTLSCredentials(creds)
 }
 
 // ServerMiddleware 返回 Hertz 服务端链路追踪中间件（简化版）。
