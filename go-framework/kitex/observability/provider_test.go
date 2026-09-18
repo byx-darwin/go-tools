@@ -213,6 +213,107 @@ func TestNewProvider_WithMetricExporter_UsesInjectedExporter(t *testing.T) {
 // TestNewProvider_WithMetricExporter_MetricsDisabled 验证 EnableMetrics=false
 // 时，即便注入了 WithMetricExporter，也不会构建 metrics pipeline
 // （p.meterProvider 保持 nil，注入的 exporter 被静默忽略）。
+func TestNewProvider_EnableMetrics_BuildsOTLPMetricExporter(t *testing.T) {
+	// EnableMetrics=true with no WithMetricExporter injected: exercises the
+	// built-in otlpmetricgrpc.New() construction path (metricTLSOption).
+	// otlpmetricgrpc uses lazy gRPC connect, so this must not error even
+	// though the endpoint is unreachable.
+	cfg := config.ObservabilityConfig{
+		Enabled:         true,
+		ServiceName:     "test-svc",
+		Endpoint:        "127.0.0.1:1",
+		EnableMetrics:   true,
+		MetricsInterval: time.Hour,
+	}
+	p, err := NewProvider(context.Background(), cfg)
+	require.NoError(t, err)
+	require.NotNil(t, p.MeterProvider())
+	// Not calling p.Shutdown(): the periodic reader's flush-on-shutdown
+	// would dial the unreachable endpoint and block for its full send
+	// timeout. Construction succeeding without error is what this test
+	// exercises (metricTLSOption's default-TLS branch); MetricsInterval is
+	// set to 1h so no background export fires before the process exits.
+}
+
+func TestNewProvider_EnableMetrics_Insecure_BuildsOTLPMetricExporter(t *testing.T) {
+	cfg := config.ObservabilityConfig{
+		Enabled:         true,
+		ServiceName:     "test-svc",
+		Endpoint:        "127.0.0.1:1",
+		EnableMetrics:   true,
+		Insecure:        true,
+		MetricsInterval: time.Hour,
+	}
+	p, err := NewProvider(context.Background(), cfg)
+	require.NoError(t, err)
+	require.NotNil(t, p.MeterProvider())
+	// See note above re: not calling Shutdown (metricTLSOption's insecure branch).
+}
+
+func TestProvider_MeterProvider_NilWhenMetricsDisabled(t *testing.T) {
+	p, err := NewProvider(context.Background(), config.ObservabilityConfig{
+		Enabled:       true,
+		ServiceName:   "test-svc",
+		EnableMetrics: false,
+	})
+	require.NoError(t, err)
+	assert.Nil(t, p.MeterProvider())
+	require.NoError(t, p.Shutdown())
+}
+
+func TestProvider_ServerSuiteAndClientSuite(t *testing.T) {
+	p, err := NewProvider(context.Background(), config.ObservabilityConfig{
+		Enabled:     true,
+		ServiceName: "test-svc",
+	}, WithTraceExporter(tracetest.NewInMemoryExporter()))
+	require.NoError(t, err)
+
+	ss := p.ServerSuite()
+	require.NotNil(t, ss)
+	assert.NotEmpty(t, ss.Options())
+
+	cs := p.ClientSuite()
+	require.NotNil(t, cs)
+	assert.NotEmpty(t, cs.Options())
+
+	require.NoError(t, p.Shutdown())
+}
+
+func TestProvider_Middleware_Enabled(t *testing.T) {
+	exp := tracetest.NewInMemoryExporter()
+	p, err := NewProvider(context.Background(), config.ObservabilityConfig{
+		Enabled:     true,
+		ServiceName: "test-svc",
+	}, WithTraceExporter(exp))
+	require.NoError(t, err)
+
+	mw := p.Middleware()
+
+	// Success path: no error from next().
+	next := func(ctx context.Context, req, resp interface{}) error {
+		return nil
+	}
+	err = mw(next)(context.Background(), "req", "resp")
+	assert.NoError(t, err)
+
+	// Error path: next() returns an error, must be recorded on the span.
+	wantErr := assert.AnError
+	nextErr := func(ctx context.Context, req, resp interface{}) error {
+		return wantErr
+	}
+	err = mw(nextErr)(context.Background(), "req", "resp")
+	assert.ErrorIs(t, err, wantErr)
+
+	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	require.True(t, ok)
+	require.NoError(t, tp.ForceFlush(context.Background()))
+
+	spans := exp.GetSpans()
+	require.Len(t, spans, 2)
+
+	require.NoError(t, p.Shutdown())
+}
+
 func TestNewProvider_WithMetricExporter_MetricsDisabled(t *testing.T) {
 	exp := &fakeMetricExporter{}
 	cfg := config.ObservabilityConfig{
