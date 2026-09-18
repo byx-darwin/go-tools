@@ -2,32 +2,35 @@
 //
 // 核心功能：
 //   - 文件轮转（lumberjack）
-//   - 自动 OTel span 关联（TraceID/SpanID 注入）
+//   - 自动 OTel span 关联：调用方传入的 context.Context 中若存在活跃 OTel
+//     span（例如经过 go-framework/{hertz,kitex}/observability 中间件处理的
+//     请求 ctx），日志会自动带上 trace_id/span_id，无需任何额外接线；没有
+//     活跃 span 时回退读取手工设置的 ContextKeyTraceID/ContextKeySpanID
 //   - klog/hlog 适配器
+//
+// New()/NewFromLegacyConfig()（Options/Legacy 模式）与 NewLogger()（Config
+// 模式）两条构造路径行为一致，都会注入 request_id/trace_id/span_id。
 //
 // 用法：
 //
-//	// Options 模式（推荐）
+//	// Options 模式
 //	l := log.New(
 //	    log.WithLevel("info"),
 //	    log.WithFilePath("/var/log/app.log"),
 //	)
 //
 //	// Config 模式（YAML 加载场景）
-//	l := log.NewFromConfig(cfg)
+//	l, err := log.NewLogger(cfg, release)
 //
 //	l.Info("server started", "port", 8080)
 //	l.Error("something failed", "error", err)
 package log
 
 import (
-	"context"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
-
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -219,7 +222,7 @@ func buildLogger(cfg *loggerConfig) *Logger {
 		handler = slog.NewTextHandler(w, opts)
 	}
 
-	handler = &otelHandler{next: handler}
+	handler = NewContextHandler(handler)
 
 	return &Logger{
 		Logger: slog.New(handler),
@@ -258,36 +261,4 @@ func parseLevel(s string) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
-}
-
-// otelHandler 在每条日志中注入 TraceID 和 SpanID。
-type otelHandler struct {
-	next slog.Handler
-}
-
-func (h *otelHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return h.next.Enabled(ctx, level)
-}
-
-func (h *otelHandler) Handle(ctx context.Context, r slog.Record) error {
-	if ctx != nil {
-		span := trace.SpanFromContext(ctx)
-		if span.SpanContext().IsValid() {
-			tid := span.SpanContext().TraceID().String()
-			sid := span.SpanContext().SpanID().String()
-			r.AddAttrs(
-				slog.String("trace_id", tid),
-				slog.String("span_id", sid),
-			)
-		}
-	}
-	return h.next.Handle(ctx, r)
-}
-
-func (h *otelHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &otelHandler{next: h.next.WithAttrs(attrs)}
-}
-
-func (h *otelHandler) WithGroup(name string) slog.Handler {
-	return &otelHandler{next: h.next.WithGroup(name)}
 }

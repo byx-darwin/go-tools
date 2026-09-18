@@ -10,10 +10,12 @@ const (
 	// ContextKeyRequestID 请求 ID 的 context key。
 	ContextKeyRequestID = "request_id"
 
-	// ContextKeyTraceID Trace ID 的 context key。
+	// ContextKeyTraceID Trace ID 的 context key。仅在没有活跃 OTel span 时，
+	// 作为 contextHandler 的手工回退值生效——有活跃 span 时优先读 span 的 TraceID。
 	ContextKeyTraceID = "trace_id"
 
-	// ContextKeySpanID Span ID 的 context key。
+	// ContextKeySpanID Span ID 的 context key。仅在没有活跃 OTel span 时，
+	// 作为 contextHandler 的手工回退值生效——有活跃 span 时优先读 span 的 SpanID。
 	ContextKeySpanID = "span_id"
 )
 
