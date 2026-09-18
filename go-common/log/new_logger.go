@@ -16,13 +16,23 @@ func NewLogger(cfg Config, release ReleaseInfo) (*Logger, error) {
 	var outputHandler slog.Handler
 	switch cfg.Mode {
 	case "file":
-		w := createFileWriter(cfg.File)
-		outputHandler = createOutputHandler(w, cfg)
+		if cfg.File.Dir == "" || cfg.File.Filename == "" {
+			fmt.Fprintf(os.Stderr, "[log] warning: mode=file but File.Dir/Filename is empty; falling back to console\n")
+			outputHandler = createOutputHandler(os.Stdout, cfg)
+		} else {
+			w := createFileWriter(cfg.File)
+			outputHandler = createOutputHandler(w, cfg)
+		}
 	case "both":
-		w := createFileWriter(cfg.File)
-		fileHandler := createOutputHandler(w, cfg)
-		consoleHandler := createOutputHandler(os.Stdout, cfg)
-		outputHandler = NewMultiHandler(consoleHandler, fileHandler)
+		if cfg.File.Dir == "" || cfg.File.Filename == "" {
+			fmt.Fprintf(os.Stderr, "[log] warning: mode=both but File.Dir/Filename is empty; falling back to console (single output)\n")
+			outputHandler = createOutputHandler(os.Stdout, cfg)
+		} else {
+			w := createFileWriter(cfg.File)
+			fileHandler := createOutputHandler(w, cfg)
+			consoleHandler := createOutputHandler(os.Stdout, cfg)
+			outputHandler = NewMultiHandler(consoleHandler, fileHandler)
+		}
 	default: // "console"
 		outputHandler = createOutputHandler(os.Stdout, cfg)
 	}

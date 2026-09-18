@@ -3,8 +3,10 @@ package log_test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/byx-darwin/go-tools/go-common/log"
@@ -12,6 +14,32 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// captureStdio 临时替换 os.Stdout/os.Stderr，收集 fn 执行期间的输出。
+func captureStdio(t *testing.T, fn func()) (stdout, stderr string) {
+	t.Helper()
+
+	origStdout, origStderr := os.Stdout, os.Stderr
+	stdoutR, stdoutW, err := os.Pipe()
+	require.NoError(t, err)
+	stderrR, stderrW, err := os.Pipe()
+	require.NoError(t, err)
+
+	os.Stdout, os.Stderr = stdoutW, stderrW
+	defer func() { os.Stdout, os.Stderr = origStdout, origStderr }()
+
+	fn()
+
+	require.NoError(t, stdoutW.Close())
+	require.NoError(t, stderrW.Close())
+
+	stdoutBytes, err := io.ReadAll(stdoutR)
+	require.NoError(t, err)
+	stderrBytes, err := io.ReadAll(stderrR)
+	require.NoError(t, err)
+
+	return string(stdoutBytes), string(stderrBytes)
+}
 
 func TestNewLogger_ConsoleMode(t *testing.T) {
 	cfg := log.Config{
@@ -102,11 +130,41 @@ func TestNewLogger_FileMode_EmptyPath_FallbackStdout(t *testing.T) {
 		Mode:   "file",
 		File:   log.FileConfig{}, // 空路径
 	}
-	l, err := log.NewLogger(cfg, log.ReleaseInfo{})
-	require.NoError(t, err)
-	require.NotNil(t, l)
-	// 不会 panic，回退到 stdout
-	l.InfoContext(context.Background(), "fallback test")
+
+	var l *log.Logger
+	stdout, stderr := captureStdio(t, func() {
+		var err error
+		l, err = log.NewLogger(cfg, log.ReleaseInfo{})
+		require.NoError(t, err)
+		require.NotNil(t, l)
+		l.InfoContext(context.Background(), "fallback test")
+	})
+
+	assert.Contains(t, stderr, "[log] warning", "空路径应打印告警")
+	assert.Contains(t, stderr, "mode=file")
+	assert.Equal(t, 1, strings.Count(stdout, "fallback test"), "应只回退到单份 console 输出")
+}
+
+func TestNewLogger_BothMode_EmptyPath_SingleWriteWithWarning(t *testing.T) {
+	cfg := log.Config{
+		Level:  "info",
+		Format: "json",
+		Mode:   "both",
+		File:   log.FileConfig{}, // 空路径
+	}
+
+	var l *log.Logger
+	stdout, stderr := captureStdio(t, func() {
+		var err error
+		l, err = log.NewLogger(cfg, log.ReleaseInfo{})
+		require.NoError(t, err)
+		require.NotNil(t, l)
+		l.InfoContext(context.Background(), "both empty path test")
+	})
+
+	assert.Contains(t, stderr, "[log] warning", "空路径应打印告警")
+	assert.Contains(t, stderr, "mode=both")
+	assert.Equal(t, 1, strings.Count(stdout, "both empty path test"), "空路径时 both 模式不应把每条日志写两遍")
 }
 
 func TestNewLogger_WithReleaseInfo(t *testing.T) {
