@@ -1,10 +1,14 @@
 package kafka
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
+	"github.com/segmentio/kafka-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWriterConfig_Defaults(t *testing.T) {
@@ -111,4 +115,134 @@ func TestNewConsumer_RetryBackoffWired(t *testing.T) {
 	assert.Equal(t, 7, cfg.MaxAttempts)
 	assert.Equal(t, 20*time.Millisecond, cfg.ReadBackoffMin)
 	assert.Equal(t, 3*time.Second, cfg.ReadBackoffMax)
+}
+
+func TestNewConsumer_WithTLSAndSASL(t *testing.T) {
+	cfg := ReaderConfig{
+		Broker: []string{"127.0.0.1:1"},
+		Topic:  "test",
+	}
+	cfg.TLS.Enable = true
+	cfg.TLS.InsecureSkipVerify = true
+	cfg.SASL.Enable = true
+	cfg.SASL.User = "user"
+	cfg.SASL.Password = "pass"
+
+	c := NewConsumer(cfg)
+	require.NotNil(t, c)
+	defer func() { _ = c.Close() }()
+
+	assert.NotNil(t, c.r.Config().Dialer)
+}
+
+func TestConsumer_ReadMessage_CanceledContextReturnsWrappedError(t *testing.T) {
+	c := NewConsumer(ReaderConfig{
+		Broker: []string{"127.0.0.1:1"},
+		Topic:  "test",
+	})
+	defer func() { _ = c.Close() }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := c.ReadMessage(ctx)
+	assert.Error(t, err)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeRead, code)
+}
+
+func TestConsumer_FetchMessage_CanceledContextReturnsWrappedError(t *testing.T) {
+	c := NewConsumer(ReaderConfig{
+		Broker: []string{"127.0.0.1:1"},
+		Topic:  "test",
+	})
+	defer func() { _ = c.Close() }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := c.FetchMessage(ctx)
+	assert.Error(t, err)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeRead, code)
+}
+
+func TestConsumer_CommitMessages_NoGroupReturnsWrappedError(t *testing.T) {
+	c := NewConsumer(ReaderConfig{
+		Broker: []string{"127.0.0.1:1"},
+		Topic:  "test",
+	})
+	defer func() { _ = c.Close() }()
+
+	err := c.CommitMessages(context.Background(), kafka.Message{})
+	assert.Error(t, err)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeCommit, code)
+}
+
+func TestConsumer_CommitMessages_WithTrace_NoGroupReturnsWrappedError(t *testing.T) {
+	c := NewConsumer(ReaderConfig{
+		Broker: []string{"127.0.0.1:1"},
+		Topic:  "test",
+	}, WithTrace())
+	defer func() { _ = c.Close() }()
+
+	err := c.CommitMessages(context.Background(), kafka.Message{})
+	assert.Error(t, err)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeCommit, code)
+}
+
+func TestWriter_Send_UnreachableBrokerReturnsWrappedError(t *testing.T) {
+	w := NewWriter(WriterConfig{
+		Broker: []string{"127.0.0.1:1"},
+		Topic:  "test",
+	})
+	defer func() { _ = w.Close() }()
+
+	err := w.Send(context.Background(), []byte("k"), []byte("v"))
+	assert.Error(t, err)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeWrite, code)
+}
+
+func TestWriter_SendStr_UnreachableBrokerReturnsWrappedError(t *testing.T) {
+	w := NewWriter(WriterConfig{
+		Broker: []string{"127.0.0.1:1"},
+		Topic:  "test",
+	})
+	defer func() { _ = w.Close() }()
+
+	err := w.SendStr(context.Background(), "k", "v")
+	assert.Error(t, err)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeWrite, code)
+}
+
+func TestWriter_SendToDLQ_UnreachableBrokerReturnsWrappedError(t *testing.T) {
+	w := NewWriter(WriterConfig{
+		Broker: []string{"127.0.0.1:1"},
+	})
+	defer func() { _ = w.Close() }()
+
+	msg := kafka.Message{Topic: "orders", Key: []byte("k"), Value: []byte("v")}
+	err := w.SendToDLQ(context.Background(), "orders-dlq", msg, "handler failed")
+	assert.Error(t, err)
+	// oops.Code() 返回错误链中最深层的错误码（此处是 WriteMessages 内部的
+	// ErrWrite），而非 SendToDLQ 自身 Wrap 使用的 ErrDLQForward，符合
+	// oops "deepest error code" 的既定语义（见 samber/oops getDeepestErrorCode）。
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeWrite, code)
+}
+
+func TestWriter_WriteMessages_WithTrace_UnreachableBrokerReturnsWrappedError(t *testing.T) {
+	w := NewWriter(WriterConfig{
+		Broker: []string{"127.0.0.1:1"},
+	}, WithTrace())
+	defer func() { _ = w.Close() }()
+
+	err := w.WriteMessages(context.Background(), kafka.Message{Topic: "test", Value: []byte("v")})
+	assert.Error(t, err)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeWrite, code)
 }
