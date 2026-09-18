@@ -3,6 +3,8 @@ package log
 import (
 	"context"
 	"log/slog"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // categoryHandler 在日志中注入 category 字段。
@@ -90,7 +92,26 @@ func (h *contextHandler) Handle(ctx context.Context, r slog.Record) error {
 	if requestID := RequestIDFromContext(ctx); requestID != "" {
 		r.AddAttrs(slog.String("request_id", requestID))
 	}
+
+	traceID, spanID := traceAndSpanIDFromContext(ctx)
+	if traceID != "" {
+		r.AddAttrs(slog.String("trace_id", traceID))
+	}
+	if spanID != "" {
+		r.AddAttrs(slog.String("span_id", spanID))
+	}
+
 	return h.next.Handle(ctx, r)
+}
+
+// traceAndSpanIDFromContext 优先从活跃 OTel span 提取 trace_id/span_id；
+// 没有有效 span 时回退到手工通过 WithContextValue 设置的
+// ContextKeyTraceID/ContextKeySpanID。
+func traceAndSpanIDFromContext(ctx context.Context) (traceID, spanID string) {
+	if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+		return sc.TraceID().String(), sc.SpanID().String()
+	}
+	return ContextValue(ctx, ContextKeyTraceID), ContextValue(ctx, ContextKeySpanID)
 }
 
 func (h *contextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
