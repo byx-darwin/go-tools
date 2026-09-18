@@ -274,15 +274,86 @@ func TestGetEndTimeOrNow(t *testing.T) {
 	mst.SetLevel(stats.LevelBase)
 	ri := rpcinfo.NewRPCInfo(from, to, ink, cfg, rst)
 
-	// NOTE: calling getEndTimeOrNow(ri) here without first recording
-	// stats.RPCFinish reproduces a real panic in the current implementation
-	// (tracer.go getEndTimeOrNow calls e.IsNil() on the Event returned by
-	// st.GetEvent, but rpcinfo's GetEvent returns a plain nil interface for
-	// an unrecorded event — calling IsNil() on that nil interface panics
-	// instead of the intended "event absent" branch). Not exercised here to
-	// keep the suite green; see PR notes for the finding.
+	// RPCFinish never recorded: rpcinfo's GetEvent returns a plain nil
+	// interface for an unrecorded event. Fixed in tracer.go to check
+	// `e == nil` before calling e.IsNil(), so this must fall back to
+	// time.Now() instead of panicking (see Issue #118).
+	assert.False(t, getEndTimeOrNow(ri).IsZero())
+
 	rst.Record(context.Background(), stats.RPCFinish, stats.StatusInfo, "")
 	assert.False(t, getEndTimeOrNow(ri).IsZero())
+}
+
+func TestInjectStatsEventsToSpan_UnrecordedEventsSkipped(t *testing.T) {
+	exp := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+	defer func() { _ = tp.Shutdown(context.Background()) }()
+	tracer := tp.Tracer("test")
+
+	rst := rpcinfo.NewRPCStats()
+	mst := rpcinfo.AsMutableRPCStats(rst)
+	require.NotNil(t, mst)
+	mst.SetLevel(stats.LevelDetailed)
+	// Only ReadStart is recorded; ReadFinish/WriteStart/WriteFinish stay
+	// unrecorded so GetEvent returns a nil interface for them (see #118).
+	rst.Record(context.Background(), stats.ReadStart, stats.StatusInfo, "")
+
+	_, span := tracer.Start(context.Background(), "test-span")
+	assert.NotPanics(t, func() {
+		injectStatsEventsToSpan(span, rst)
+	})
+	span.End()
+
+	spans := exp.GetSpans()
+	require.Len(t, spans, 1)
+	names := make([]string, 0, len(spans[0].Events))
+	for _, e := range spans[0].Events {
+		names = append(names, e.Name)
+	}
+	assert.Contains(t, names, "read_start")
+	assert.NotContains(t, names, "read_finish")
+}
+
+func TestServerClientTracer_Finish_EventsUnrecorded(t *testing.T) {
+	exp := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+	defer func() { _ = tp.Shutdown(context.Background()) }()
+	tracer := tp.Tracer("test")
+
+	from := rpcinfo.NewEndpointInfo("caller-service", "CallerMethod", nil, nil)
+	to := rpcinfo.NewEndpointInfo("callee-service", "CalleeMethod", nil, nil)
+	ink := rpcinfo.NewInvocation("callee-service", "CalleeMethod")
+	cfg := rpcinfo.NewRPCConfig()
+	rst := rpcinfo.NewRPCStats()
+	mst := rpcinfo.AsMutableRPCStats(rst)
+	require.NotNil(t, mst)
+	mst.SetLevel(stats.LevelDetailed)
+	// RPCStart recorded, RPCFinish deliberately left unrecorded: exercises
+	// the rpcFinish == nil early-return branch without panicking (#118).
+	rst.Record(context.Background(), stats.RPCStart, stats.StatusInfo, "")
+	ri := rpcinfo.NewRPCInfo(from, to, ink, cfg, rst)
+
+	sTracer := &serverTracer{cfg: config.ObservabilityConfig{}, tracer: tracer}
+	ctx := sTracer.Start(context.Background())
+	_, span := tracer.Start(ctx, "rpc.server")
+	tc := traceCarrierFromContext(ctx)
+	require.NotNil(t, tc)
+	tc.SetSpan(span)
+	ctx = rpcinfo.NewCtxWithRPCInfo(ctx, ri)
+	assert.NotPanics(t, func() { sTracer.Finish(ctx) })
+
+	cTracer := &clientTracer{cfg: config.ObservabilityConfig{}, tracer: tracer}
+	cctx := cTracer.Start(context.Background())
+	_, cspan := tracer.Start(cctx, "rpc.client")
+	ctc := traceCarrierFromContext(cctx)
+	require.NotNil(t, ctc)
+	ctc.SetSpan(cspan)
+	cctx = rpcinfo.NewCtxWithRPCInfo(cctx, ri)
+	assert.NotPanics(t, func() { cTracer.Finish(cctx) })
+
+	// Neither Finish call should have produced a span (early return before
+	// span.End()), since RPCFinish was never recorded.
+	assert.Empty(t, exp.GetSpans())
 }
 
 func TestRecordErrorSpanWithStack(t *testing.T) {
