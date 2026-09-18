@@ -243,3 +243,18 @@ func TestOption_ZeroValuesIgnored(t *testing.T) {
 	assert.Equal(t, defaultLevel, l.config.Level)
 	assert.Equal(t, defaultMaxSize, l.config.MaxSize)
 }
+
+func TestNew_ContextHandler_RequestID(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.log")
+
+	l := New(WithFilePath(path))
+	defer func() { _ = l.Close() }()
+
+	ctx := WithRequestID(context.Background(), "req-new-path")
+	l.InfoContext(ctx, "request id via New()")
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"request_id":"req-new-path"`)
+}

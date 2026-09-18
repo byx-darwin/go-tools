@@ -21,13 +21,10 @@
 package log
 
 import (
-	"context"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
-
-	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -219,7 +216,7 @@ func buildLogger(cfg *loggerConfig) *Logger {
 		handler = slog.NewTextHandler(w, opts)
 	}
 
-	handler = &otelHandler{next: handler}
+	handler = NewContextHandler(handler)
 
 	return &Logger{
 		Logger: slog.New(handler),
@@ -258,36 +255,4 @@ func parseLevel(s string) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
-}
-
-// otelHandler 在每条日志中注入 TraceID 和 SpanID。
-type otelHandler struct {
-	next slog.Handler
-}
-
-func (h *otelHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return h.next.Enabled(ctx, level)
-}
-
-func (h *otelHandler) Handle(ctx context.Context, r slog.Record) error {
-	if ctx != nil {
-		span := trace.SpanFromContext(ctx)
-		if span.SpanContext().IsValid() {
-			tid := span.SpanContext().TraceID().String()
-			sid := span.SpanContext().SpanID().String()
-			r.AddAttrs(
-				slog.String("trace_id", tid),
-				slog.String("span_id", sid),
-			)
-		}
-	}
-	return h.next.Handle(ctx, r)
-}
-
-func (h *otelHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &otelHandler{next: h.next.WithAttrs(attrs)}
-}
-
-func (h *otelHandler) WithGroup(name string) slog.Handler {
-	return &otelHandler{next: h.next.WithGroup(name)}
 }
