@@ -238,3 +238,64 @@ func TestMutex_Watchdog_Disabled_LockExpires(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), exists)
 }
+
+func TestMutex_Watchdog_StopsWhenTokenMismatch(t *testing.T) {
+	mr, client := newTestRedisClient(t)
+	ctx := context.Background()
+	m := NewMutex(client, "lock:stolen", WithMutexTTL(60*time.Millisecond), WithWatchdog(true))
+
+	ok, err := m.TryLock(ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	// Simulate the key being taken over by another holder (different token)
+	// before the watchdog's next renewal tick fires.
+	require.NoError(t, client.Set(ctx, "lock:stolen", "other-token", 60*time.Millisecond).Err())
+
+	// watchdog interval = ttl/3 = 20ms; give it real time to observe the
+	// mismatch and exit, then advance the mock clock past the original TTL.
+	time.Sleep(30 * time.Millisecond)
+	mr.FastForward(60 * time.Millisecond)
+
+	exists, err := client.Exists(ctx, "lock:stolen").Result()
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), exists, "watchdog must stop renewing once token no longer matches")
+}
+
+func TestMutex_TryLock_ClientError(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	m := NewMutex(client, "lock:trylock-err", WithWatchdog(false))
+	require.NoError(t, client.Close())
+
+	ok, err := m.TryLock(context.Background())
+
+	assert.False(t, ok)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeLockAcquire, code)
+}
+
+func TestMutex_Unlock_ClientError(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	m := NewMutex(client, "lock:unlock-err", WithWatchdog(false))
+
+	ok, err := m.TryLock(context.Background())
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NoError(t, client.Close())
+
+	err = m.Unlock(context.Background())
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeLockRelease, code)
+}
+
+func TestMutex_Lock_ClientError(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	m := NewMutex(client, "lock:lock-err", WithWatchdog(false))
+	require.NoError(t, client.Close())
+
+	err := m.Lock(context.Background())
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeLockAcquire, code)
+}

@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	goerror "github.com/byx-darwin/go-tools/go-common/error"
 )
 
 func TestNewLimiter_Defaults(t *testing.T) {
@@ -188,4 +190,27 @@ func TestLimiter_Wait_ContextTimeout(t *testing.T) {
 	err = l.Wait(waitCtx)
 
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestLimiter_AllowN_ClientError(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	l := NewLimiter(client, "limiter:client-err", 1, 1)
+	require.NoError(t, client.Close())
+
+	ok, err := l.AllowN(context.Background(), 1)
+
+	assert.False(t, ok)
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeLimiterEval, code)
+}
+
+func TestLimiter_Wait_ClientError(t *testing.T) {
+	_, client := newTestRedisClient(t)
+	l := NewLimiter(client, "limiter:wait-client-err", 1, 1)
+	require.NoError(t, client.Close())
+
+	err := l.Wait(context.Background())
+
+	code, _ := goerror.Extract(err)
+	assert.Equal(t, CodeLimiterEval, code)
 }
