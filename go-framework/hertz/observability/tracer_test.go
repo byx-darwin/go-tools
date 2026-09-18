@@ -235,12 +235,6 @@ func TestInjectStatsEventsToSpan(t *testing.T) {
 
 	_, span := tp.Tracer("test").Start(context.Background(), "s")
 
-	// 注意：injectStatsEventsToSpan 内部对 st.GetEvent() 的返回值直接调用
-	// ev.IsNil()，未先判断 ev == nil（对照 getEndTimeOrNow 里
-	// `e == nil || e.IsNil()` 的正确写法）。当某个事件从未被 Record 过时，
-	// GetEvent 返回 nil Event 接口，ev.IsNil() 会 panic（nil 接口调用方法）。
-	// 这里记录全部 6 个事件以规避该已知缺陷，避免测试本身触发 panic；
-	// 缺陷本身按任务要求只报告不修复。
 	ti := traceinfo.NewTraceInfo()
 	ti.Stats().SetLevel(stats.LevelDetailed)
 	ti.Stats().Record(stats.ReadHeaderStart, stats.StatusInfo, "")
@@ -263,6 +257,56 @@ func TestInjectStatsEventsToSpan(t *testing.T) {
 	assert.True(t, names["read_header_start"])
 	assert.True(t, names["write_finish"])
 	assert.True(t, names["read_body_start"])
+}
+
+func TestInjectStatsEventsToSpan_UnrecordedEventsSkipped(t *testing.T) {
+	exp := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+	defer func() { _ = tp.Shutdown(context.Background()) }()
+
+	_, span := tp.Tracer("test").Start(context.Background(), "s")
+
+	// Only ReadHeaderStart is recorded; every other event stays unrecorded,
+	// so st.GetEvent returns a nil Event interface for them. Fixed in
+	// tracer.go to check `ev == nil` before calling ev.IsNil() (see #118) —
+	// this must skip the unrecorded events instead of panicking.
+	ti := traceinfo.NewTraceInfo()
+	ti.Stats().SetLevel(stats.LevelDetailed)
+	ti.Stats().Record(stats.ReadHeaderStart, stats.StatusInfo, "")
+
+	assert.NotPanics(t, func() {
+		injectStatsEventsToSpan(span, ti.Stats())
+	})
+	span.End()
+
+	require.NoError(t, tp.ForceFlush(context.Background()))
+	spans := exp.GetSpans()
+	require.Len(t, spans, 1)
+	names := map[string]bool{}
+	for _, ev := range spans[0].Events {
+		names[ev.Name] = true
+	}
+	assert.True(t, names["read_header_start"])
+	assert.False(t, names["write_finish"])
+}
+
+func TestServerTracer_Finish_NoHTTPFinish(t *testing.T) {
+	cfg := config.ObservabilityConfig{ServiceName: "svc"}
+	tr, _ := NewServerTracer(cfg)
+	c := app.NewContext(0)
+
+	ti := traceinfo.NewTraceInfo()
+	ti.Stats().SetLevel(stats.LevelDetailed)
+	// HTTPStart recorded, HTTPFinish deliberately left unrecorded:
+	// exercises the httpFinish == nil early-return branch without
+	// panicking (see #118).
+	ti.Stats().Record(stats.HTTPStart, stats.StatusInfo, "")
+	c.SetTraceInfo(ti)
+
+	ctx := tr.Start(context.Background(), c)
+	assert.NotPanics(t, func() {
+		tr.Finish(ctx, c)
+	})
 }
 
 // fakeTraceInfo 是 traceinfo.TraceInfo 的最小实现，Stats() 返回 nil 用于

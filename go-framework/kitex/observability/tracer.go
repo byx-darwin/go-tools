@@ -52,7 +52,7 @@ func (s *serverTracer) Finish(ctx context.Context) {
 	st := ri.Stats()
 	rpcStart := st.GetEvent(stats.RPCStart)
 	rpcFinish := st.GetEvent(stats.RPCFinish)
-	if rpcStart.IsNil() || rpcFinish.IsNil() {
+	if rpcStart == nil || rpcStart.IsNil() || rpcFinish == nil || rpcFinish.IsNil() {
 		return
 	}
 
@@ -128,7 +128,7 @@ func (c *clientTracer) Finish(ctx context.Context) {
 	st := ri.Stats()
 	rpcStart := st.GetEvent(stats.RPCStart)
 	rpcFinish := st.GetEvent(stats.RPCFinish)
-	if rpcStart.IsNil() || rpcFinish.IsNil() {
+	if rpcStart == nil || rpcStart.IsNil() || rpcFinish == nil || rpcFinish.IsNil() {
 		return
 	}
 
@@ -182,7 +182,7 @@ func injectStatsEventsToSpan(span oteltrace.Span, st rpcinfo.RPCStats) {
 
 	for _, e := range events {
 		ev := st.GetEvent(e.event)
-		if ev.IsNil() {
+		if ev == nil || ev.IsNil() {
 			continue
 		}
 		span.AddEvent(e.name, oteltrace.WithTimestamp(ev.Time()))
@@ -234,7 +234,7 @@ func getEndTimeOrNow(ri rpcinfo.RPCInfo) time.Time {
 		return time.Now()
 	}
 	e := st.GetEvent(stats.RPCFinish)
-	if e.IsNil() {
+	if e == nil || e.IsNil() {
 		return time.Now()
 	}
 	return e.Time()

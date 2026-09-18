@@ -101,7 +101,12 @@ func (s *serverTracer) Finish(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	elapsedTime := float64(st.GetEvent(stats.HTTPFinish).Time().Sub(httpStart.Time())) / float64(time.Millisecond)
+	httpFinish := st.GetEvent(stats.HTTPFinish)
+	if httpFinish == nil {
+		return
+	}
+
+	elapsedTime := float64(httpFinish.Time().Sub(httpStart.Time())) / float64(time.Millisecond)
 
 	span := tc.Span()
 	if span == nil || !span.IsRecording() {
@@ -167,7 +172,7 @@ func injectStatsEventsToSpan(span oteltrace.Span, st traceinfo.HTTPStats) {
 
 	for _, e := range events {
 		ev := st.GetEvent(e.event)
-		if ev.IsNil() {
+		if ev == nil || ev.IsNil() {
 			continue
 		}
 		span.AddEvent(e.name, oteltrace.WithTimestamp(ev.Time()))
