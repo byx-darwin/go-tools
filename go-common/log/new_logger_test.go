@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -388,6 +389,50 @@ func TestNewLogger_FileMode_LevelFiltering(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), "should be filtered")
 	assert.Contains(t, string(data), "should appear")
+}
+
+func TestNewLogger_WithExtraHandler(t *testing.T) {
+	var captured []string
+	wrap := func(next slog.Handler) slog.Handler {
+		return &captureHandler{next: next, captured: &captured}
+	}
+
+	cfg := log.Config{
+		Level:  "info",
+		Format: "json",
+		Mode:   "console",
+	}
+	l, err := log.NewLogger(cfg, log.ReleaseInfo{}, log.WithExtraHandler(wrap))
+	require.NoError(t, err)
+	require.NotNil(t, l)
+
+	l.InfoContext(context.Background(), "wrapped message")
+
+	require.Len(t, captured, 1)
+	assert.Equal(t, "wrapped message", captured[0])
+}
+
+// captureHandler 记录经过的每条日志消息，验证 WithExtraHandler 注入生效。
+type captureHandler struct {
+	next     slog.Handler
+	captured *[]string
+}
+
+func (h *captureHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.next.Enabled(ctx, level)
+}
+
+func (h *captureHandler) Handle(ctx context.Context, r slog.Record) error {
+	*h.captured = append(*h.captured, r.Message)
+	return h.next.Handle(ctx, r)
+}
+
+func (h *captureHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &captureHandler{next: h.next.WithAttrs(attrs), captured: h.captured}
+}
+
+func (h *captureHandler) WithGroup(name string) slog.Handler {
+	return &captureHandler{next: h.next.WithGroup(name), captured: h.captured}
 }
 
 func TestNewLogger_CategoriesWarning(t *testing.T) {

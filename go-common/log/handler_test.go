@@ -8,6 +8,7 @@ import (
 
 	"github.com/byx-darwin/go-tools/go-common/log"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestCategoryHandler(t *testing.T) {
@@ -114,4 +115,103 @@ func TestMultiHandler_Enabled(t *testing.T) {
 
 	// 至少有一个 handler 启用就应该返回 true
 	require.True(t, handler.Enabled(context.Background(), slog.LevelInfo))
+}
+
+func TestContextHandler_WithActiveSpan(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{})
+	handler := log.NewContextHandler(inner)
+
+	traceID, err := trace.TraceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
+	require.NoError(t, err)
+	spanID, err := trace.SpanIDFromHex("00f067aa0ba902b7")
+	require.NoError(t, err)
+	sc := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+	ctx := trace.ContextWithSpanContext(context.Background(), sc)
+
+	logger := slog.New(handler)
+	logger.InfoContext(ctx, "test")
+
+	require.Contains(t, buf.String(), `"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736"`)
+	require.Contains(t, buf.String(), `"span_id":"00f067aa0ba902b7"`)
+}
+
+func TestContextHandler_NoSpan(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{})
+	handler := log.NewContextHandler(inner)
+
+	logger := slog.New(handler)
+	logger.InfoContext(context.Background(), "test")
+
+	require.NotContains(t, buf.String(), "trace_id")
+	require.NotContains(t, buf.String(), "span_id")
+}
+
+func TestContextHandler_ManualFallback(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{})
+	handler := log.NewContextHandler(inner)
+
+	ctx := log.WithContextValue(context.Background(), log.ContextKeyTraceID, "manual-trace")
+	ctx = log.WithContextValue(ctx, log.ContextKeySpanID, "manual-span")
+	logger := slog.New(handler)
+	logger.InfoContext(ctx, "test")
+
+	require.Contains(t, buf.String(), `"trace_id":"manual-trace"`)
+	require.Contains(t, buf.String(), `"span_id":"manual-span"`)
+}
+
+func TestContextHandler_AllThreeCoexist(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{})
+	handler := log.NewContextHandler(inner)
+
+	traceID, err := trace.TraceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
+	require.NoError(t, err)
+	spanID, err := trace.SpanIDFromHex("00f067aa0ba902b7")
+	require.NoError(t, err)
+	sc := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+	ctx := trace.ContextWithSpanContext(context.Background(), sc)
+	ctx = log.WithRequestID(ctx, "req-789")
+
+	logger := slog.New(handler)
+	logger.InfoContext(ctx, "test")
+
+	require.Contains(t, buf.String(), `"request_id":"req-789"`)
+	require.Contains(t, buf.String(), `"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736"`)
+	require.Contains(t, buf.String(), `"span_id":"00f067aa0ba902b7"`)
+}
+
+func TestContextHandler_SpanTakesPriorityOverManual(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{})
+	handler := log.NewContextHandler(inner)
+
+	traceID, err := trace.TraceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
+	require.NoError(t, err)
+	spanID, err := trace.SpanIDFromHex("00f067aa0ba902b7")
+	require.NoError(t, err)
+	sc := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+	ctx := trace.ContextWithSpanContext(context.Background(), sc)
+	ctx = log.WithContextValue(ctx, log.ContextKeyTraceID, "manual-trace")
+	ctx = log.WithContextValue(ctx, log.ContextKeySpanID, "manual-span")
+
+	logger := slog.New(handler)
+	logger.InfoContext(ctx, "test")
+
+	require.Contains(t, buf.String(), `"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736"`)
+	require.NotContains(t, buf.String(), "manual-trace")
 }

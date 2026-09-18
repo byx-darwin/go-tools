@@ -8,8 +8,32 @@ import (
 	"os"
 )
 
-// NewLogger 使用新 Config 和 ReleaseInfo 创建 Logger。
-func NewLogger(cfg Config, release ReleaseInfo) (*Logger, error) {
+// loggerBuildOptions 收集 NewLogger 构建过程的可选项。
+type loggerBuildOptions struct {
+	extraHandlers []func(slog.Handler) slog.Handler
+}
+
+// LoggerOption 配置 NewLogger 构建过程的可选项。
+type LoggerOption func(*loggerBuildOptions)
+
+// WithExtraHandler 注入一个自定义 handler 包装函数，应用在标准 handler 链
+// （output → context → release → mask）构建完成之后，作为最外层 handler。
+// 可多次调用，按调用顺序层层包装（最后一次调用的在最外层，最先执行）。
+func WithExtraHandler(wrap func(slog.Handler) slog.Handler) LoggerOption {
+	return func(o *loggerBuildOptions) {
+		if wrap != nil {
+			o.extraHandlers = append(o.extraHandlers, wrap)
+		}
+	}
+}
+
+// NewLogger 使用新 Config 和 ReleaseInfo 创建 Logger，支持可选的 LoggerOption。
+func NewLogger(cfg Config, release ReleaseInfo, opts ...LoggerOption) (*Logger, error) {
+	o := &loggerBuildOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
 	var handler slog.Handler
 
 	// 创建输出 handler
@@ -55,6 +79,10 @@ func NewLogger(cfg Config, release ReleaseInfo) (*Logger, error) {
 	// Categories 配置尚未在 NewLogger 中生效，仅通过 WithCategory 支持动态子 Logger
 	if len(cfg.Categories) > 0 {
 		fmt.Fprintf(os.Stderr, "[log] warning: Config.Categories is not yet supported by NewLogger; use Logger.WithCategory instead\n")
+	}
+
+	for _, wrap := range o.extraHandlers {
+		handler = wrap(handler)
 	}
 
 	return &Logger{
