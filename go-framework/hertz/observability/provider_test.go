@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/common/tracer/stats"
+	"github.com/cloudwego/hertz/pkg/common/tracer/traceinfo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
@@ -260,4 +263,124 @@ func TestNewProvider_WithMetricExporter_MetricsDisabled(t *testing.T) {
 	assert.Equal(t, int32(0), atomic.LoadInt32(&exp.exportCount))
 
 	require.NoError(t, p.Shutdown())
+}
+
+// ── hertzCarrier ──
+
+func TestHertzCarrier_GetSetKeys(t *testing.T) {
+	c := app.NewContext(0)
+	c.Request.Header.Set("X-Incoming", "in-value")
+
+	hc := &hertzCarrier{c: c}
+	assert.Equal(t, "in-value", hc.Get("X-Incoming"))
+
+	hc.Set("X-Outgoing", "out-value")
+	assert.Equal(t, "out-value", c.Response.Header.Get("X-Outgoing"))
+
+	keys := hc.Keys()
+	assert.Contains(t, keys, "X-Incoming")
+}
+
+// ── ServerMiddleware ──
+
+func TestProvider_ServerMiddleware_Enabled(t *testing.T) {
+	exp := tracetest.NewInMemoryExporter()
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	cfg := config.ObservabilityConfig{Enabled: true, ServiceName: "svc"}
+	p, err := NewProvider(context.Background(), cfg, WithTraceExporter(exp))
+	require.NoError(t, err)
+
+	mw := p.ServerMiddleware()
+	require.NotNil(t, mw)
+
+	c := app.NewContext(0)
+	c.Request.SetMethod("GET")
+	c.Request.SetRequestURI("http://example.com/ping")
+	c.Response.SetStatusCode(200)
+
+	assert.NotPanics(t, func() {
+		mw(context.Background(), c)
+	})
+
+	// NewProvider 内部构建了自己的 TracerProvider（otel.SetTracerProvider），
+	// 通过 otel.GetTracerProvider() 取回后 ForceFlush，而非依赖测试外部另建
+	// 的 TracerProvider（那样 span 永远不会经由 p.tracer 写入）。
+	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	require.True(t, ok)
+	require.NoError(t, tp.ForceFlush(context.Background()))
+	spans := exp.GetSpans()
+	require.Len(t, spans, 1)
+	assert.Equal(t, "GET /ping", spans[0].Name)
+
+	require.NoError(t, p.Shutdown())
+}
+
+// ── TracerServerMiddleware ──
+
+func TestTracerServerMiddleware_Disabled(t *testing.T) {
+	cfg := config.ObservabilityConfig{Enabled: false}
+	mw := TracerServerMiddleware(cfg)
+	require.NotNil(t, mw)
+
+	c := app.NewContext(0)
+	assert.NotPanics(t, func() {
+		mw(context.Background(), c)
+	})
+}
+
+func TestTracerServerMiddleware_NoCarrier(t *testing.T) {
+	cfg := config.ObservabilityConfig{Enabled: true}
+	mw := TracerServerMiddleware(cfg)
+
+	c := app.NewContext(0)
+	// context 中没有经过 serverTracer.Start 注入的 traceCarrier。
+	assert.NotPanics(t, func() {
+		mw(context.Background(), c)
+	})
+}
+
+func TestTracerServerMiddleware_StatsLevelDisabled(t *testing.T) {
+	cfg := config.ObservabilityConfig{Enabled: true}
+	mw := TracerServerMiddleware(cfg)
+
+	c := app.NewContext(0)
+	ti := traceinfo.NewTraceInfo() // 默认 Level() == LevelDisabled
+	c.SetTraceInfo(ti)
+
+	tc := &traceCarrier{}
+	ctx := withTraceCarrier(context.Background(), tc)
+
+	assert.NotPanics(t, func() {
+		mw(ctx, c)
+	})
+}
+
+func TestTracerServerMiddleware_FullPath(t *testing.T) {
+	exp := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+	defer func() { _ = tp.Shutdown(context.Background()) }()
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	cfg := config.ObservabilityConfig{Enabled: true}
+	mw := TracerServerMiddleware(cfg)
+
+	c := app.NewContext(0)
+	c.Request.SetMethod("GET")
+	c.Request.SetRequestURI("http://example.com/svc")
+
+	ti := traceinfo.NewTraceInfo()
+	ti.Stats().SetLevel(stats.LevelDetailed)
+	c.SetTraceInfo(ti)
+
+	tc := &traceCarrier{}
+	tc.SetTracer(tp.Tracer("test"))
+	ctx := withTraceCarrier(context.Background(), tc)
+
+	assert.NotPanics(t, func() {
+		mw(ctx, c)
+	})
+
+	assert.NotNil(t, tc.Span(), "span 应由 TracerServerMiddleware 创建并写回 traceCarrier")
 }
